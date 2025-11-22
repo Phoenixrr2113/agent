@@ -9,6 +9,7 @@ services:
     environment:
       - OPENAI_API_KEY=${OPENROUTER_API_KEY}
       - GRAPHITI_GROUP_ID=agent
+      - DATABASE_TYPE=falkordb
     volumes:
       - graphiti-data:/data
     healthcheck:
