@@ -1,13 +1,12 @@
 import { experimental_createMCPClient as createMCPClient } from '@ai-sdk/mcp';
 import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
 import { streamText, stepCountIs, CoreMessage } from 'ai';
-import { createOpenAI } from '@ai-sdk/openai';
+import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import fs from 'fs/promises';
 import { systemPrompt } from './prompts.js';
 
-const openrouter = createOpenAI({
+const openrouter = createOpenRouter({
   apiKey: process.env.OPENROUTER_API_KEY || '',
-  baseURL: 'https://openrouter.ai/api/v1',
 });
 
 const graphitiClient = await createMCPClient({
@@ -46,7 +45,7 @@ let stopped = false;
 
 while (!stopped) {
   const result = streamText({
-    model: openrouter(process.env.MODEL || 'meta-llama/llama-3.2-3b-instruct:free'),
+    model: openrouter.chat(process.env.MODEL || 'meta-llama/llama-3.2-3b-instruct:free'),
     messages: history,
     tools,
     system: systemPrompt,
