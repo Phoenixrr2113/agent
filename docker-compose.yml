@@ -1,50 +1,14 @@
 version: '3.8'
 services:
-  falkordb:
-    image: falkordb/falkordb:latest
-    platform: linux/amd64
-    ports:
-      - "6380:6379"
-    volumes:
-      - falkordb-data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-
-  graphiti-memory:
-    image: falkordb/graphiti-knowledge-graph-mcp:latest
-    platform: linux/amd64
-    ports:
-      - "8000:8000"
-      - "3000:3000"
-    environment:
-      - OPENAI_API_KEY=${OPENROUTER_API_KEY}
-      - GRAPHITI_GROUP_ID=agent
-      - DATABASE_TYPE=falkordb
-      - FALKORDB_HOST=falkordb
-      - FALKORDB_PORT=6379
-    volumes:
-      - graphiti-data:/data
-    depends_on:
-      falkordb:
-        condition: service_healthy
-
   agent:
     build: .
-    depends_on:
-      - graphiti-memory
-    restart: on-failure
     environment:
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
-      - GRAPHITI_URL=http://graphiti-memory:8000/mcp/
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - MODEL=${MODEL:-qwen/qwen3-coder:free}
     volumes:
       - ./workspace:/workspace
       - ./logs:/app/logs
+      - ./memory:/app/memory
     stdin_open: true
     tty: true
-
-volumes:
-  graphiti-data:
-  falkordb-data:
