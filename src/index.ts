@@ -11,8 +11,8 @@ const openrouter = createOpenRouter({
 
 const graphitiClient = await createMCPClient({
   transport: {
-    type: 'http',
-    url: process.env.GRAPHITI_URL || 'http://graphiti-memory:8000/mcp/',
+    type: 'sse',
+    url: process.env.GRAPHITI_URL || 'http://graphiti-memory:8000/sse',
   },
 });
 

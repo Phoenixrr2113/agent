@@ -38,7 +38,7 @@ services:
     restart: on-failure
     environment:
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
-      - GRAPHITI_URL=http://graphiti-memory:8000/mcp/
+      - GRAPHITI_URL=http://graphiti-memory:8000/sse
     volumes:
       - ./workspace:/workspace
       - ./logs:/app/logs
