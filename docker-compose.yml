@@ -4,6 +4,7 @@ services:
     build: .
     environment:
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
       - MODEL=${MODEL:-qwen/qwen3-coder:free}
     volumes:
       - ./workspace:/workspace

@@ -1,10 +1,12 @@
 import { streamText, stepCountIs } from 'ai';
 import type { ModelMessage } from 'ai';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
+import { z } from 'zod';
 import fs from 'fs/promises';
 import { systemPrompt } from './prompts.js';
 import { createStdioMCPClient } from './mcp-client.js';
 import { mapMcpToolsToAiTools } from './tools.js';
+import { CodebaseRAG } from './rag.js';
 
 const openrouter = createOpenRouter({
   apiKey: process.env.OPENROUTER_API_KEY || '',
@@ -43,12 +45,49 @@ const fetchTools = mapMcpToolsToAiTools(fetchMcpTools, fetchClient);
 const memoryTools = mapMcpToolsToAiTools(memoryMcpTools, memoryClient);
 const sequentialThinkingTools = mapMcpToolsToAiTools(sequentialThinkingMcpTools, sequentialThinkingClient);
 
+const codebaseRAG = new CodebaseRAG('/workspace');
+console.log('Indexing codebase...');
+await codebaseRAG.indexCodebase();
+const ragStats = codebaseRAG.getStats();
+console.log(`RAG indexed ${ragStats.totalChunks} chunks from ${ragStats.files} files`);
+
+const ragTools = {
+  search_codebase: {
+    description: 'Search the indexed codebase for relevant code snippets. Use this to find implementations, patterns, or understand how the codebase works.',
+    parameters: z.object({
+      query: z.string().describe('The search query to find relevant code'),
+      topK: z.number().optional().describe('Number of results to return (default: 5)'),
+    }),
+    execute: async ({ query, topK = 5 }: { query: string; topK?: number }) => {
+      const results = await codebaseRAG.searchCodebase(query, topK);
+      return JSON.stringify(results.map(r => ({
+        file: r.filePath,
+        lines: `${r.startLine}-${r.endLine}`,
+        content: r.content,
+      })));
+    },
+  },
+  reindex_codebase: {
+    description: 'Re-index the codebase after making changes. Use this after modifying files to update the search index.',
+    parameters: z.object({}),
+    execute: async () => {
+      await codebaseRAG.indexCodebase();
+      const stats = codebaseRAG.getStats();
+      return JSON.stringify({
+        message: 'Codebase re-indexed successfully',
+        stats,
+      });
+    },
+  },
+};
+
 const tools = {
   ...filesystemTools,
   ...gitTools,
   ...fetchTools,
   ...memoryTools,
   ...sequentialThinkingTools,
+  ...ragTools,
 };
 
 console.log('Total tools:', Object.keys(tools).length);
@@ -89,4 +128,9 @@ while (!stopped) {
     './logs/iterations.jsonl',
     JSON.stringify({ timestamp: Date.now(), messages: responseData.messages }) + '\n'
   );
+
+  console.log('\nRe-indexing codebase after iteration...');
+  await codebaseRAG.indexCodebase();
+  const newStats = codebaseRAG.getStats();
+  console.log(`RAG re-indexed: ${newStats.totalChunks} chunks from ${newStats.files} files`);
 }

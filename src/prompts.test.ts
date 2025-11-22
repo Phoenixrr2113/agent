@@ -9,11 +9,17 @@ describe('systemPrompt', () => {
   });
 
   it('should mention all available capabilities', () => {
+    expect(systemPrompt).toContain('Codebase search');
     expect(systemPrompt).toContain('Knowledge graph memory');
     expect(systemPrompt).toContain('Web fetch capabilities');
     expect(systemPrompt).toContain('Sequential thinking');
     expect(systemPrompt).toContain('Filesystem');
     expect(systemPrompt).toContain('Git');
+  });
+
+  it('should mention RAG functionality', () => {
+    expect(systemPrompt).toContain('search_codebase');
+    expect(systemPrompt).toContain('re-indexed');
   });
 
   it('should emphasize user-defined purpose', () => {
