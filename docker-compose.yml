@@ -10,11 +10,18 @@ services:
       - GRAPHITI_GROUP_ID=agent
     volumes:
       - graphiti-data:/data
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8000/mcp/"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+      start_period: 30s
 
   agent:
     build: .
     depends_on:
-      - graphiti-memory
+      graphiti-memory:
+        condition: service_healthy
     environment:
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
       - GRAPHITI_URL=http://graphiti-memory:8000/mcp/
