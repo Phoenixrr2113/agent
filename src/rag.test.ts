@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { CodebaseRAG } from './rag.js';
+import { createCodebaseRAG, type CodebaseRAG } from './rag.js';
 import fs from 'fs/promises';
 
 vi.mock('ai', () => ({
@@ -14,13 +14,13 @@ vi.mock('@ai-sdk/openai', () => ({
 
 vi.mock('fs/promises');
 
-describe('CodebaseRAG', () => {
+describe('createCodebaseRAG', () => {
   let rag: CodebaseRAG;
   const mockEmbedMany = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
-    rag = new CodebaseRAG('/test/workspace');
+    rag = createCodebaseRAG('/test/workspace');
 
     const { embedMany } = require('ai');
     embedMany.mockImplementation(mockEmbedMany);
@@ -124,7 +124,7 @@ describe('CodebaseRAG', () => {
     });
 
     it('should return empty array when no embeddings exist', async () => {
-      const emptyRag = new CodebaseRAG('/empty');
+      const emptyRag = createCodebaseRAG('/empty');
       const results = await emptyRag.searchCodebase('test query');
 
       expect(results).toEqual([]);
@@ -157,7 +157,7 @@ describe('CodebaseRAG', () => {
       const embeddings = Array(3).fill([0.5, 0.5, 0.5]);
       mockEmbedMany.mockResolvedValue({ embeddings });
 
-      const newRag = new CodebaseRAG('/test2');
+      const newRag = createCodebaseRAG('/test2');
       await newRag.indexCodebase();
 
       mockEmbedMany.mockResolvedValueOnce({
@@ -205,7 +205,7 @@ describe('CodebaseRAG', () => {
     });
 
     it('should return zero stats for unindexed codebase', () => {
-      const newRag = new CodebaseRAG('/test');
+      const newRag = createCodebaseRAG('/test');
       const stats = newRag.getStats();
 
       expect(stats.totalChunks).toBe(0);

@@ -3,51 +3,31 @@ import { openai } from '@ai-sdk/openai';
 import fs from 'fs/promises';
 import path from 'path';
 
-export interface CodeChunk {
+interface CodeChunk {
   content: string;
   filePath: string;
   startLine: number;
   endLine: number;
 }
 
-export interface EmbeddedChunk extends CodeChunk {
+interface EmbeddedChunk extends CodeChunk {
   embedding: number[];
 }
 
-export class CodebaseRAG {
-  private embeddings: EmbeddedChunk[] = [];
-  private workspaceRoot: string;
+export interface CodebaseRAG {
+  indexCodebase: () => Promise<void>;
+  searchCodebase: (query: string, topK?: number, similarityThreshold?: number) => Promise<EmbeddedChunk[]>;
+  getStats: () => { totalChunks: number; files: number };
+}
 
-  constructor(workspaceRoot: string) {
-    this.workspaceRoot = workspaceRoot;
-  }
+export function createCodebaseRAG(workspaceRoot: string): CodebaseRAG {
+  let embeddings: EmbeddedChunk[] = [];
 
-  async indexCodebase(): Promise<void> {
-    const chunks = await this.scanWorkspace();
-
-    if (chunks.length === 0) {
-      console.log('No code files found to index');
-      return;
-    }
-
-    const { embeddings } = await embedMany({
-      model: openai.embedding('text-embedding-3-small') as any,
-      values: chunks.map(chunk => chunk.content),
-    });
-
-    this.embeddings = chunks.map((chunk, index) => ({
-      ...chunk,
-      embedding: embeddings[index],
-    }));
-
-    console.log(`Indexed ${this.embeddings.length} code chunks`);
-  }
-
-  private async scanWorkspace(): Promise<CodeChunk[]> {
+  const scanWorkspace = async (): Promise<CodeChunk[]> => {
     const chunks: CodeChunk[] = [];
     const codeExtensions = ['.ts', '.js', '.tsx', '.jsx', '.py', '.java', '.go', '.rs', '.c', '.cpp', '.h'];
 
-    async function scanDirectory(dir: string): Promise<void> {
+    const scanDirectory = async (dir: string): Promise<void> => {
       try {
         const entries = await fs.readdir(dir, { withFileTypes: true });
 
@@ -69,40 +49,61 @@ export class CodebaseRAG {
       } catch (error) {
         console.error(`Error scanning directory ${dir}:`, error);
       }
-    }
-
-    await scanDirectory(this.workspaceRoot);
-    return chunks;
-  }
-
-  async searchCodebase(query: string, topK: number = 5, similarityThreshold: number = 0.3): Promise<EmbeddedChunk[]> {
-    if (this.embeddings.length === 0) {
-      return [];
-    }
-
-    const { embedding: queryEmbedding } = await embedMany({
-      model: openai.embedding('text-embedding-3-small') as any,
-      values: [query],
-    }).then(result => ({ embedding: result.embeddings[0] }));
-
-    const similarities = this.embeddings.map(chunk => ({
-      chunk,
-      similarity: cosineSimilarity(queryEmbedding, chunk.embedding),
-    }));
-
-    return similarities
-      .filter(item => item.similarity >= similarityThreshold)
-      .sort((a, b) => b.similarity - a.similarity)
-      .slice(0, topK)
-      .map(item => item.chunk);
-  }
-
-  getStats() {
-    return {
-      totalChunks: this.embeddings.length,
-      files: new Set(this.embeddings.map(e => e.filePath)).size,
     };
-  }
+
+    await scanDirectory(workspaceRoot);
+    return chunks;
+  };
+
+  return {
+    indexCodebase: async () => {
+      const chunks = await scanWorkspace();
+
+      if (chunks.length === 0) {
+        console.log('No code files found to index');
+        return;
+      }
+
+      const { embeddings: embeddingVectors } = await embedMany({
+        model: openai.embedding('text-embedding-3-small') as any,
+        values: chunks.map(chunk => chunk.content),
+      });
+
+      embeddings = chunks.map((chunk, index) => ({
+        ...chunk,
+        embedding: embeddingVectors[index],
+      }));
+
+      console.log(`Indexed ${embeddings.length} code chunks`);
+    },
+
+    searchCodebase: async (query: string, topK: number = 5, similarityThreshold: number = 0.3) => {
+      if (embeddings.length === 0) {
+        return [];
+      }
+
+      const { embedding: queryEmbedding } = await embedMany({
+        model: openai.embedding('text-embedding-3-small') as any,
+        values: [query],
+      }).then(result => ({ embedding: result.embeddings[0] }));
+
+      const similarities = embeddings.map(chunk => ({
+        chunk,
+        similarity: cosineSimilarity(queryEmbedding, chunk.embedding),
+      }));
+
+      return similarities
+        .filter(item => item.similarity >= similarityThreshold)
+        .sort((a, b) => b.similarity - a.similarity)
+        .slice(0, topK)
+        .map(item => item.chunk);
+    },
+
+    getStats: () => ({
+      totalChunks: embeddings.length,
+      files: new Set(embeddings.map(e => e.filePath)).size,
+    }),
+  };
 }
 
 function chunkCode(content: string, filePath: string, chunkSize: number = 100): CodeChunk[] {

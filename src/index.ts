@@ -6,7 +6,7 @@ import fs from 'fs/promises';
 import { systemPrompt } from './prompts.js';
 import { createStdioMCPClient } from './mcp-client.js';
 import { mapMcpToolsToAiTools } from './tools.js';
-import { CodebaseRAG } from './rag.js';
+import { createCodebaseRAG } from './rag.js';
 
 const openrouter = createOpenRouter({
   apiKey: process.env.OPENROUTER_API_KEY || '',
@@ -45,7 +45,7 @@ const fetchTools = mapMcpToolsToAiTools(fetchMcpTools, fetchClient);
 const memoryTools = mapMcpToolsToAiTools(memoryMcpTools, memoryClient);
 const sequentialThinkingTools = mapMcpToolsToAiTools(sequentialThinkingMcpTools, sequentialThinkingClient);
 
-const codebaseRAG = new CodebaseRAG('/workspace');
+const codebaseRAG = createCodebaseRAG('/workspace');
 console.log('Indexing codebase...');
 await codebaseRAG.indexCodebase();
 const ragStats = codebaseRAG.getStats();
