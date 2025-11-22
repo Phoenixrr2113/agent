@@ -7,6 +7,7 @@ import { systemPrompt } from './prompts.js';
 import { createStdioMCPClient } from './mcp-client.js';
 import { mapMcpToolsToAiTools } from './tools.js';
 import { createCodebaseRAG } from './rag.js';
+import { grepWorkspace } from './grep.js';
 
 const openrouter = createOpenRouter({
   apiKey: process.env.OPENROUTER_API_KEY || '',
@@ -51,9 +52,9 @@ await codebaseRAG.indexCodebase();
 const ragStats = codebaseRAG.getStats();
 console.log(`RAG indexed ${ragStats.totalChunks} chunks from ${ragStats.files} files`);
 
-const ragTools = {
+const codebaseTools = {
   search_codebase: {
-    description: 'Search the indexed codebase for relevant code snippets. Use this to find implementations, patterns, or understand how the codebase works.',
+    description: 'Search the indexed codebase for relevant code snippets using semantic search. Use this to find implementations, patterns, or understand how the codebase works.',
     parameters: z.object({
       query: z.string().describe('The search query to find relevant code'),
       topK: z.number().optional().describe('Number of results to return (default: 5)'),
@@ -67,16 +68,22 @@ const ragTools = {
       })));
     },
   },
-  reindex_codebase: {
-    description: 'Re-index the codebase after making changes. Use this after modifying files to update the search index.',
-    parameters: z.object({}),
-    execute: async () => {
-      await codebaseRAG.indexCodebase();
-      const stats = codebaseRAG.getStats();
-      return JSON.stringify({
-        message: 'Codebase re-indexed successfully',
-        stats,
-      });
+  grep_codebase: {
+    description: 'Search for exact text patterns in the codebase using regex. Use this for finding specific strings, function names, or patterns.',
+    parameters: z.object({
+      pattern: z.string().describe('The regex pattern to search for'),
+      filePattern: z.string().optional().describe('Optional file pattern to filter (e.g., "*.ts")'),
+      ignoreCase: z.boolean().optional().describe('Whether to ignore case (default: false)'),
+      maxResults: z.number().optional().describe('Maximum number of results (default: 100)'),
+    }),
+    execute: async ({ pattern, filePattern, ignoreCase, maxResults }: {
+      pattern: string;
+      filePattern?: string;
+      ignoreCase?: boolean;
+      maxResults?: number;
+    }) => {
+      const results = await grepWorkspace(pattern, '/workspace', { filePattern, ignoreCase, maxResults });
+      return JSON.stringify(results);
     },
   },
 };
@@ -87,7 +94,7 @@ const tools = {
   ...fetchTools,
   ...memoryTools,
   ...sequentialThinkingTools,
-  ...ragTools,
+  ...codebaseTools,
 };
 
 console.log('Total tools:', Object.keys(tools).length);
