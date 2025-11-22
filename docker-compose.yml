@@ -1,0 +1,29 @@
+version: '3.8'
+services:
+  graphiti-memory:
+    image: falkordb/graphiti-knowledge-graph-mcp:latest
+    ports:
+      - "8000:8000"
+      - "6379:6379"
+      - "3000:3000"
+    environment:
+      - OPENAI_API_KEY=${OPENROUTER_API_KEY}
+      - GRAPHITI_GROUP_ID=agent
+    volumes:
+      - graphiti-data:/data
+
+  agent:
+    build: .
+    depends_on:
+      - graphiti-memory
+    environment:
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
+      - GRAPHITI_URL=http://graphiti-memory:8000/mcp/
+    volumes:
+      - ./workspace:/workspace
+      - ./logs:/app/logs
+    stdin_open: true
+    tty: true
+
+volumes:
+  graphiti-data:
