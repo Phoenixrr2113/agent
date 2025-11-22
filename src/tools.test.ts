@@ -73,9 +73,7 @@ describe('mapMcpToolsToAiTools', () => {
 
     expect(mockClient.callTool).toHaveBeenCalledWith('test_tool', { arg1: 'value1' });
     expect(typeof result).toBe('string');
-    expect(JSON.parse(result)).toEqual({
-      content: [{ type: 'text', text: 'test result' }]
-    });
+    expect(JSON.parse(result)).toEqual([{ type: 'text', text: 'test result' }]);
   });
 
   it('should handle multiple tools', () => {
@@ -142,7 +140,7 @@ describe('mapMcpToolsToAiTools', () => {
     const result = await aiTools.complex_tool.execute({});
     const parsed = JSON.parse(result);
 
-    expect(parsed.content.nested.data).toEqual([1, 2, 3]);
-    expect(parsed.content.nested.object.key).toBe('value');
+    expect(parsed.nested.data).toEqual([1, 2, 3]);
+    expect(parsed.nested.object.key).toBe('value');
   });
 });
