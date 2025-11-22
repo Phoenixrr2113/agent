@@ -18,7 +18,7 @@ describe('createCodebaseRAG', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    rag = createCodebaseRAG('/test/workspace');
+    rag = createCodebaseRAG('/test/workspace', { enableCache: false, chunkingStrategy: 'fixed' });
   });
 
   describe('indexCodebase', () => {
@@ -119,7 +119,7 @@ describe('createCodebaseRAG', () => {
     });
 
     it('should return empty array when no embeddings exist', async () => {
-      const emptyRag = createCodebaseRAG('/empty');
+      const emptyRag = createCodebaseRAG('/empty', { enableCache: false });
       const results = await emptyRag.searchCodebase('test query');
 
       expect(results).toEqual([]);
@@ -152,7 +152,7 @@ describe('createCodebaseRAG', () => {
       const embeddings = Array(3).fill([0.5, 0.5, 0.5]);
       vi.mocked(embedMany).mockResolvedValue({ embeddings });
 
-      const newRag = createCodebaseRAG('/test2');
+      const newRag = createCodebaseRAG('/test2', { enableCache: false, chunkingStrategy: 'fixed' });
       await newRag.indexCodebase();
 
       vi.mocked(embedMany).mockResolvedValueOnce({
@@ -200,7 +200,7 @@ describe('createCodebaseRAG', () => {
     });
 
     it('should return zero stats for unindexed codebase', () => {
-      const newRag = createCodebaseRAG('/test');
+      const newRag = createCodebaseRAG('/test', { enableCache: false });
       const stats = newRag.getStats();
 
       expect(stats.totalChunks).toBe(0);
