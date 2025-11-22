@@ -30,18 +30,11 @@ services:
     depends_on:
       falkordb:
         condition: service_healthy
-    healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8000/health || exit 1"]
-      interval: 10s
-      timeout: 5s
-      retries: 12
-      start_period: 30s
 
   agent:
     build: .
     depends_on:
-      graphiti-memory:
-        condition: service_healthy
+      - graphiti-memory
     environment:
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
       - GRAPHITI_URL=http://graphiti-memory:8000/mcp/
