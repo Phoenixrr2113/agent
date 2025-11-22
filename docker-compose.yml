@@ -35,6 +35,7 @@ services:
     build: .
     depends_on:
       - graphiti-memory
+    restart: on-failure
     environment:
       - OPENROUTER_API_KEY=${OPENROUTER_API_KEY}
       - GRAPHITI_URL=http://graphiti-memory:8000/mcp/
