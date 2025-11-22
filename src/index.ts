@@ -45,7 +45,7 @@ let stopped = false;
 
 while (!stopped) {
   const result = streamText({
-    model: openrouter.chat(process.env.MODEL || 'meta-llama/llama-3.2-3b-instruct:free'),
+    model: openrouter.chat(process.env.MODEL || 'qwen/qwen3-coder:free'),
     messages: history,
     tools,
     system: systemPrompt,
