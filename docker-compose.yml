@@ -2,6 +2,7 @@ version: '3.8'
 services:
   graphiti-memory:
     image: falkordb/graphiti-knowledge-graph-mcp:latest
+    platform: linux/amd64
     ports:
       - "8000:8000"
       - "3000:3000"
