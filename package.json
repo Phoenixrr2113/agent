@@ -19,6 +19,7 @@
     "@modelcontextprotocol/sdk": "latest",
     "@openrouter/ai-sdk-provider": "^1.0.0",
     "ai": "^5.0.0",
+    "dotenv": "^17.2.3",
     "zod": "^3.23.0"
   },
   "devDependencies": {

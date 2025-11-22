@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { createCodebaseRAG } from './src/rag.js';
 import fs from 'fs/promises';
 import path from 'path';

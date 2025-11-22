@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import { embedMany } from 'ai';
 import { google } from '@ai-sdk/google';
 
