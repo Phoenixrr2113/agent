@@ -2,6 +2,8 @@ import { embedMany } from 'ai';
 import { openai } from '@ai-sdk/openai';
 import fs from 'fs/promises';
 import path from 'path';
+import { chunkCode, ChunkingStrategy } from './chunking.js';
+import { createFileCache, computeHash, Cache } from './cache.js';
 
 interface CodeChunk {
   content: string;
@@ -14,14 +16,38 @@ interface EmbeddedChunk extends CodeChunk {
   embedding: number[];
 }
 
+interface FileEmbeddings {
+  chunks: EmbeddedChunk[];
+  hash: string;
+}
+
 export interface CodebaseRAG {
   indexCodebase: () => Promise<void>;
   searchCodebase: (query: string, topK?: number, similarityThreshold?: number) => Promise<EmbeddedChunk[]>;
   getStats: () => { totalChunks: number; files: number };
+  clearCache: () => Promise<void>;
 }
 
-export function createCodebaseRAG(workspaceRoot: string): CodebaseRAG {
+export interface RAGOptions {
+  chunkingStrategy?: ChunkingStrategy;
+  chunkSize?: number;
+  enableCache?: boolean;
+}
+
+export function createCodebaseRAG(
+  workspaceRoot: string,
+  options: RAGOptions = {}
+): CodebaseRAG {
+  const {
+    chunkingStrategy = 'adaptive',
+    chunkSize = 100,
+    enableCache = true,
+  } = options;
+
   let embeddings: EmbeddedChunk[] = [];
+  const cache: Cache<FileEmbeddings> = createFileCache(
+    path.join(workspaceRoot, '.rag-cache')
+  );
 
   const scanWorkspace = async (): Promise<CodeChunk[]> => {
     const chunks: CodeChunk[] = [];
@@ -42,7 +68,10 @@ export function createCodebaseRAG(workspaceRoot: string): CodebaseRAG {
             await scanDirectory(fullPath);
           } else if (entry.isFile() && codeExtensions.some(ext => entry.name.endsWith(ext))) {
             const content = await fs.readFile(fullPath, 'utf-8');
-            const fileChunks = chunkCode(content, fullPath);
+            const fileChunks = chunkCode(content, chunkSize, chunkingStrategy).map(chunk => ({
+              ...chunk,
+              filePath: fullPath,
+            }));
             chunks.push(...fileChunks);
           }
         }
@@ -55,26 +84,70 @@ export function createCodebaseRAG(workspaceRoot: string): CodebaseRAG {
     return chunks;
   };
 
+  const groupChunksByFile = (chunks: CodeChunk[]): Map<string, CodeChunk[]> => {
+    const fileMap = new Map<string, CodeChunk[]>();
+    for (const chunk of chunks) {
+      if (!fileMap.has(chunk.filePath)) {
+        fileMap.set(chunk.filePath, []);
+      }
+      fileMap.get(chunk.filePath)!.push(chunk);
+    }
+    return fileMap;
+  };
+
+  const embedChunks = async (chunks: CodeChunk[]): Promise<EmbeddedChunk[]> => {
+    if (chunks.length === 0) return [];
+
+    const { embeddings: embeddingVectors } = await embedMany({
+      model: openai.embedding('text-embedding-3-small') as any,
+      values: chunks.map(chunk => chunk.content),
+    });
+
+    return chunks.map((chunk, index) => ({
+      ...chunk,
+      embedding: embeddingVectors[index],
+    }));
+  };
+
   return {
     indexCodebase: async () => {
       const chunks = await scanWorkspace();
 
       if (chunks.length === 0) {
         console.log('No code files found to index');
+        embeddings = [];
         return;
       }
 
-      const { embeddings: embeddingVectors } = await embedMany({
-        model: openai.embedding('text-embedding-3-small') as any,
-        values: chunks.map(chunk => chunk.content),
-      });
+      const fileChunksMap = groupChunksByFile(chunks);
+      const allEmbeddedChunks: EmbeddedChunk[] = [];
 
-      embeddings = chunks.map((chunk, index) => ({
-        ...chunk,
-        embedding: embeddingVectors[index],
-      }));
+      for (const [filePath, fileChunks] of fileChunksMap.entries()) {
+        const fileContent = fileChunks.map(c => c.content).join('\n');
+        const fileHash = computeHash(fileContent);
 
-      console.log(`Indexed ${embeddings.length} code chunks`);
+        let embeddedChunks: EmbeddedChunk[];
+
+        if (enableCache && await cache.isValid(filePath, fileHash)) {
+          const cached = await cache.get(filePath);
+          if (cached) {
+            embeddedChunks = cached.chunks;
+          } else {
+            embeddedChunks = await embedChunks(fileChunks);
+            await cache.set(filePath, { chunks: embeddedChunks, hash: fileHash }, fileHash);
+          }
+        } else {
+          embeddedChunks = await embedChunks(fileChunks);
+          if (enableCache) {
+            await cache.set(filePath, { chunks: embeddedChunks, hash: fileHash }, fileHash);
+          }
+        }
+
+        allEmbeddedChunks.push(...embeddedChunks);
+      }
+
+      embeddings = allEmbeddedChunks;
+      console.log(`Indexed ${embeddings.length} code chunks from ${fileChunksMap.size} files`);
     },
 
     searchCodebase: async (query: string, topK: number = 5, similarityThreshold: number = 0.3) => {
@@ -103,28 +176,11 @@ export function createCodebaseRAG(workspaceRoot: string): CodebaseRAG {
       totalChunks: embeddings.length,
       files: new Set(embeddings.map(e => e.filePath)).size,
     }),
+
+    clearCache: async () => {
+      await cache.clear();
+    },
   };
-}
-
-function chunkCode(content: string, filePath: string, chunkSize: number = 100): CodeChunk[] {
-  const lines = content.split('\n');
-  const chunks: CodeChunk[] = [];
-
-  for (let i = 0; i < lines.length; i += chunkSize) {
-    const chunkLines = lines.slice(i, i + chunkSize);
-    const chunkContent = chunkLines.join('\n');
-
-    if (chunkContent.trim().length > 0) {
-      chunks.push({
-        content: chunkContent,
-        filePath,
-        startLine: i + 1,
-        endLine: Math.min(i + chunkSize, lines.length),
-      });
-    }
-  }
-
-  return chunks;
 }
 
 function cosineSimilarity(a: number[], b: number[]): number {

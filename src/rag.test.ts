@@ -1,10 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { createCodebaseRAG, type CodebaseRAG } from './rag.js';
 import fs from 'fs/promises';
+import { embedMany } from 'ai';
 
-vi.mock('ai', () => ({
-  embedMany: vi.fn(),
-}));
+vi.mock('ai');
 
 vi.mock('@ai-sdk/openai', () => ({
   openai: {
@@ -16,14 +15,10 @@ vi.mock('fs/promises');
 
 describe('createCodebaseRAG', () => {
   let rag: CodebaseRAG;
-  const mockEmbedMany = vi.fn();
 
   beforeEach(() => {
     vi.clearAllMocks();
-    rag = createCodebaseRAG('/test/workspace');
-
-    const { embedMany } = require('ai');
-    embedMany.mockImplementation(mockEmbedMany);
+    rag = createCodebaseRAG('/test/workspace', { enableCache: false, chunkingStrategy: 'fixed' });
   });
 
   describe('indexCodebase', () => {
@@ -48,13 +43,13 @@ describe('createCodebaseRAG', () => {
 
       mockReadFile.mockResolvedValue('function test() {\n  return 42;\n}');
 
-      mockEmbedMany.mockResolvedValue({
+      vi.mocked(embedMany).mockResolvedValue({
         embeddings: [[0.1, 0.2, 0.3]],
       });
 
       await rag.indexCodebase();
 
-      expect(mockEmbedMany).toHaveBeenCalled();
+      expect(vi.mocked(embedMany)).toHaveBeenCalled();
       const stats = rag.getStats();
       expect(stats.totalChunks).toBeGreaterThan(0);
     });
@@ -95,7 +90,7 @@ describe('createCodebaseRAG', () => {
 
       mockReadFile.mockResolvedValue('code content');
 
-      mockEmbedMany.mockResolvedValue({
+      vi.mocked(embedMany).mockResolvedValue({
         embeddings: [[0.1], [0.2], [0.3]],
       });
 
@@ -116,7 +111,7 @@ describe('createCodebaseRAG', () => {
 
       mockReadFile.mockResolvedValue('function test() { return 42; }');
 
-      mockEmbedMany.mockResolvedValue({
+      vi.mocked(embedMany).mockResolvedValue({
         embeddings: [[0.5, 0.5, 0.5]],
       });
 
@@ -124,14 +119,14 @@ describe('createCodebaseRAG', () => {
     });
 
     it('should return empty array when no embeddings exist', async () => {
-      const emptyRag = createCodebaseRAG('/empty');
+      const emptyRag = createCodebaseRAG('/empty', { enableCache: false });
       const results = await emptyRag.searchCodebase('test query');
 
       expect(results).toEqual([]);
     });
 
     it('should search and return relevant chunks', async () => {
-      mockEmbedMany.mockResolvedValueOnce({
+      vi.mocked(embedMany).mockResolvedValueOnce({
         embeddings: [[0.5, 0.5, 0.5]],
       });
 
@@ -155,12 +150,12 @@ describe('createCodebaseRAG', () => {
       mockReadFile.mockResolvedValue(longCode);
 
       const embeddings = Array(3).fill([0.5, 0.5, 0.5]);
-      mockEmbedMany.mockResolvedValue({ embeddings });
+      vi.mocked(embedMany).mockResolvedValue({ embeddings });
 
-      const newRag = createCodebaseRAG('/test2');
+      const newRag = createCodebaseRAG('/test2', { enableCache: false, chunkingStrategy: 'fixed' });
       await newRag.indexCodebase();
 
-      mockEmbedMany.mockResolvedValueOnce({
+      vi.mocked(embedMany).mockResolvedValueOnce({
         embeddings: [[0.5, 0.5, 0.5]],
       });
 
@@ -170,7 +165,7 @@ describe('createCodebaseRAG', () => {
     });
 
     it('should filter by similarity threshold', async () => {
-      mockEmbedMany.mockResolvedValueOnce({
+      vi.mocked(embedMany).mockResolvedValueOnce({
         embeddings: [[0.0, 0.0, 0.0]],
       });
 
@@ -192,7 +187,7 @@ describe('createCodebaseRAG', () => {
 
       mockReadFile.mockResolvedValue('const x = 1;');
 
-      mockEmbedMany.mockResolvedValue({
+      vi.mocked(embedMany).mockResolvedValue({
         embeddings: [[0.1], [0.2]],
       });
 
@@ -205,7 +200,7 @@ describe('createCodebaseRAG', () => {
     });
 
     it('should return zero stats for unindexed codebase', () => {
-      const newRag = createCodebaseRAG('/test');
+      const newRag = createCodebaseRAG('/test', { enableCache: false });
       const stats = newRag.getStats();
 
       expect(stats.totalChunks).toBe(0);
@@ -226,7 +221,7 @@ describe('createCodebaseRAG', () => {
 
       mockReadFile.mockResolvedValue(largeFile);
 
-      mockEmbedMany.mockResolvedValue({
+      vi.mocked(embedMany).mockResolvedValue({
         embeddings: [
           [0.1, 0.2],
           [0.3, 0.4],
