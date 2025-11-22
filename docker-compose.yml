@@ -4,7 +4,6 @@ services:
     image: falkordb/graphiti-knowledge-graph-mcp:latest
     ports:
       - "8000:8000"
-      - "6379:6379"
       - "3000:3000"
     environment:
       - OPENAI_API_KEY=${OPENROUTER_API_KEY}
