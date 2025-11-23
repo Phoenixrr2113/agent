@@ -6,7 +6,7 @@ This agent is built with a modular architecture that supports future expansion w
 
 ## Single Unified File
 
-**One file, multiple modes** (`src/agent.ts`)
+**One file, multiple modes** (`src/main.ts`)
 
 The agent has two environment-controlled behaviors:
 
@@ -216,7 +216,7 @@ export const toolGroups = {
 
 ```
 src/
-├── agent.ts           # Main entry point (autonomous + interactive modes)
+├── main.ts            # Main entry point (autonomous + interactive modes)
 ├── agents.ts          # Agent factory, models, system prompts
 ├── agent-tools.ts     # Plan tracking, validation, tool groups
 ├── prompts.ts         # System prompts

@@ -251,7 +251,7 @@ const result = await client.callTool('read_file', {
 
 ```
 src/
-├── agent.ts           # Main entry (autonomous + interactive modes)
+├── main.ts            # Main entry (autonomous + interactive modes)
 ├── agents.ts          # Agent factory, model configs, role prompts
 ├── agent-tools.ts     # Plan tracking, validation tools
 ├── prompts.ts         # System prompts

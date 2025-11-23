@@ -4,9 +4,9 @@
   "type": "module",
   "scripts": {
     "build": "tsc",
-    "dev": "APPROVAL_MODE=auto RUN_MODE=once tsx src/agent.ts",
-    "chat": "APPROVAL_MODE=manual RUN_MODE=loop tsx src/agent.ts",
-    "start": "node dist/index.js",
+    "dev": "APPROVAL_MODE=auto RUN_MODE=once tsx src/main.ts",
+    "chat": "APPROVAL_MODE=manual RUN_MODE=loop tsx src/main.ts",
+    "start": "node dist/main.js",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:unit": "vitest run src/",
