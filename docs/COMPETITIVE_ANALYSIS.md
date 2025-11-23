@@ -1,5 +1,11 @@
 # Competitive Analysis: AI Coding Agents
 
+> **⚠️ IMPORTANT NOTE:** This analysis was created before clarifying the project vision. Most features here are for **interactive human-in-the-loop coding assistants** (Aider, Gemini CLI, Cline), which require human approval for changes.
+>
+> **Our vision is different:** A fully **autonomous self-building agent** that operates without human supervision, like an inflatable house that expands and maintains itself.
+>
+> **See [AUTONOMOUS_AGENT_DESIGN.md](AUTONOMOUS_AGENT_DESIGN.md) for features aligned with the autonomous vision.**
+
 Analysis of leading AI coding CLI agents and proposed features for our agent.
 
 ## Agents Analyzed
