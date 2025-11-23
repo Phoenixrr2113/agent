@@ -1,0 +1,213 @@
+import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { streamText } from 'ai';
+import { createOpenRouter } from '@openrouter/ai-sdk-provider';
+import { z } from 'zod';
+import { setupTestWorkspace, teardownTestWorkspace } from '../helpers/test-utils.js';
+
+const hasOpenRouterKey = !!process.env.OPENROUTER_API_KEY;
+
+describe.skipIf(!hasOpenRouterKey)('Interactive Mode E2E tests', () => {
+  let workspace: string;
+
+  beforeEach(async () => {
+    workspace = await setupTestWorkspace('e2e-interactive');
+  });
+
+  afterEach(async () => {
+    await teardownTestWorkspace(workspace);
+  });
+
+  it('should handle ask_user tool for clarification', async () => {
+    const userResponses = ['Yes, please proceed', 'Blue'];
+    let responseIndex = 0;
+
+    const tools = {
+      ask_user: {
+        description: 'Ask the user a question and wait for their response',
+        parameters: z.object({
+          question: z.string(),
+        }),
+        execute: async ({ question }: { question: string }) => {
+          expect(question).toBeTruthy();
+          return userResponses[responseIndex++] || 'default response';
+        },
+      },
+    };
+
+    const openrouter = createOpenRouter({
+      apiKey: process.env.OPENROUTER_API_KEY || '',
+    });
+
+    const result = streamText({
+      model: openrouter.chat(process.env.MODEL || 'qwen/qwen3-coder:free'),
+      messages: [
+        {
+          role: 'user',
+          content: 'Ask me if I want to proceed, then ask me my favorite color',
+        },
+      ],
+      tools,
+      maxSteps: 5,
+    });
+
+    const response = await result.response;
+
+    expect(response.messages).toBeDefined();
+    const toolCalls = response.messages.filter(
+      (m: any) => m.role === 'assistant' && m.toolInvocations
+    );
+    expect(toolCalls.length).toBeGreaterThan(0);
+  });
+
+  it('should handle task_complete tool to signal completion', async () => {
+    let taskCompleted = false;
+    let completionSummary = '';
+
+    const tools = {
+      task_complete: {
+        description: 'Call this when you have fully completed the task',
+        parameters: z.object({
+          summary: z.string(),
+        }),
+        execute: async ({ summary }: { summary: string }) => {
+          taskCompleted = true;
+          completionSummary = summary;
+          return `Task completed: ${summary}`;
+        },
+      },
+    };
+
+    const openrouter = createOpenRouter({
+      apiKey: process.env.OPENROUTER_API_KEY || '',
+    });
+
+    const result = streamText({
+      model: openrouter.chat(process.env.MODEL || 'qwen/qwen3-coder:free'),
+      messages: [
+        {
+          role: 'user',
+          content: 'Complete this simple task: say hello, then call task_complete',
+        },
+      ],
+      tools,
+      maxSteps: 5,
+    });
+
+    await result.response;
+
+    expect(taskCompleted).toBe(true);
+    expect(completionSummary).toBeTruthy();
+  });
+
+  it('should use dynamic stop condition based on task_complete', async () => {
+    let stepCount = 0;
+    const tools = {
+      count_step: {
+        description: 'Count a step',
+        parameters: z.object({}),
+        execute: async () => {
+          stepCount++;
+          return `Step ${stepCount}`;
+        },
+      },
+      task_complete: {
+        description: 'Signal task completion',
+        parameters: z.object({
+          summary: z.string(),
+        }),
+        execute: async ({ summary }: { summary: string }) => {
+          return `Completed: ${summary}`;
+        },
+      },
+    };
+
+    const openrouter = createOpenRouter({
+      apiKey: process.env.OPENROUTER_API_KEY || '',
+    });
+
+    function stopWhen(result: any): boolean {
+      const hasTaskComplete = result.toolCalls?.some(
+        (call: any) => call.toolName === 'task_complete'
+      );
+      return hasTaskComplete || result.stepCount >= 10;
+    }
+
+    const result = streamText({
+      model: openrouter.chat(process.env.MODEL || 'qwen/qwen3-coder:free'),
+      messages: [
+        {
+          role: 'user',
+          content: 'Count 2 steps, then call task_complete',
+        },
+      ],
+      tools,
+      stopWhen,
+    });
+
+    const response = await result.response;
+
+    expect(response.steps).toBeLessThan(10);
+    const hasTaskComplete = response.messages.some(
+      (m: any) => m.role === 'assistant' &&
+        m.toolInvocations?.some((t: any) => t.toolName === 'task_complete')
+    );
+    expect(hasTaskComplete).toBe(true);
+  });
+
+  it('should maintain conversation history across multiple turns', async () => {
+    const conversationHistory: any[] = [];
+    const tools = {
+      remember: {
+        description: 'Remember a fact',
+        parameters: z.object({
+          fact: z.string(),
+        }),
+        execute: async ({ fact }: { fact: string }) => {
+          return `Remembered: ${fact}`;
+        },
+      },
+    };
+
+    const openrouter = createOpenRouter({
+      apiKey: process.env.OPENROUTER_API_KEY || '',
+    });
+
+    conversationHistory.push({
+      role: 'user',
+      content: 'Remember that my name is Alice',
+    });
+
+    const result1 = streamText({
+      model: openrouter.chat(process.env.MODEL || 'qwen/qwen3-coder:free'),
+      messages: conversationHistory,
+      tools,
+      maxSteps: 3,
+    });
+
+    const response1 = await result1.response;
+    conversationHistory.push(...response1.messages);
+
+    conversationHistory.push({
+      role: 'user',
+      content: 'What is my name?',
+    });
+
+    const result2 = streamText({
+      model: openrouter.chat(process.env.MODEL || 'qwen/qwen3-coder:free'),
+      messages: conversationHistory,
+      tools,
+      maxSteps: 3,
+    });
+
+    const response2 = await result2.response;
+
+    expect(conversationHistory.length).toBeGreaterThan(2);
+    const finalText = response2.messages
+      .filter((m: any) => m.role === 'assistant')
+      .map((m: any) => m.content)
+      .join(' ')
+      .toLowerCase();
+
+    expect(finalText).toContain('alice');
+  });
+});
