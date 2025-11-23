@@ -14,9 +14,9 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const hasOpenRouterKey = !!process.env.OPENROUTER_API_KEY;
-const hasOpenAIKey = !!process.env.OPENAI_API_KEY;
+const hasGoogleAIKey = !!process.env.GOOGLE_GENERATIVE_AI_API_KEY;
 
-describe.skipIf(!hasOpenRouterKey || !hasOpenAIKey)('Agent E2E tests', () => {
+describe.skipIf(!hasOpenRouterKey || !hasGoogleAIKey)('Agent E2E tests', () => {
   let workspace: string;
   let mcpClient: ReturnType<typeof createStdioMCPClient>;
 

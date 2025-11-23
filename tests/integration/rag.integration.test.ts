@@ -2,9 +2,9 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { createCodebaseRAG } from '../../src/rag.js';
 import { setupTestWorkspace, teardownTestWorkspace, writeTestFile } from '../helpers/test-utils.js';
 
-const hasOpenAIKey = !!process.env.OPENAI_API_KEY;
+const hasGoogleAIKey = !!process.env.GOOGLE_GENERATIVE_AI_API_KEY;
 
-describe.skipIf(!hasOpenAIKey)('RAG integration tests', () => {
+describe.skipIf(!hasGoogleAIKey)('RAG integration tests', () => {
   let workspace: string;
 
   beforeEach(async () => {

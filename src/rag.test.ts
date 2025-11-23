@@ -5,9 +5,9 @@ import { embedMany } from 'ai';
 
 vi.mock('ai');
 
-vi.mock('@ai-sdk/openai', () => ({
-  openai: {
-    embedding: vi.fn(() => 'mock-model'),
+vi.mock('@ai-sdk/google', () => ({
+  google: {
+    textEmbedding: vi.fn(() => 'mock-model'),
   },
 }));
 

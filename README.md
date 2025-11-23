@@ -24,7 +24,7 @@ A self-building AI agent template built with TypeScript, featuring RAG-powered c
 ### Prerequisites
 - Node.js 20+
 - OpenRouter API key ([get one free](https://openrouter.ai/))
-- OpenAI API key (for embeddings)
+- Google Generative AI API key ([get one free](https://aistudio.google.com/apikey))
 
 ### Installation
 
@@ -37,7 +37,7 @@ cp .env.example .env
 Edit `.env` and add your API keys:
 ```env
 OPENROUTER_API_KEY=sk-or-v1-...
-OPENAI_API_KEY=sk-...
+GOOGLE_GENERATIVE_AI_API_KEY=AIza...
 MODEL=qwen/qwen3-coder:free
 ```
 
@@ -275,7 +275,7 @@ MIT
 - Built with [Vercel AI SDK](https://sdk.vercel.ai/)
 - Uses [Model Context Protocol](https://modelcontextprotocol.io/)
 - Powered by [OpenRouter](https://openrouter.ai/)
-- Embeddings from [OpenAI](https://openai.com/)
+- Embeddings from [Google Gemini](https://ai.google.dev/)
 
 ## 📞 Support
 

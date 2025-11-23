@@ -1,5 +1,5 @@
 import { embedMany } from 'ai';
-import { openai } from '@ai-sdk/openai';
+import { google } from '@ai-sdk/google';
 import fs from 'fs/promises';
 import path from 'path';
 import { chunkCode, ChunkingStrategy } from './chunking.js';
@@ -99,7 +99,7 @@ export function createCodebaseRAG(
     if (chunks.length === 0) return [];
 
     const { embeddings: embeddingVectors } = await embedMany({
-      model: openai.embedding('text-embedding-3-small') as any,
+      model: google.textEmbedding('text-embedding-004') as any,
       values: chunks.map(chunk => chunk.content),
     });
 
@@ -156,7 +156,7 @@ export function createCodebaseRAG(
       }
 
       const { embedding: queryEmbedding } = await embedMany({
-        model: openai.embedding('text-embedding-3-small') as any,
+        model: google.textEmbedding('text-embedding-004') as any,
         values: [query],
       }).then(result => ({ embedding: result.embeddings[0] }));
 

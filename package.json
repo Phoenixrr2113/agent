@@ -5,6 +5,7 @@
   "scripts": {
     "build": "tsc",
     "dev": "tsx watch src/index.ts",
+    "chat": "tsx src/interactive.ts",
     "start": "node dist/index.js",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -14,17 +15,18 @@
     "test:all": "vitest run"
   },
   "dependencies": {
-    "ai": "^5.0.0",
+    "@ai-sdk/google": "^2.0.42",
     "@ai-sdk/mcp": "latest",
-    "@ai-sdk/openai": "^1.0.0",
     "@modelcontextprotocol/sdk": "latest",
     "@openrouter/ai-sdk-provider": "^1.0.0",
+    "ai": "^5.0.0",
+    "dotenv": "^17.2.3",
     "zod": "^3.23.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
-    "typescript": "^5.0.0",
     "tsx": "^4.0.0",
+    "typescript": "^5.0.0",
     "vitest": "^2.0.0"
   }
 }
