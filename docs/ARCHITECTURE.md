@@ -72,32 +72,64 @@ Switch to local models for cost reduction.
 
 **Implementation:**
 
-1. Set environment variable:
+1. Install the Ollama provider:
 ```bash
-OLLAMA_ENABLED=true
+pnpm add ollama-ai-provider-v2
 ```
 
 2. Pull models:
 ```bash
-ollama pull llama3.2:3b        # fast
-ollama pull qwen2.5-coder:14b  # standard
-ollama pull deepseek-r1:14b    # reasoning
+ollama pull llama3.2:3b          # fast
+ollama pull qwen2.5-coder:14b    # standard
+ollama pull deepseek-r1:14b      # reasoning
+ollama pull qwen2.5-coder:32b    # powerful
 ```
 
-3. Update `src/agents.ts` model functions to use Ollama provider:
-```typescript
-import { createOllama } from 'ollama-ai-provider';
+3. Set environment variables:
+```bash
+OLLAMA_ENABLED=true
+OLLAMA_BASE_URL=http://localhost:11434/api  # optional, this is the default
 
-const ollama = createOllama();
+# Optional: customize model selection
+OLLAMA_FAST_MODEL=llama3.2:3b
+OLLAMA_STANDARD_MODEL=qwen2.5-coder:14b
+OLLAMA_REASONING_MODEL=deepseek-r1:14b
+OLLAMA_POWERFUL_MODEL=qwen2.5-coder:32b
+```
+
+4. The `src/agents.ts` file already includes Ollama support:
+```typescript
+import { createOllama } from 'ollama-ai-provider-v2';
+
+const ollama = createOllama({
+  baseURL: process.env.OLLAMA_BASE_URL || 'http://localhost:11434/api',
+});
 
 export const models = {
   fast: () => {
     if (process.env.OLLAMA_ENABLED === 'true') {
-      return ollama('llama3.2:3b');
+      return ollama(process.env.OLLAMA_FAST_MODEL || 'llama3.2:3b');
     }
-    return createOpenRouter().chat('qwen/qwen3-coder:free');
+    return createOpenRouter().chat(process.env.MODEL || 'qwen/qwen3-coder:free');
   },
-  // ... similar for other models
+  standard: () => {
+    if (process.env.OLLAMA_ENABLED === 'true') {
+      return ollama(process.env.OLLAMA_STANDARD_MODEL || 'qwen2.5-coder:14b');
+    }
+    return createOpenRouter().chat(process.env.MODEL || 'qwen/qwen3-coder:free');
+  },
+  reasoning: () => {
+    if (process.env.OLLAMA_ENABLED === 'true') {
+      return ollama(process.env.OLLAMA_REASONING_MODEL || 'deepseek-r1:14b');
+    }
+    return createOpenRouter().chat('deepseek/deepseek-chat-v3:free');
+  },
+  powerful: () => {
+    if (process.env.OLLAMA_ENABLED === 'true') {
+      return ollama(process.env.OLLAMA_POWERFUL_MODEL || 'qwen2.5-coder:32b');
+    }
+    return createOpenRouter().chat('anthropic/claude-sonnet-4.5');
+  },
 };
 ```
 
