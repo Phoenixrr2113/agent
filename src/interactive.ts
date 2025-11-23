@@ -37,14 +37,15 @@ console.log(`✅ Loaded ${fsMcpTools.length} filesystem tools`);
 console.log(`✅ Loaded ${memoryMcpTools.length} memory tools`);
 
 // Wrap tools to track usage
-function wrapToolsWithTracking(tools: any, clientName: string) {
-  const wrapped: any = {};
+function wrapToolsWithTracking(tools: Record<string, any>, clientName: string) {
+  const wrapped: Record<string, any> = {};
   for (const [name, tool] of Object.entries(tools)) {
+    const originalTool = tool as Record<string, any>;
     wrapped[name] = {
-      ...tool,
+      ...originalTool,
       execute: async (...args: any[]) => {
         usedClients.add(clientName);
-        return (tool as any).execute(...args);
+        return originalTool.execute(...args);
       },
     };
   }
@@ -146,16 +147,14 @@ const conversationHistory: CoreMessage[] = [
 ];
 
 // Custom stop condition: stop when task_complete is called or max steps reached
-function stopWhen(result: StepResult<any>): boolean {
+function stopWhen({ steps }: { steps: StepResult<any>[] }): boolean {
   const MAX_STEPS = 20;
 
-  // Stop if task_complete was called
-  const hasTaskComplete = result.toolCalls?.some(
-    call => call.toolName === 'task_complete'
+  const hasTaskComplete = steps.some(step =>
+    step.toolCalls?.some(call => call.toolName === 'task_complete')
   );
 
-  // Stop if we've reached max steps
-  const maxStepsReached = result.stepCount >= MAX_STEPS;
+  const maxStepsReached = steps.length >= MAX_STEPS;
 
   if (hasTaskComplete) {
     console.log('\n✅ Task marked as complete by agent');
@@ -205,22 +204,13 @@ async function chat() {
         tools,
         system: systemPrompt,
         stopWhen, // Dynamic stop condition!
-        onFinish: async ({ response }) => {
-          // Log which tools were used
-          const toolsUsed = new Set<string>();
-          response.messages.forEach(msg => {
-            if (msg.role === 'assistant' && 'toolInvocations' in msg) {
-              (msg as any).toolInvocations?.forEach((inv: any) => {
-                toolsUsed.add(inv.toolName);
-              });
-            }
-          });
-
-          if (toolsUsed.size > 0) {
-            console.log(`\n📊 Tools used: ${Array.from(toolsUsed).join(', ')}`);
+        onFinish: async ({ steps, toolCalls }) => {
+          if (toolCalls && toolCalls.length > 0) {
+            const toolNames = toolCalls.map(tc => tc.toolName);
+            console.log(`\n📊 Tools used: ${[...new Set(toolNames)].join(', ')}`);
           }
 
-          console.log(`📈 Steps taken: ${response.steps}`);
+          console.log(`📈 Steps taken: ${steps?.length ?? 0}`);
         },
       });
 

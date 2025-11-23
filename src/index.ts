@@ -1,5 +1,5 @@
-import { streamText, stepCountIs } from 'ai';
-import type { ModelMessage } from 'ai';
+import { streamText } from 'ai';
+import type { ModelMessage, StepResult } from 'ai';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { z } from 'zod';
 import fs from 'fs/promises';
@@ -13,26 +13,27 @@ const openrouter = createOpenRouter({
   apiKey: process.env.OPENROUTER_API_KEY || '',
 });
 
-const filesystemClient = createStdioMCPClient('npx', ['-y', '@modelcontextprotocol/server-filesystem', process.cwd()]);
-await filesystemClient.initialize();
+const usedClients = new Set<string>();
 
-const gitClient = createStdioMCPClient('npx', ['-y', 'git-mcp-server']);
-await gitClient.initialize();
+const mcpClients = {
+  filesystem: createStdioMCPClient('npx', ['-y', '@modelcontextprotocol/server-filesystem', process.cwd()]),
+  git: createStdioMCPClient('npx', ['-y', 'git-mcp-server']),
+  fetch: createStdioMCPClient('python3', ['-m', 'mcp_server_fetch']),
+  memory: createStdioMCPClient('npx', ['-y', '@modelcontextprotocol/server-memory']),
+  sequentialThinking: createStdioMCPClient('npx', ['-y', '@modelcontextprotocol/server-sequential-thinking']),
+};
 
-const fetchClient = createStdioMCPClient('python3', ['-m', 'mcp_server_fetch']);
-await fetchClient.initialize();
+await mcpClients.filesystem.initialize();
+await mcpClients.git.initialize();
+await mcpClients.fetch.initialize();
+await mcpClients.memory.initialize();
+await mcpClients.sequentialThinking.initialize();
 
-const memoryClient = createStdioMCPClient('npx', ['-y', '@modelcontextprotocol/server-memory']);
-await memoryClient.initialize();
-
-const sequentialThinkingClient = createStdioMCPClient('npx', ['-y', '@modelcontextprotocol/server-sequential-thinking']);
-await sequentialThinkingClient.initialize();
-
-const fsMcpTools = await filesystemClient.listTools();
-const gitMcpTools = await gitClient.listTools();
-const fetchMcpTools = await fetchClient.listTools();
-const memoryMcpTools = await memoryClient.listTools();
-const sequentialThinkingMcpTools = await sequentialThinkingClient.listTools();
+const fsMcpTools = await mcpClients.filesystem.listTools();
+const gitMcpTools = await mcpClients.git.listTools();
+const fetchMcpTools = await mcpClients.fetch.listTools();
+const memoryMcpTools = await mcpClients.memory.listTools();
+const sequentialThinkingMcpTools = await mcpClients.sequentialThinking.listTools();
 
 console.log('Filesystem tools:', fsMcpTools.length);
 console.log('Git tools:', gitMcpTools.length);
@@ -40,11 +41,41 @@ console.log('Fetch tools:', fetchMcpTools.length);
 console.log('Memory tools:', memoryMcpTools.length);
 console.log('Sequential thinking tools:', sequentialThinkingMcpTools.length);
 
-const filesystemTools = mapMcpToolsToAiTools(fsMcpTools, filesystemClient);
-const gitTools = mapMcpToolsToAiTools(gitMcpTools, gitClient);
-const fetchTools = mapMcpToolsToAiTools(fetchMcpTools, fetchClient);
-const memoryTools = mapMcpToolsToAiTools(memoryMcpTools, memoryClient);
-const sequentialThinkingTools = mapMcpToolsToAiTools(sequentialThinkingMcpTools, sequentialThinkingClient);
+function wrapToolsWithTracking(tools: Record<string, any>, clientName: string) {
+  const wrapped: Record<string, any> = {};
+  for (const [name, tool] of Object.entries(tools)) {
+    const originalTool = tool as Record<string, any>;
+    wrapped[name] = {
+      ...originalTool,
+      execute: async (...args: any[]) => {
+        usedClients.add(clientName);
+        return originalTool.execute(...args);
+      },
+    };
+  }
+  return wrapped;
+}
+
+const filesystemTools = wrapToolsWithTracking(
+  mapMcpToolsToAiTools(fsMcpTools, mcpClients.filesystem),
+  'filesystem'
+);
+const gitTools = wrapToolsWithTracking(
+  mapMcpToolsToAiTools(gitMcpTools, mcpClients.git),
+  'git'
+);
+const fetchTools = wrapToolsWithTracking(
+  mapMcpToolsToAiTools(fetchMcpTools, mcpClients.fetch),
+  'fetch'
+);
+const memoryTools = wrapToolsWithTracking(
+  mapMcpToolsToAiTools(memoryMcpTools, mcpClients.memory),
+  'memory'
+);
+const sequentialThinkingTools = wrapToolsWithTracking(
+  mapMcpToolsToAiTools(sequentialThinkingMcpTools, mcpClients.sequentialThinking),
+  'sequentialThinking'
+);
 
 const codebaseRAG = createCodebaseRAG(process.cwd());
 console.log('Indexing codebase...');
@@ -86,6 +117,20 @@ const codebaseTools = {
       return JSON.stringify(results);
     },
   },
+  task_complete: {
+    description: 'Call this when you have fully completed the user\'s request and have nothing more to do. This will end the current agent iteration.',
+    parameters: z.object({
+      summary: z.string().describe('A brief summary of what was accomplished'),
+      nextSteps: z.string().optional().describe('Optional suggestions for what the user might want to do next'),
+    }),
+    execute: async ({ summary, nextSteps }: { summary: string; nextSteps?: string }) => {
+      let result = `Task completed: ${summary}`;
+      if (nextSteps) {
+        result += `\n\nSuggested next steps: ${nextSteps}`;
+      }
+      return result;
+    },
+  },
 };
 
 const tools = {
@@ -98,6 +143,28 @@ const tools = {
 };
 
 console.log('Total tools:', Object.keys(tools).length);
+
+function dynamicStopWhen({ steps }: { steps: StepResult<any>[] }): boolean {
+  const MAX_STEPS = 50;
+
+  const hasTaskComplete = steps.some(step =>
+    step.toolCalls?.some(call => call.toolName === 'task_complete')
+  );
+
+  const maxStepsReached = steps.length >= MAX_STEPS;
+
+  if (hasTaskComplete) {
+    console.log('\n✅ Task marked as complete by agent');
+  }
+
+  if (maxStepsReached) {
+    console.log(`\n⚠️  Reached maximum steps (${MAX_STEPS})`);
+  }
+
+  return hasTaskComplete || maxStepsReached;
+}
+
+await fs.mkdir('./logs', { recursive: true });
 
 const history: ModelMessage[] = [
   {
@@ -113,13 +180,31 @@ while (!stopped) {
     messages: history,
     tools,
     system: systemPrompt,
-    stopWhen: stepCountIs(5),
-    onFinish: async () => {
-      filesystemClient.close();
-      gitClient.close();
-      fetchClient.close();
-      memoryClient.close();
-      sequentialThinkingClient.close();
+    stopWhen: dynamicStopWhen,
+    onFinish: async ({ steps, toolCalls }) => {
+      console.log(`\n📈 Steps taken: ${steps?.length ?? 0}`);
+
+      if (toolCalls && toolCalls.length > 0) {
+        const toolNames = toolCalls.map(tc => tc.toolName);
+        console.log(`📊 Tools used: ${[...new Set(toolNames)].join(', ')}`);
+      }
+
+      console.log('\n🧹 Cleaning up MCP clients...');
+      if (usedClients.has('filesystem')) {
+        mcpClients.filesystem.close();
+      }
+      if (usedClients.has('git')) {
+        mcpClients.git.close();
+      }
+      if (usedClients.has('fetch')) {
+        mcpClients.fetch.close();
+      }
+      if (usedClients.has('memory')) {
+        mcpClients.memory.close();
+      }
+      if (usedClients.has('sequentialThinking')) {
+        mcpClients.sequentialThinking.close();
+      }
     },
   });
 
