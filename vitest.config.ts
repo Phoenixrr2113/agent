@@ -1,4 +1,5 @@
 import { defineConfig } from 'vitest/config';
+import { loadEnv } from 'vite';
 
 export default defineConfig({
   test: {
@@ -11,5 +12,6 @@ export default defineConfig({
       exclude: ['node_modules/', 'dist/', 'tests/fixtures/', 'tests/helpers/', 'tests/temp/'],
     },
     testTimeout: 30000,
+    env: loadEnv('test', process.cwd(), ''),
   },
 });
