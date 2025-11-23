@@ -1,247 +1,260 @@
-# Future-Proof Agent Architecture
+# Agent Architecture
 
-## Overview
+## Current Implementation
 
-This agent is built with a modular architecture that supports future expansion without refactoring. You can use it simply NOW, and add advanced features LATER with minimal code changes.
+Single file (`src/main.ts`) with environment-controlled behavior:
 
-## Single Unified File
+**Approval Modes:**
+- `APPROVAL_MODE=auto` - Auto-approves `ask_user` tool calls
+- `APPROVAL_MODE=manual` - Waits for user input
 
-**One file, multiple modes** (`src/main.ts`)
-
-The agent has two environment-controlled behaviors:
-
-**Approval Mode:**
-- `APPROVAL_MODE=auto` - Agent auto-approves all `ask_user` calls (autonomous)
-- `APPROVAL_MODE=manual` - Agent waits for user input (interactive)
-
-**Run Mode:**
-- `RUN_MODE=once` - Runs once then exits
-- `RUN_MODE=loop` - Runs in conversation loop
+**Run Modes:**
+- `RUN_MODE=once` - Single execution
+- `RUN_MODE=loop` - Conversation loop
 
 ```bash
-# Autonomous mode (auto-approve, run once)
-pnpm run dev
-
-# Interactive mode (manual approval, conversation loop)
-pnpm run chat
+pnpm run dev   # APPROVAL_MODE=auto RUN_MODE=once
+pnpm run chat  # APPROVAL_MODE=manual RUN_MODE=loop
 ```
 
-## Future State (Zero Refactoring Required)
+## File Structure
 
-### 1. Model Routing
+```
+src/
+├── main.ts            # Entry point, mode routing
+├── agents.ts          # Agent factory, model configs, role prompts
+├── agent-tools.ts     # plan_tool, validation_tool, tool groups
+├── prompts.ts         # System prompt
+├── tools.ts           # MCP tool mapping
+├── rag.ts             # Semantic search
+├── grep.ts            # Pattern matching
+├── mcp-client.ts      # MCP protocol client
+├── chunking.ts        # Code chunking
+└── cache.ts           # Embedding cache
+```
 
-**Enable different models for different tasks:**
+## Expansion: Model Routing
+
+Enable dynamic model selection based on task complexity.
+
+**Implementation:**
+
+Edit `src/main.ts`, in the `prepareStep` function:
 
 ```typescript
-// In src/index.ts, uncomment these lines in prepareStep:
 const prepareStep: PrepareStepFunction<typeof tools> = ({ messages, step }) => {
   const lastMessage = messages[messages.length - 1];
   const content = typeof lastMessage.content === 'string' ? lastMessage.content : '';
 
-  if (content.includes('complex') || content.includes('debug')) {
+  // Route to appropriate model
+  if (content.includes('complex') || content.includes('debug') || content.includes('reason')) {
     return { messages, model: models.reasoning() };
   }
-  if (content.includes('simple') || content.includes('quick')) {
+
+  if (content.includes('simple') || content.includes('quick') || content.includes('plan')) {
     return { messages, model: models.fast() };
   }
 
+  // Context trimming logic here...
   return { messages };
 };
 ```
 
-### 2. Ollama Support
+**Model definitions in `src/agents.ts`:**
+- `fast` - Quick tasks, planning
+- `standard` - Most development work
+- `reasoning` - Complex debugging, architecture decisions
+- `powerful` - Critical tasks (Claude Sonnet 4.5)
 
-**Switch to local models:**
+## Expansion: Ollama Support
 
+Switch to local models for cost reduction.
+
+**Implementation:**
+
+1. Set environment variable:
 ```bash
-# In .env
 OLLAMA_ENABLED=true
 ```
 
-Models automatically switch to Ollama when enabled (see `src/agents.ts`):
-- Fast: llama3.2:3b
-- Standard: qwen2.5-coder:14b
-- Reasoning: deepseek-r1:14b
+2. Pull models:
+```bash
+ollama pull llama3.2:3b        # fast
+ollama pull qwen2.5-coder:14b  # standard
+ollama pull deepseek-r1:14b    # reasoning
+```
 
-### 3. Multi-Agent Orchestration
+3. Update `src/agents.ts` model functions to use Ollama provider:
+```typescript
+import { createOllama } from 'ollama-ai-provider';
 
-**Uncomment 3 lines in src/index.ts:**
+const ollama = createOllama();
+
+export const models = {
+  fast: () => {
+    if (process.env.OLLAMA_ENABLED === 'true') {
+      return ollama('llama3.2:3b');
+    }
+    return createOpenRouter().chat('qwen/qwen3-coder:free');
+  },
+  // ... similar for other models
+};
+```
+
+## Expansion: Multi-Agent Orchestration
+
+Split work across specialized agents (planner → implementer → evaluator).
+
+**Implementation:**
+
+1. Create specialized agents in `src/main.ts`:
 
 ```typescript
-// Already written, just uncomment:
-const plannerAgent = createAgentWithRole('planner', planningTools, { modelType: 'fast' });
-const implementerAgent = createAgentWithRole('implementer', implementationTools);
-const evaluatorAgent = createAgentWithRole('evaluator', evaluationTools, { modelType: 'reasoning' });
+const plannerAgent = createAgentWithRole('planner', {
+  search_codebase: codebaseTools.search_codebase,
+  grep_codebase: codebaseTools.grep_codebase,
+  sequential_thinking: sequentialThinkingTools,
+  plan_tool: planTool,
+}, { modelType: 'fast' });
 
-// Then use orchestrated workflow:
-async function developFeature(userRequest: string) {
-  // 1. Planner creates plan
+const implementerAgent = createAgentWithRole('implementer', {
+  ...filesystemTools,
+  ...gitTools,
+  plan_tool: planTool,
+  validation_tool: validationTool,
+}, { modelType: 'standard' });
+
+const evaluatorAgent = createAgentWithRole('evaluator', {
+  validation_tool: validationTool,
+  search_codebase: codebaseTools.search_codebase,
+  grep_codebase: codebaseTools.grep_codebase,
+}, { modelType: 'reasoning' });
+```
+
+2. Create orchestration function:
+
+```typescript
+async function orchestratedDevelopment(userRequest: string) {
   const plan = await plannerAgent.generate({ prompt: userRequest });
 
-  // 2. Implementer executes
   const implementation = await implementerAgent.generate({
-    prompt: `Execute: ${plan.text}`
+    prompt: `Execute this plan:\n${plan.text}`
   });
 
-  // 3. Evaluator validates
   const evaluation = await evaluatorAgent.generate({
-    prompt: `Review: ${implementation.text}`
+    prompt: `Review this implementation:\n${implementation.text}`
   });
 
-  // 4. Retry if quality low
-  if (extractQuality(evaluation.text) < 8) {
-    // Retry with feedback
+  const qualityScore = extractQualityScore(evaluation.text);
+
+  if (qualityScore < 8) {
+    console.log('Quality below threshold, retrying with feedback...');
+    return orchestratedDevelopment(
+      `${userRequest}\n\nPrevious attempt feedback:\n${evaluation.text}`
+    );
   }
 
   return implementation;
 }
 ```
 
-## New Tools
-
-### Plan Tracking
-
+3. Use in main:
 ```typescript
-// Create a plan
-plan_tool({
-  action: 'create',
-  title: 'Add export feature',
-  steps: ['Search patterns', 'Implement function', 'Add tests', 'Document']
-});
-
-// Update progress
-plan_tool({
-  action: 'update_status',
-  stepName: 'Implement function',
-  status: 'completed'
-});
-
-// View progress
-plan_tool({ action: 'view' });
+const result = await orchestratedDevelopment(
+  'Add markdown export feature with tests'
+);
 ```
 
-### Code Validation
+**Agent roles in `src/agents.ts`:**
+- `generic` - Current all-purpose agent
+- `planner` - Creates implementation plans
+- `implementer` - Executes code changes
+- `evaluator` - Validates quality
+
+## Expansion: Context Summarization
+
+Replace context trimming with intelligent summarization.
+
+**Implementation:**
+
+1. Create summarizer agent:
 
 ```typescript
-// Check types after changes
-validation_tool({
-  checkTypes: true,
-  runTests: false,
-  filesChanged: ['src/export.ts']
+const summarizerAgent = createAgentWithRole('generic', {}, {
+  modelType: 'fast',
+  stopWhen: stepCountIs(1),
 });
 
-// Run full validation
-validation_tool({
-  checkTypes: true,
-  runTests: true
-});
-```
+const prepareStep: PrepareStepFunction<typeof tools> = async ({ messages }) => {
+  const TOKEN_LIMIT = 150000;
 
-## Agent Roles
+  if (estimateTokens(messages) > TOKEN_LIMIT) {
+    console.log('🧠 Generating context summary...');
 
-All roles are pre-configured in `src/agents.ts`:
+    const toSummarize = messages.slice(1, -15);
+    const recent = messages.slice(-15);
 
-### Generic (Current)
-- All-purpose development agent
-- Has access to all tools
-- Uses standard model
+    const summary = await summarizerAgent.generate({
+      prompt: `Summarize this conversation preserving:
+- Task objectives
+- Code changes made
+- Current progress
+- Key decisions
 
-### Planner (Future)
-- Creates implementation plans
-- Fast model (cheap, quick)
-- Tools: search_codebase, grep_codebase, sequential_thinking, plan_tool
+Conversation: ${JSON.stringify(toSummarize)}`
+    });
 
-### Implementer (Future)
-- Executes code changes
-- Standard model (balanced)
-- Tools: filesystem, git, plan_tool, validation_tool
+    return {
+      messages: [
+        messages[0],
+        { role: 'system', content: `Previous context: ${summary.text}` },
+        ...recent,
+      ],
+    };
+  }
 
-### Evaluator (Future)
-- Validates code quality
-- Reasoning model (thorough)
-- Tools: validation_tool, search_codebase, grep_codebase
-
-## Model Configuration
-
-All in `src/agents.ts`:
-
-```typescript
-export const models = {
-  fast: () => {...},      // Quick tasks, planning
-  standard: () => {...},  // Most development
-  reasoning: () => {...}, // Complex debugging
-  powerful: () => {...},  // Critical tasks (Claude Sonnet)
+  return { messages };
 };
+```
+
+This enables much longer conversations without losing context.
+
+## Expansion: Parallel Processing
+
+Execute independent tasks simultaneously.
+
+**Implementation:**
+
+```typescript
+async function parallelAnalysis(files: string[]) {
+  const analyzerAgent = createAgentWithRole('evaluator', {
+    search_codebase,
+    validation_tool
+  });
+
+  const analyses = await Promise.all(
+    files.map(file =>
+      analyzerAgent.generate({
+        prompt: `Analyze ${file} for code quality issues`
+      })
+    )
+  );
+
+  return aggregateResults(analyses);
+}
 ```
 
 ## Tool Groups
 
-Modular tool organization in `src/agent-tools.ts`:
+Pre-configured tool sets for specialized agents in `src/agent-tools.ts`:
 
 ```typescript
 export const toolGroups = {
-  planning: { plan_tool, search_codebase, grep_codebase, sequential_thinking },
-  implementation: { plan_tool, validation_tool, filesystem, git },
-  evaluation: { validation_tool, search_codebase, grep_codebase },
-  all: { /* everything */ },
+  planning: { plan_tool },
+  implementation: { plan_tool, validation_tool },
+  evaluation: { validation_tool },
+  all: { plan_tool, validation_tool },
 };
 ```
 
-## Workflow: Today vs Tomorrow
-
-### Today (Simple)
-1. User gives task
-2. Generic agent executes
-3. Done
-
-### Tomorrow (Orchestrated)
-1. User gives task
-2. Planner agent creates plan (fast model)
-3. Implementer agent executes plan (standard model)
-4. Evaluator agent validates (reasoning model)
-5. Retry if quality < threshold
-6. Done
-
-**The code for "tomorrow" is already written - just uncomment it!**
-
-## Benefits of This Architecture
-
-1. **No Refactoring**: Future features just uncomment existing code
-2. **Model Flexibility**: Easily switch between OpenRouter, Ollama, or custom providers
-3. **Specialized Agents**: Different agents with different capabilities
-4. **Tool Modularity**: Easy to give agents specific tool subsets
-5. **System Prompt Library**: Pre-written prompts for each role
-
-## File Structure
-
-```
-src/
-├── main.ts            # Main entry point (autonomous + interactive modes)
-├── agents.ts          # Agent factory, models, system prompts
-├── agent-tools.ts     # Plan tracking, validation, tool groups
-├── prompts.ts         # System prompts
-├── tools.ts           # MCP tool mapping
-├── rag.ts             # Codebase search
-└── ...
-```
-
-## Next Steps
-
-### Immediate (Already Working)
-- ✅ Plan tracking tool
-- ✅ Validation tool
-- ✅ Agent factory
-- ✅ Model configuration
-
-### Enable When Ready (5 minutes each)
-- 🔜 Model routing (uncomment in prepareStep)
-- 🔜 Ollama support (set OLLAMA_ENABLED=true)
-- 🔜 Multi-agent orchestration (uncomment 3 lines)
-- 🔜 Context summarization (implement summarizer agent)
-
-### Future Enhancements
-- Parallel processing for independent tasks
-- Workflow templates (sequential, routing, evaluator-optimizer)
-- Custom agent roles beyond the 4 built-in ones
-
-All the infrastructure is in place. Just flip the switches when you're ready!
+Add tools to groups as needed when creating specialized agents.

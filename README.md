@@ -310,6 +310,18 @@ The agent follows this workflow when adding features:
 - **Documentation**: Inline comments only for non-obvious logic
 - **Commits**: Clear messages describing what and why
 
+## 🚀 Roadmap
+
+Current implementation is fully functional. Planned expansions (see [ARCHITECTURE.md](docs/ARCHITECTURE.md) for detailed implementation guides):
+
+- [ ] **Model Routing** - Dynamic model selection based on task complexity (fast/standard/reasoning/powerful)
+- [ ] **Ollama Support** - Local model integration for cost reduction (llama3.2, qwen2.5-coder, deepseek-r1)
+- [ ] **Multi-Agent Orchestration** - Planner → Implementer → Evaluator workflow with quality-based retries
+- [ ] **Context Summarization** - Intelligent context compression using summarizer agent for longer sessions
+- [ ] **Parallel Processing** - Concurrent execution of independent tasks (e.g., multi-file analysis)
+
+All expansion features are designed for zero-refactoring activation - just add the code from ARCHITECTURE.md when needed.
+
 ## 🎯 What Can You Build?
 
 This is a **template** - you can build it into anything. Some ideas:
