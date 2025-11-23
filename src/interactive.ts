@@ -1,10 +1,11 @@
 import 'dotenv/config';
-import { Experimental_Agent as Agent, tool } from 'ai';
+import { tool } from 'ai';
 import type { CoreMessage, StepResult, PrepareStepFunction } from 'ai';
-import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { z } from 'zod';
 import * as readline from 'readline/promises';
 import { stdin as input, stdout as output } from 'process';
+import { createAgentWithRole, models } from './agents.js';
+import { planTool, validationTool } from './agent-tools.js';
 import { systemPrompt } from './prompts.js';
 import { createStdioMCPClient } from './mcp-client.js';
 import { mapMcpToolsToAiTools } from './tools.js';
@@ -12,10 +13,6 @@ import { createCodebaseRAG } from './rag.js';
 import { grepWorkspace } from './grep.js';
 
 const rl = readline.createInterface({ input, output });
-
-const openrouter = createOpenRouter({
-  apiKey: process.env.OPENROUTER_API_KEY || '',
-});
 
 console.log('🤖 Initializing AI Agent with MCP tools...\n');
 
@@ -119,6 +116,8 @@ const codebaseTools = {
 };
 
 const tools = {
+  plan_tool: planTool,
+  validation_tool: validationTool,
   ...filesystemTools,
   ...memoryTools,
   ...codebaseTools,
@@ -179,10 +178,8 @@ const prepareStep: PrepareStepFunction<typeof tools> = ({ messages }) => {
 
 let stepCount = 0;
 
-const agent = new Agent({
-  model: openrouter.chat(process.env.MODEL || 'qwen/qwen3-coder:free'),
-  system: systemPrompt,
-  tools,
+const agent = createAgentWithRole('generic', tools, {
+  modelType: 'standard',
   stopWhen,
   prepareStep,
   onStepFinish: async (stepResult) => {

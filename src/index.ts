@@ -1,17 +1,14 @@
-import { Experimental_Agent as Agent, tool } from 'ai';
+import { tool } from 'ai';
 import type { StepResult, PrepareStepFunction } from 'ai';
-import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { z } from 'zod';
 import fs from 'fs/promises';
+import { createAgentWithRole, models } from './agents.js';
+import { planTool, validationTool } from './agent-tools.js';
 import { systemPrompt } from './prompts.js';
 import { createStdioMCPClient } from './mcp-client.js';
 import { mapMcpToolsToAiTools } from './tools.js';
 import { createCodebaseRAG } from './rag.js';
 import { grepWorkspace } from './grep.js';
-
-const openrouter = createOpenRouter({
-  apiKey: process.env.OPENROUTER_API_KEY || '',
-});
 
 const usedClients = new Set<string>();
 
@@ -129,6 +126,8 @@ const codebaseTools = {
 };
 
 const tools = {
+  plan_tool: planTool,
+  validation_tool: validationTool,
   ...filesystemTools,
   ...gitTools,
   ...fetchTools,
@@ -159,9 +158,20 @@ function dynamicStopWhen({ steps }: { steps: StepResult<any>[] }): boolean {
   return hasTaskComplete || maxStepsReached;
 }
 
-const prepareStep: PrepareStepFunction<typeof tools> = ({ messages }) => {
+const prepareStep: PrepareStepFunction<typeof tools> = ({ messages, step }) => {
   const MAX_CONTEXT_MESSAGES = 50;
 
+  // Future: Model routing based on task complexity
+  // const lastMessage = messages[messages.length - 1];
+  // const content = typeof lastMessage.content === 'string' ? lastMessage.content : '';
+  // if (content.includes('complex') || content.includes('debug')) {
+  //   return { messages, model: models.reasoning() };
+  // }
+  // if (content.includes('simple') || content.includes('quick')) {
+  //   return { messages, model: models.fast() };
+  // }
+
+  // Context management - trim if too large
   if (messages.length > MAX_CONTEXT_MESSAGES) {
     console.log(`\n🔄 Trimming context: ${messages.length} → ${MAX_CONTEXT_MESSAGES} messages`);
     return {
@@ -179,10 +189,10 @@ await fs.mkdir('./logs', { recursive: true });
 
 let stepCount = 0;
 
-const agent = new Agent({
-  model: openrouter.chat(process.env.MODEL || 'qwen/qwen3-coder:free'),
-  system: systemPrompt,
-  tools,
+// Create generic agent with standard model
+// Future: Can easily create specialized agents (planner, implementer, evaluator)
+const agent = createAgentWithRole('generic', tools, {
+  modelType: 'standard', // Can change to 'fast', 'reasoning', or 'powerful'
   stopWhen: dynamicStopWhen,
   prepareStep,
   onStepFinish: async (stepResult) => {
@@ -195,6 +205,11 @@ const agent = new Agent({
     }
   },
 });
+
+// Future: Orchestrator pattern (uncomment when ready)
+// const plannerAgent = createAgentWithRole('planner', { search_codebase, grep_codebase, sequential_thinking, plan_tool }, { modelType: 'fast' });
+// const implementerAgent = createAgentWithRole('implementer', { ...filesystemTools, ...gitTools, plan_tool, validation_tool }, { modelType: 'standard' });
+// const evaluatorAgent = createAgentWithRole('evaluator', { validation_tool, search_codebase, grep_codebase }, { modelType: 'reasoning' });
 
 const result = agent.stream({
   prompt: 'You are a generic agent template. Ask the user what kind of agent they want you to become, then start building yourself for that purpose. Begin by assessing your current capabilities.',

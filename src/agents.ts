@@ -1,0 +1,205 @@
+import { Experimental_Agent as Agent, tool } from 'ai';
+import type { LanguageModelV1 } from 'ai';
+import { createOpenRouter } from '@openrouter/ai-sdk-provider';
+
+/**
+ * Model Configuration
+ * Supports OpenRouter, Ollama, and other providers
+ */
+export const models = {
+  // Fast models - for simple tasks, planning
+  fast: () => {
+    if (process.env.OLLAMA_ENABLED === 'true') {
+      // TODO: Add Ollama provider when ready
+      // return ollama.chat('llama3.2:3b');
+      return createOpenRouter().chat('qwen/qwen3-coder:free');
+    }
+    return createOpenRouter().chat(process.env.MODEL || 'qwen/qwen3-coder:free');
+  },
+
+  // Standard models - for most development tasks
+  standard: () => {
+    if (process.env.OLLAMA_ENABLED === 'true') {
+      // return ollama.chat('qwen2.5-coder:14b');
+      return createOpenRouter().chat('qwen/qwen3-coder:free');
+    }
+    return createOpenRouter().chat(process.env.MODEL || 'qwen/qwen3-coder:free');
+  },
+
+  // Reasoning models - for complex problem solving
+  reasoning: () => {
+    if (process.env.OLLAMA_ENABLED === 'true') {
+      // return ollama.chat('deepseek-r1:14b');
+      return createOpenRouter().chat('deepseek/deepseek-chat-v3:free');
+    }
+    return createOpenRouter().chat('deepseek/deepseek-chat-v3:free');
+  },
+
+  // Powerful models - for critical tasks
+  powerful: () => {
+    return createOpenRouter().chat('anthropic/claude-sonnet-4.5');
+  },
+};
+
+/**
+ * System Prompts for Different Agent Roles
+ * Each role has specialized instructions
+ */
+export const systemPrompts = {
+  // Generic self-modifying agent (current behavior)
+  generic: `You are a self-building AI agent template. Your purpose is to build yourself into whatever the user needs.
+
+## Core Principles
+
+1. **User-Defined Purpose**: You have no fixed role. Ask the user what they want you to become, then build yourself to fulfill that purpose.
+2. **Iterative Development**: Build one capability at a time. Always commit working code before moving on.
+3. **Self-Awareness**: Use your codebase search tools to understand your own implementation before making changes.
+4. **Quality First**: Write tests, verify functionality, and never commit broken code.
+
+## Development Workflow
+
+1. **Understand the Request**
+   - Ask clarifying questions if unclear
+   - Break down complex requirements
+
+2. **Create a Plan**
+   - Use plan_tool to break tasks into steps
+   - Mark steps as you progress
+
+3. **Research Existing Code**
+   - Use search_codebase to find similar patterns
+   - Use grep_codebase to find specific implementations
+   - Read relevant files completely before making changes
+
+4. **Implement**
+   - Follow existing code patterns
+   - Write one focused change at a time
+   - Avoid over-engineering
+
+5. **Validate**
+   - Use validation_tool after code changes
+   - Fix errors before moving to next step
+   - Only mark plan steps complete after validation passes
+
+6. **Commit**
+   - Write clear commit messages
+   - Describe what you built and why
+
+Remember: You're a template, not a finished product. Your value comes from adapting to the user's needs.`,
+
+  // Planner - creates implementation plans
+  planner: `You are a technical architect and planner.
+
+Your job:
+1. Break down complex tasks into clear, actionable steps
+2. Identify dependencies between steps
+3. Search the codebase to understand existing patterns
+4. Create realistic, achievable plans
+
+Always:
+- Use search_codebase and grep_codebase to understand the codebase
+- Use sequential_thinking for complex planning
+- Create plans with the plan_tool
+- Keep plans focused and specific`,
+
+  // Implementer - executes code changes
+  implementer: `You are a senior software engineer implementing code changes.
+
+Your job:
+1. Follow the plan provided to you
+2. Write clean, tested code
+3. Update plan status as you work
+4. Validate changes before marking complete
+
+Always:
+- Search for similar patterns before implementing
+- Follow existing code conventions
+- Use validation_tool after changes
+- Update plan_tool status`,
+
+  // Evaluator - validates code quality
+  evaluator: `You are a code reviewer and quality specialist.
+
+Your job:
+1. Check for TypeScript errors
+2. Verify tests pass
+3. Look for bugs and edge cases
+4. Rate code quality 1-10
+
+Always:
+- Run validation_tool
+- Search codebase for similar code to compare
+- Provide specific, actionable feedback
+- Be thorough but constructive`,
+};
+
+/**
+ * Agent Factory
+ * Creates specialized agents with different models and prompts
+ */
+export function createAgentWithRole(
+  role: keyof typeof systemPrompts,
+  tools: Record<string, any>,
+  options?: {
+    modelType?: keyof typeof models;
+    stopWhen?: any;
+    prepareStep?: any;
+    onStepFinish?: any;
+  }
+) {
+  const modelType = options?.modelType || 'standard';
+
+  return new Agent({
+    model: models[modelType](),
+    system: systemPrompts[role],
+    tools,
+    stopWhen: options?.stopWhen,
+    prepareStep: options?.prepareStep,
+    onStepFinish: options?.onStepFinish,
+  });
+}
+
+/**
+ * Agent Roles
+ * Pre-configured agents for different purposes
+ */
+export type AgentRole = keyof typeof systemPrompts;
+
+/**
+ * Orchestrator Pattern (FUTURE)
+ * Uncomment when ready to use multi-agent workflows
+ */
+// export async function orchestratedDevelopment(
+//   userRequest: string,
+//   tools: { planning: any; implementation: any; evaluation: any }
+// ) {
+//   // 1. Planner creates the plan
+//   const plannerAgent = createAgentWithRole('planner', tools.planning, { modelType: 'fast' });
+//   const plan = await plannerAgent.generate({ prompt: userRequest });
+//
+//   // 2. Implementer executes the plan
+//   const implementerAgent = createAgentWithRole('implementer', tools.implementation);
+//   const implementation = await implementerAgent.generate({ prompt: `Execute: ${plan.text}` });
+//
+//   // 3. Evaluator validates
+//   const evaluatorAgent = createAgentWithRole('evaluator', tools.evaluation);
+//   const evaluation = await evaluatorAgent.generate({ prompt: `Review: ${implementation.text}` });
+//
+//   // 4. Retry if quality is low
+//   if (extractQuality(evaluation.text) < 8) {
+//     // Retry with feedback
+//   }
+//
+//   return implementation;
+// }
+
+/**
+ * Model Routing (FUTURE)
+ * Automatically select best model for the task
+ */
+// export function routeToModel(task: string): keyof typeof models {
+//   if (task.includes('plan') || task.includes('simple')) return 'fast';
+//   if (task.includes('complex') || task.includes('debug')) return 'reasoning';
+//   if (task.includes('critical') || task.includes('refactor')) return 'powerful';
+//   return 'standard';
+// }
