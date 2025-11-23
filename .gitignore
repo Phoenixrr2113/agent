@@ -4,3 +4,4 @@ dist
 logs
 workspace.rag-cache/
 .rag-cache
+tests/temp

@@ -49,7 +49,7 @@ describe('systemPrompt', () => {
   it('should include important reminders', () => {
     expect(systemPrompt).toContain('Important Reminders');
     expect(systemPrompt).toContain('auto-indexed');
-    expect(systemPrompt).toContain('/workspace');
+    expect(systemPrompt).toContain('root directory');
     expect(systemPrompt).toContain('Functional patterns');
     expect(systemPrompt).toContain('factory functions');
   });
