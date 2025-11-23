@@ -19,8 +19,10 @@ Unlike traditional agents that operate in sandboxed environments, this agent:
 - **Pattern Matching**: Regex-based grep for exact code searches
 
 ### Two Modes of Operation
-1. **Autonomous Mode** (`npm run dev`) - Runs in a loop, building itself iteratively
-2. **Interactive Mode** (`npm run chat`) - Chat with the agent, ask it to build features
+1. **Autonomous Mode** (`npm run dev`) - Runs once with auto-approval
+2. **Interactive Mode** (`npm run chat`) - Conversation loop with manual approval
+
+Both modes use the same agent, just different approval and run configurations.
 
 ## 🚀 Quick Start
 
@@ -249,9 +251,10 @@ const result = await client.callTool('read_file', {
 
 ```
 src/
-├── index.ts           # Main autonomous agent loop
-├── interactive.ts     # Interactive chat mode
-├── prompts.ts         # System prompts and agent instructions
+├── main.ts            # Main entry (autonomous + interactive modes)
+├── agents.ts          # Agent factory, model configs, role prompts
+├── agent-tools.ts     # Plan tracking, validation tools
+├── prompts.ts         # System prompts
 ├── rag.ts            # RAG implementation (indexing, search)
 ├── chunking.ts       # Code chunking strategies
 ├── cache.ts          # Embedding cache with hash validation
@@ -306,6 +309,18 @@ The agent follows this workflow when adding features:
 - **Testing**: Unit, integration, and E2E test coverage
 - **Documentation**: Inline comments only for non-obvious logic
 - **Commits**: Clear messages describing what and why
+
+## 🚀 Roadmap
+
+Current implementation is fully functional. Planned expansions (see [ARCHITECTURE.md](docs/ARCHITECTURE.md) for detailed implementation guides):
+
+- [ ] **Model Routing** - Dynamic model selection based on task complexity (fast/standard/reasoning/powerful)
+- [x] **Ollama Support** - Local model integration for cost reduction (set `OLLAMA_ENABLED=true`)
+- [ ] **Multi-Agent Orchestration** - Planner → Implementer → Evaluator workflow with quality-based retries
+- [ ] **Context Summarization** - Intelligent context compression using summarizer agent for longer sessions
+- [ ] **Parallel Processing** - Concurrent execution of independent tasks (e.g., multi-file analysis)
+
+All expansion features are designed for zero-refactoring activation when needed.
 
 ## 🎯 What Can You Build?
 

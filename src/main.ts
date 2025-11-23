@@ -1,17 +1,27 @@
-import { streamText } from 'ai';
-import type { ModelMessage, StepResult } from 'ai';
-import { createOpenRouter } from '@openrouter/ai-sdk-provider';
+import 'dotenv/config';
+import { tool } from 'ai';
+import type { StepResult, PrepareStepFunction, CoreMessage } from 'ai';
 import { z } from 'zod';
 import fs from 'fs/promises';
+import * as readline from 'readline/promises';
+import { stdin as input, stdout as output } from 'process';
+import { createAgentWithRole, models } from './agents.js';
+import { planTool, validationTool } from './agent-tools.js';
 import { systemPrompt } from './prompts.js';
 import { createStdioMCPClient } from './mcp-client.js';
 import { mapMcpToolsToAiTools } from './tools.js';
 import { createCodebaseRAG } from './rag.js';
 import { grepWorkspace } from './grep.js';
 
-const openrouter = createOpenRouter({
-  apiKey: process.env.OPENROUTER_API_KEY || '',
-});
+const APPROVAL_MODE = process.env.APPROVAL_MODE || 'auto';
+const RUN_MODE = process.env.RUN_MODE || 'once';
+
+let rl: readline.Interface | null = null;
+if (APPROVAL_MODE === 'manual') {
+  rl = readline.createInterface({ input, output });
+}
+
+console.log(`🤖 Initializing AI Agent (approval: ${APPROVAL_MODE}, run: ${RUN_MODE})...\n`);
 
 const usedClients = new Set<string>();
 
@@ -84,13 +94,13 @@ const ragStats = codebaseRAG.getStats();
 console.log(`RAG indexed ${ragStats.totalChunks} chunks from ${ragStats.files} files`);
 
 const codebaseTools = {
-  search_codebase: {
+  search_codebase: tool({
     description: 'Search the indexed codebase for relevant code snippets using semantic search. Use this to find implementations, patterns, or understand how the codebase works.',
-    parameters: z.object({
+    inputSchema: z.object({
       query: z.string().describe('The search query to find relevant code'),
       topK: z.number().optional().describe('Number of results to return (default: 5)'),
     }),
-    execute: async ({ query, topK = 5 }: { query: string; topK?: number }) => {
+    execute: async ({ query, topK = 5 }) => {
       const results = await codebaseRAG.searchCodebase(query, topK);
       return JSON.stringify(results.map(r => ({
         file: r.filePath,
@@ -98,42 +108,59 @@ const codebaseTools = {
         content: r.content,
       })));
     },
-  },
-  grep_codebase: {
+  }),
+  grep_codebase: tool({
     description: 'Search for exact text patterns in the codebase using regex. Use this for finding specific strings, function names, or patterns.',
-    parameters: z.object({
+    inputSchema: z.object({
       pattern: z.string().describe('The regex pattern to search for'),
       filePattern: z.string().optional().describe('Optional file pattern to filter (e.g., "*.ts")'),
       ignoreCase: z.boolean().optional().describe('Whether to ignore case (default: false)'),
       maxResults: z.number().optional().describe('Maximum number of results (default: 100)'),
     }),
-    execute: async ({ pattern, filePattern, ignoreCase, maxResults }: {
-      pattern: string;
-      filePattern?: string;
-      ignoreCase?: boolean;
-      maxResults?: number;
-    }) => {
+    execute: async ({ pattern, filePattern, ignoreCase, maxResults }) => {
       const results = await grepWorkspace(pattern, process.cwd(), { filePattern, ignoreCase, maxResults });
       return JSON.stringify(results);
     },
-  },
-  task_complete: {
+  }),
+  task_complete: tool({
     description: 'Call this when you have fully completed the user\'s request and have nothing more to do. This will end the current agent iteration.',
-    parameters: z.object({
+    inputSchema: z.object({
       summary: z.string().describe('A brief summary of what was accomplished'),
       nextSteps: z.string().optional().describe('Optional suggestions for what the user might want to do next'),
     }),
-    execute: async ({ summary, nextSteps }: { summary: string; nextSteps?: string }) => {
+    execute: async ({ summary, nextSteps }) => {
       let result = `Task completed: ${summary}`;
       if (nextSteps) {
         result += `\n\nSuggested next steps: ${nextSteps}`;
       }
       return result;
     },
-  },
+  }),
+  ask_user: tool({
+    description: 'Ask the user a question and wait for their response. Use this when you need clarification, approval, or additional information from the user.',
+    inputSchema: z.object({
+      question: z.string().describe('The question to ask the user'),
+    }),
+    execute: async ({ question }) => {
+      if (APPROVAL_MODE === 'auto') {
+        console.log(`\n🤖 Agent question (auto-approved): ${question}`);
+        return 'yes';
+      }
+
+      if (APPROVAL_MODE === 'manual' && rl) {
+        console.log(`\n🤔 Agent: ${question}`);
+        const answer = await rl.question('👤 You: ');
+        return answer;
+      }
+
+      return 'Tool available but approval mode not configured';
+    },
+  }),
 };
 
 const tools = {
+  plan_tool: planTool,
+  validation_tool: validationTool,
   ...filesystemTools,
   ...gitTools,
   ...fetchTools,
@@ -145,7 +172,7 @@ const tools = {
 console.log('Total tools:', Object.keys(tools).length);
 
 function dynamicStopWhen({ steps }: { steps: StepResult<any>[] }): boolean {
-  const MAX_STEPS = 50;
+  const MAX_STEPS = RUN_MODE === 'loop' ? 20 : 50;
 
   const hasTaskComplete = steps.some(step =>
     step.toolCalls?.some(call => call.toolName === 'task_complete')
@@ -164,48 +191,148 @@ function dynamicStopWhen({ steps }: { steps: StepResult<any>[] }): boolean {
   return hasTaskComplete || maxStepsReached;
 }
 
-await fs.mkdir('./logs', { recursive: true });
+const prepareStep: PrepareStepFunction<typeof tools> = ({ messages, step }) => {
+  const MAX_CONTEXT_MESSAGES = 50;
 
-const history: ModelMessage[] = [
-  {
-    role: 'user',
-    content: 'You are a generic agent template. Ask the user what kind of agent they want you to become, then start building yourself for that purpose. Begin by assessing your current capabilities.',
+  if (messages.length > MAX_CONTEXT_MESSAGES) {
+    console.log(`\n🔄 Trimming context: ${messages.length} → ${MAX_CONTEXT_MESSAGES} messages`);
+    return {
+      messages: [
+        messages[0],
+        ...messages.slice(-(MAX_CONTEXT_MESSAGES - 1)),
+      ],
+    };
+  }
+
+  return { messages };
+};
+
+let stepCount = 0;
+
+const agent = createAgentWithRole('generic', tools, {
+  modelType: 'standard',
+  stopWhen: dynamicStopWhen,
+  prepareStep,
+  onStepFinish: async (stepResult) => {
+    stepCount++;
+    console.log(`\n📈 Step ${stepCount} finished`);
+
+    if (stepResult.toolCalls && stepResult.toolCalls.length > 0) {
+      const toolNames = stepResult.toolCalls.map(tc => tc.toolName);
+      console.log(`📊 Tools used: ${[...new Set(toolNames)].join(', ')}`);
+    }
   },
-];
-let stopped = false;
+});
 
-while (!stopped) {
-  const result = streamText({
-    model: openrouter.chat(process.env.MODEL || 'qwen/qwen3-coder:free'),
-    messages: history,
-    tools,
-    system: systemPrompt,
-    stopWhen: dynamicStopWhen,
-    onFinish: async ({ steps, toolCalls }) => {
-      console.log(`\n📈 Steps taken: ${steps?.length ?? 0}`);
+function cleanup() {
+  console.log('\n🧹 Cleaning up MCP clients...');
+  if (usedClients.has('filesystem')) {
+    mcpClients.filesystem.close();
+  }
+  if (usedClients.has('git')) {
+    mcpClients.git.close();
+  }
+  if (usedClients.has('fetch')) {
+    mcpClients.fetch.close();
+  }
+  if (usedClients.has('memory')) {
+    mcpClients.memory.close();
+  }
+  if (usedClients.has('sequentialThinking')) {
+    mcpClients.sequentialThinking.close();
+  }
+  if (rl) {
+    rl.close();
+  }
+}
 
-      if (toolCalls && toolCalls.length > 0) {
-        const toolNames = toolCalls.map(tc => tc.toolName);
-        console.log(`📊 Tools used: ${[...new Set(toolNames)].join(', ')}`);
-      }
+process.on('SIGINT', () => {
+  console.log('\n\n👋 Caught interrupt signal');
+  cleanup();
+  process.exit(0);
+});
 
-      console.log('\n🧹 Cleaning up MCP clients...');
-      if (usedClients.has('filesystem')) {
-        mcpClients.filesystem.close();
-      }
-      if (usedClients.has('git')) {
-        mcpClients.git.close();
-      }
-      if (usedClients.has('fetch')) {
-        mcpClients.fetch.close();
-      }
-      if (usedClients.has('memory')) {
-        mcpClients.memory.close();
-      }
-      if (usedClients.has('sequentialThinking')) {
-        mcpClients.sequentialThinking.close();
-      }
+if (RUN_MODE === 'loop') {
+  console.log('━'.repeat(60));
+  console.log('🤖 Generic Agent Template - Interactive Mode');
+  console.log('━'.repeat(60));
+  console.log('This is a self-building agent that can become whatever you need.');
+  console.log('It will assess its capabilities and build itself for your purpose.');
+  console.log('\nType "exit" or "quit" to end the conversation');
+  console.log('━'.repeat(60) + '\n');
+
+  const conversationHistory: CoreMessage[] = [
+    {
+      role: 'user',
+      content: 'You are a generic agent template. Ask the user what kind of agent they want you to become, then start building yourself for that purpose. Begin by assessing your current capabilities and asking the user what they need.',
     },
+  ];
+
+  async function chat() {
+    let isFirstMessage = true;
+
+    while (true) {
+      let userInput = '';
+
+      if (!isFirstMessage) {
+        if (!rl) {
+          console.error('Readline interface not initialized');
+          break;
+        }
+        userInput = await rl.question('👤 You: ');
+
+        if (userInput.toLowerCase() === 'exit' || userInput.toLowerCase() === 'quit') {
+          console.log('\n👋 Goodbye!');
+          cleanup();
+          process.exit(0);
+        }
+
+        if (!userInput.trim()) {
+          continue;
+        }
+
+        conversationHistory.push({
+          role: 'user',
+          content: userInput,
+        });
+      } else {
+        isFirstMessage = false;
+      }
+
+      console.log('\n🤖 Agent: ');
+
+      try {
+        const result = agent.stream({
+          messages: conversationHistory,
+        });
+
+        let fullResponse = '';
+        for await (const chunk of result.textStream) {
+          process.stdout.write(chunk);
+          fullResponse += chunk;
+        }
+
+        const responseData = await result.response;
+        conversationHistory.push(...responseData.messages);
+
+        console.log('\n');
+      } catch (error: any) {
+        console.error('\n❌ Error:', error.message);
+        console.log('\n');
+      }
+    }
+  }
+
+  chat().catch(error => {
+    console.error('Fatal error:', error);
+    cleanup();
+    process.exit(1);
+  });
+} else {
+  await fs.mkdir('./logs', { recursive: true });
+
+  const result = agent.stream({
+    prompt: 'You are a generic agent template. Ask the user what kind of agent they want you to become, then start building yourself for that purpose. Begin by assessing your current capabilities.',
   });
 
   for await (const chunk of result.textStream) {
@@ -214,15 +341,16 @@ while (!stopped) {
   }
 
   const responseData = await result.response;
-  history.push(...responseData.messages);
 
   await fs.appendFile(
     './logs/iterations.jsonl',
     JSON.stringify({ timestamp: Date.now(), messages: responseData.messages }) + '\n'
   );
 
-  console.log('\nRe-indexing codebase after iteration...');
+  console.log('\n\nRe-indexing codebase after agent run...');
   await codebaseRAG.indexCodebase();
   const newStats = codebaseRAG.getStats();
   console.log(`RAG re-indexed: ${newStats.totalChunks} chunks from ${newStats.files} files`);
+
+  cleanup();
 }
