@@ -130,17 +130,20 @@ const tools = {
 
 console.log(`✅ Total tools available: ${Object.keys(tools).length}\n`);
 console.log('━'.repeat(60));
-console.log('🚀 Interactive AI Agent Ready!');
+console.log('🤖 Generic Agent Template');
 console.log('━'.repeat(60));
-console.log('💡 Tips:');
-console.log('  - Ask me to search the codebase, read files, or modify code');
-console.log('  - I can use semantic search to find relevant code');
-console.log('  - I\'ll ask you questions when I need clarification');
-console.log('  - I\'ll decide when the task is complete');
-console.log('  - Type "exit" or "quit" to end the conversation');
+console.log('This is a self-building agent that can become whatever you need.');
+console.log('It will assess its capabilities and build itself for your purpose.');
+console.log('\nType "exit" or "quit" to end the conversation');
 console.log('━'.repeat(60) + '\n');
 
-const conversationHistory: CoreMessage[] = [];
+// Initial message: agent asks user what they want to build
+const conversationHistory: CoreMessage[] = [
+  {
+    role: 'user',
+    content: 'You are a generic agent template. Ask the user what kind of agent they want you to become, then start building yourself for that purpose. Begin by assessing your current capabilities and asking the user what they need.',
+  },
+];
 
 // Custom stop condition: stop when task_complete is called or max steps reached
 function stopWhen(result: StepResult<any>): boolean {
@@ -166,23 +169,32 @@ function stopWhen(result: StepResult<any>): boolean {
 }
 
 async function chat() {
+  // Send initial message to get agent started
+  let isFirstMessage = true;
+
   while (true) {
-    const userInput = await rl.question('👤 You: ');
+    let userInput = '';
 
-    if (userInput.toLowerCase() === 'exit' || userInput.toLowerCase() === 'quit') {
-      console.log('\n👋 Goodbye!');
-      cleanup();
-      process.exit(0);
+    if (!isFirstMessage) {
+      userInput = await rl.question('👤 You: ');
+
+      if (userInput.toLowerCase() === 'exit' || userInput.toLowerCase() === 'quit') {
+        console.log('\n👋 Goodbye!');
+        cleanup();
+        process.exit(0);
+      }
+
+      if (!userInput.trim()) {
+        continue;
+      }
+
+      conversationHistory.push({
+        role: 'user',
+        content: userInput,
+      });
+    } else {
+      isFirstMessage = false;
     }
-
-    if (!userInput.trim()) {
-      continue;
-    }
-
-    conversationHistory.push({
-      role: 'user',
-      content: userInput,
-    });
 
     console.log('\n🤖 Agent: ');
 
