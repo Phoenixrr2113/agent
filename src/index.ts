@@ -13,7 +13,7 @@ const openrouter = createOpenRouter({
   apiKey: process.env.OPENROUTER_API_KEY || '',
 });
 
-const filesystemClient = createStdioMCPClient('npx', ['-y', '@modelcontextprotocol/server-filesystem', '/workspace']);
+const filesystemClient = createStdioMCPClient('npx', ['-y', '@modelcontextprotocol/server-filesystem', process.cwd()]);
 await filesystemClient.initialize();
 
 const gitClient = createStdioMCPClient('npx', ['-y', 'git-mcp-server']);
@@ -46,7 +46,7 @@ const fetchTools = mapMcpToolsToAiTools(fetchMcpTools, fetchClient);
 const memoryTools = mapMcpToolsToAiTools(memoryMcpTools, memoryClient);
 const sequentialThinkingTools = mapMcpToolsToAiTools(sequentialThinkingMcpTools, sequentialThinkingClient);
 
-const codebaseRAG = createCodebaseRAG('/workspace');
+const codebaseRAG = createCodebaseRAG(process.cwd());
 console.log('Indexing codebase...');
 await codebaseRAG.indexCodebase();
 const ragStats = codebaseRAG.getStats();
@@ -82,7 +82,7 @@ const codebaseTools = {
       ignoreCase?: boolean;
       maxResults?: number;
     }) => {
-      const results = await grepWorkspace(pattern, '/workspace', { filePattern, ignoreCase, maxResults });
+      const results = await grepWorkspace(pattern, process.cwd(), { filePattern, ignoreCase, maxResults });
       return JSON.stringify(results);
     },
   },
