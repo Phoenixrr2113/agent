@@ -164,6 +164,8 @@ function dynamicStopWhen({ steps }: { steps: StepResult<any>[] }): boolean {
   return hasTaskComplete || maxStepsReached;
 }
 
+await fs.mkdir('./logs', { recursive: true });
+
 const history: ModelMessage[] = [
   {
     role: 'user',
