@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import { streamText } from 'ai';
-import type { CoreMessage } from 'ai';
+import type { CoreMessage, StepResult } from 'ai';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { z } from 'zod';
 import * as readline from 'readline/promises';
@@ -19,26 +19,52 @@ const openrouter = createOpenRouter({
 
 console.log('🤖 Initializing AI Agent with MCP tools...\n');
 
-const filesystemClient = createStdioMCPClient('npx', ['-y', '@modelcontextprotocol/server-filesystem', process.cwd()]);
-await filesystemClient.initialize();
+// Track which clients are initialized and used
+const mcpClients = {
+  filesystem: createStdioMCPClient('npx', ['-y', '@modelcontextprotocol/server-filesystem', process.cwd()]),
+  memory: createStdioMCPClient('npx', ['-y', '@modelcontextprotocol/server-memory']),
+};
 
-const memoryClient = createStdioMCPClient('npx', ['-y', '@modelcontextprotocol/server-memory']);
-await memoryClient.initialize();
+const usedClients = new Set<string>();
 
-const fsMcpTools = await filesystemClient.listTools();
-const memoryMcpTools = await memoryClient.listTools();
+await mcpClients.filesystem.initialize();
+await mcpClients.memory.initialize();
+
+const fsMcpTools = await mcpClients.filesystem.listTools();
+const memoryMcpTools = await mcpClients.memory.listTools();
 
 console.log(`✅ Loaded ${fsMcpTools.length} filesystem tools`);
 console.log(`✅ Loaded ${memoryMcpTools.length} memory tools`);
 
-const filesystemTools = mapMcpToolsToAiTools(fsMcpTools, filesystemClient);
-const memoryTools = mapMcpToolsToAiTools(memoryMcpTools, memoryClient);
+// Wrap tools to track usage
+function wrapToolsWithTracking(tools: any, clientName: string) {
+  const wrapped: any = {};
+  for (const [name, tool] of Object.entries(tools)) {
+    wrapped[name] = {
+      ...tool,
+      execute: async (...args: any[]) => {
+        usedClients.add(clientName);
+        return (tool as any).execute(...args);
+      },
+    };
+  }
+  return wrapped;
+}
+
+const filesystemTools = wrapToolsWithTracking(
+  mapMcpToolsToAiTools(fsMcpTools, mcpClients.filesystem),
+  'filesystem'
+);
+const memoryTools = wrapToolsWithTracking(
+  mapMcpToolsToAiTools(memoryMcpTools, mcpClients.memory),
+  'memory'
+);
 
 const codebaseRAG = createCodebaseRAG(process.cwd());
 console.log('\n📊 Indexing codebase with Gemini embeddings...');
 await codebaseRAG.indexCodebase();
 const ragStats = codebaseRAG.getStats();
-console.log(`✅ Indexed ${ragStats.totalChunks} chunks from ${ragStats.files} files\n`);
+console.log(`✅ Indexed ${ragStats.totalChunks} chunks from ${ragStats.files}\n`);
 
 const codebaseTools = {
   search_codebase: {
@@ -85,6 +111,15 @@ const codebaseTools = {
       return answer;
     },
   },
+  task_complete: {
+    description: 'Call this when you have fully completed the user\'s request and have nothing more to do. This will end the current response loop.',
+    parameters: z.object({
+      summary: z.string().describe('A brief summary of what was accomplished'),
+    }),
+    execute: async ({ summary }: { summary: string }) => {
+      return `Task completed: ${summary}`;
+    },
+  },
 };
 
 const tools = {
@@ -101,10 +136,34 @@ console.log('💡 Tips:');
 console.log('  - Ask me to search the codebase, read files, or modify code');
 console.log('  - I can use semantic search to find relevant code');
 console.log('  - I\'ll ask you questions when I need clarification');
+console.log('  - I\'ll decide when the task is complete');
 console.log('  - Type "exit" or "quit" to end the conversation');
 console.log('━'.repeat(60) + '\n');
 
 const conversationHistory: CoreMessage[] = [];
+
+// Custom stop condition: stop when task_complete is called or max steps reached
+function stopWhen(result: StepResult<any>): boolean {
+  const MAX_STEPS = 20;
+
+  // Stop if task_complete was called
+  const hasTaskComplete = result.toolCalls?.some(
+    call => call.toolName === 'task_complete'
+  );
+
+  // Stop if we've reached max steps
+  const maxStepsReached = result.stepCount >= MAX_STEPS;
+
+  if (hasTaskComplete) {
+    console.log('\n✅ Task marked as complete by agent');
+  }
+
+  if (maxStepsReached) {
+    console.log(`\n⚠️  Reached maximum steps (${MAX_STEPS})`);
+  }
+
+  return hasTaskComplete || maxStepsReached;
+}
 
 async function chat() {
   while (true) {
@@ -112,9 +171,7 @@ async function chat() {
 
     if (userInput.toLowerCase() === 'exit' || userInput.toLowerCase() === 'quit') {
       console.log('\n👋 Goodbye!');
-      filesystemClient.close();
-      memoryClient.close();
-      rl.close();
+      cleanup();
       process.exit(0);
     }
 
@@ -135,7 +192,24 @@ async function chat() {
         messages: conversationHistory,
         tools,
         system: systemPrompt,
-        maxSteps: 10,
+        stopWhen, // Dynamic stop condition!
+        onFinish: async ({ response }) => {
+          // Log which tools were used
+          const toolsUsed = new Set<string>();
+          response.messages.forEach(msg => {
+            if (msg.role === 'assistant' && 'toolInvocations' in msg) {
+              (msg as any).toolInvocations?.forEach((inv: any) => {
+                toolsUsed.add(inv.toolName);
+              });
+            }
+          });
+
+          if (toolsUsed.size > 0) {
+            console.log(`\n📊 Tools used: ${Array.from(toolsUsed).join(', ')}`);
+          }
+
+          console.log(`📈 Steps taken: ${response.steps}`);
+        },
       });
 
       let fullResponse = '';
@@ -155,10 +229,31 @@ async function chat() {
   }
 }
 
+function cleanup() {
+  console.log('\n🧹 Cleaning up...');
+
+  // Only close clients that were actually used
+  if (usedClients.has('filesystem')) {
+    console.log('  └─ Closing filesystem client');
+    mcpClients.filesystem.close();
+  }
+  if (usedClients.has('memory')) {
+    console.log('  └─ Closing memory client');
+    mcpClients.memory.close();
+  }
+
+  rl.close();
+}
+
+// Handle graceful shutdown
+process.on('SIGINT', () => {
+  console.log('\n\n👋 Caught interrupt signal');
+  cleanup();
+  process.exit(0);
+});
+
 chat().catch(error => {
   console.error('Fatal error:', error);
-  filesystemClient.close();
-  memoryClient.close();
-  rl.close();
+  cleanup();
   process.exit(1);
 });
