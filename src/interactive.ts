@@ -1,6 +1,6 @@
 import 'dotenv/config';
-import { streamText } from 'ai';
-import type { CoreMessage, StepResult } from 'ai';
+import { Experimental_Agent as Agent, tool } from 'ai';
+import type { CoreMessage, StepResult, PrepareStepFunction } from 'ai';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { z } from 'zod';
 import * as readline from 'readline/promises';
@@ -68,13 +68,13 @@ const ragStats = codebaseRAG.getStats();
 console.log(`✅ Indexed ${ragStats.totalChunks} chunks from ${ragStats.files}\n`);
 
 const codebaseTools = {
-  search_codebase: {
+  search_codebase: tool({
     description: 'Search the indexed codebase for relevant code snippets using semantic search. Use this to find implementations, patterns, or understand how the codebase works.',
-    parameters: z.object({
+    inputSchema: z.object({
       query: z.string().describe('The search query to find relevant code'),
       topK: z.number().optional().describe('Number of results to return (default: 5)'),
     }),
-    execute: async ({ query, topK = 5 }: { query: string; topK?: number }) => {
+    execute: async ({ query, topK = 5 }) => {
       const results = await codebaseRAG.searchCodebase(query, topK);
       return JSON.stringify(results.map(r => ({
         file: r.filePath,
@@ -82,45 +82,40 @@ const codebaseTools = {
         content: r.content.substring(0, 200),
       })));
     },
-  },
-  grep_codebase: {
+  }),
+  grep_codebase: tool({
     description: 'Search for exact text patterns in the codebase using regex. Use this for finding specific strings, function names, or patterns.',
-    parameters: z.object({
+    inputSchema: z.object({
       pattern: z.string().describe('The regex pattern to search for'),
       filePattern: z.string().optional().describe('Optional file pattern to filter (e.g., "*.ts")'),
       ignoreCase: z.boolean().optional().describe('Whether to ignore case (default: false)'),
       maxResults: z.number().optional().describe('Maximum number of results (default: 100)'),
     }),
-    execute: async ({ pattern, filePattern, ignoreCase, maxResults }: {
-      pattern: string;
-      filePattern?: string;
-      ignoreCase?: boolean;
-      maxResults?: number;
-    }) => {
+    execute: async ({ pattern, filePattern, ignoreCase, maxResults }) => {
       const results = await grepWorkspace(pattern, process.cwd(), { filePattern, ignoreCase, maxResults });
       return JSON.stringify(results.slice(0, 10));
     },
-  },
-  ask_user: {
+  }),
+  ask_user: tool({
     description: 'Ask the user a question and wait for their response. Use this when you need clarification, approval, or additional information from the user.',
-    parameters: z.object({
+    inputSchema: z.object({
       question: z.string().describe('The question to ask the user'),
     }),
-    execute: async ({ question }: { question: string }) => {
+    execute: async ({ question }) => {
       console.log(`\n🤔 Agent: ${question}`);
       const answer = await rl.question('👤 You: ');
       return answer;
     },
-  },
-  task_complete: {
+  }),
+  task_complete: tool({
     description: 'Call this when you have fully completed the user\'s request and have nothing more to do. This will end the current response loop.',
-    parameters: z.object({
+    inputSchema: z.object({
       summary: z.string().describe('A brief summary of what was accomplished'),
     }),
-    execute: async ({ summary }: { summary: string }) => {
+    execute: async ({ summary }) => {
       return `Task completed: ${summary}`;
     },
-  },
+  }),
 };
 
 const tools = {
@@ -146,7 +141,6 @@ const conversationHistory: CoreMessage[] = [
   },
 ];
 
-// Custom stop condition: stop when task_complete is called or max steps reached
 function stopWhen({ steps }: { steps: StepResult<any>[] }): boolean {
   const MAX_STEPS = 20;
 
@@ -166,6 +160,39 @@ function stopWhen({ steps }: { steps: StepResult<any>[] }): boolean {
 
   return hasTaskComplete || maxStepsReached;
 }
+
+const prepareStep: PrepareStepFunction<typeof tools> = ({ messages }) => {
+  const MAX_CONTEXT_MESSAGES = 30;
+
+  if (messages.length > MAX_CONTEXT_MESSAGES) {
+    console.log(`\n🔄 Trimming context: ${messages.length} → ${MAX_CONTEXT_MESSAGES} messages`);
+    return {
+      messages: [
+        messages[0],
+        ...messages.slice(-(MAX_CONTEXT_MESSAGES - 1)),
+      ],
+    };
+  }
+
+  return { messages };
+};
+
+let stepCount = 0;
+
+const agent = new Agent({
+  model: openrouter.chat(process.env.MODEL || 'qwen/qwen3-coder:free'),
+  system: systemPrompt,
+  tools,
+  stopWhen,
+  prepareStep,
+  onStepFinish: async (stepResult) => {
+    stepCount++;
+    if (stepResult.toolCalls && stepResult.toolCalls.length > 0) {
+      const toolNames = stepResult.toolCalls.map(tc => tc.toolName);
+      console.log(`\n📊 Step ${stepCount} - Tools used: ${[...new Set(toolNames)].join(', ')}`);
+    }
+  },
+});
 
 async function chat() {
   // Send initial message to get agent started
@@ -198,20 +225,8 @@ async function chat() {
     console.log('\n🤖 Agent: ');
 
     try {
-      const result = streamText({
-        model: openrouter.chat(process.env.MODEL || 'qwen/qwen3-coder:free'),
+      const result = agent.stream({
         messages: conversationHistory,
-        tools,
-        system: systemPrompt,
-        stopWhen, // Dynamic stop condition!
-        onFinish: async ({ steps, toolCalls }) => {
-          if (toolCalls && toolCalls.length > 0) {
-            const toolNames = toolCalls.map(tc => tc.toolName);
-            console.log(`\n📊 Tools used: ${[...new Set(toolNames)].join(', ')}`);
-          }
-
-          console.log(`📈 Steps taken: ${steps?.length ?? 0}`);
-        },
       });
 
       let fullResponse = '';
