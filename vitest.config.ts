@@ -1,5 +1,8 @@
 import { defineConfig } from 'vitest/config';
-import { loadEnv } from 'vite';
+import dotenv from 'dotenv';
+
+// Load environment variables from .env file
+dotenv.config();
 
 export default defineConfig({
   test: {
@@ -12,6 +15,5 @@ export default defineConfig({
       exclude: ['node_modules/', 'dist/', 'tests/fixtures/', 'tests/helpers/', 'tests/temp/'],
     },
     testTimeout: 30000,
-    env: loadEnv('test', process.cwd(), ''),
   },
 });
