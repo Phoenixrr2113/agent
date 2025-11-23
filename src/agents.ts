@@ -2,51 +2,34 @@ import { Experimental_Agent as Agent, tool } from 'ai';
 import type { LanguageModelV1 } from 'ai';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 
-/**
- * Model Configuration
- * Supports OpenRouter, Ollama, and other providers
- */
 export const models = {
-  // Fast models - for simple tasks, planning
   fast: () => {
     if (process.env.OLLAMA_ENABLED === 'true') {
-      // TODO: Add Ollama provider when ready
-      // return ollama.chat('llama3.2:3b');
       return createOpenRouter().chat('qwen/qwen3-coder:free');
     }
     return createOpenRouter().chat(process.env.MODEL || 'qwen/qwen3-coder:free');
   },
 
-  // Standard models - for most development tasks
   standard: () => {
     if (process.env.OLLAMA_ENABLED === 'true') {
-      // return ollama.chat('qwen2.5-coder:14b');
       return createOpenRouter().chat('qwen/qwen3-coder:free');
     }
     return createOpenRouter().chat(process.env.MODEL || 'qwen/qwen3-coder:free');
   },
 
-  // Reasoning models - for complex problem solving
   reasoning: () => {
     if (process.env.OLLAMA_ENABLED === 'true') {
-      // return ollama.chat('deepseek-r1:14b');
       return createOpenRouter().chat('deepseek/deepseek-chat-v3:free');
     }
     return createOpenRouter().chat('deepseek/deepseek-chat-v3:free');
   },
 
-  // Powerful models - for critical tasks
   powerful: () => {
     return createOpenRouter().chat('anthropic/claude-sonnet-4.5');
   },
 };
 
-/**
- * System Prompts for Different Agent Roles
- * Each role has specialized instructions
- */
 export const systemPrompts = {
-  // Generic self-modifying agent (current behavior)
   generic: `You are a self-building AI agent template. Your purpose is to build yourself into whatever the user needs.
 
 ## Core Principles
@@ -87,7 +70,6 @@ export const systemPrompts = {
 
 Remember: You're a template, not a finished product. Your value comes from adapting to the user's needs.`,
 
-  // Planner - creates implementation plans
   planner: `You are a technical architect and planner.
 
 Your job:
@@ -102,7 +84,6 @@ Always:
 - Create plans with the plan_tool
 - Keep plans focused and specific`,
 
-  // Implementer - executes code changes
   implementer: `You are a senior software engineer implementing code changes.
 
 Your job:
@@ -117,7 +98,6 @@ Always:
 - Use validation_tool after changes
 - Update plan_tool status`,
 
-  // Evaluator - validates code quality
   evaluator: `You are a code reviewer and quality specialist.
 
 Your job:
@@ -133,10 +113,6 @@ Always:
 - Be thorough but constructive`,
 };
 
-/**
- * Agent Factory
- * Creates specialized agents with different models and prompts
- */
 export function createAgentWithRole(
   role: keyof typeof systemPrompts,
   tools: Record<string, any>,
@@ -159,47 +135,4 @@ export function createAgentWithRole(
   });
 }
 
-/**
- * Agent Roles
- * Pre-configured agents for different purposes
- */
 export type AgentRole = keyof typeof systemPrompts;
-
-/**
- * Orchestrator Pattern (FUTURE)
- * Uncomment when ready to use multi-agent workflows
- */
-// export async function orchestratedDevelopment(
-//   userRequest: string,
-//   tools: { planning: any; implementation: any; evaluation: any }
-// ) {
-//   // 1. Planner creates the plan
-//   const plannerAgent = createAgentWithRole('planner', tools.planning, { modelType: 'fast' });
-//   const plan = await plannerAgent.generate({ prompt: userRequest });
-//
-//   // 2. Implementer executes the plan
-//   const implementerAgent = createAgentWithRole('implementer', tools.implementation);
-//   const implementation = await implementerAgent.generate({ prompt: `Execute: ${plan.text}` });
-//
-//   // 3. Evaluator validates
-//   const evaluatorAgent = createAgentWithRole('evaluator', tools.evaluation);
-//   const evaluation = await evaluatorAgent.generate({ prompt: `Review: ${implementation.text}` });
-//
-//   // 4. Retry if quality is low
-//   if (extractQuality(evaluation.text) < 8) {
-//     // Retry with feedback
-//   }
-//
-//   return implementation;
-// }
-
-/**
- * Model Routing (FUTURE)
- * Automatically select best model for the task
- */
-// export function routeToModel(task: string): keyof typeof models {
-//   if (task.includes('plan') || task.includes('simple')) return 'fast';
-//   if (task.includes('complex') || task.includes('debug')) return 'reasoning';
-//   if (task.includes('critical') || task.includes('refactor')) return 'powerful';
-//   return 'standard';
-// }

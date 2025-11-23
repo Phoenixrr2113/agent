@@ -161,17 +161,6 @@ function dynamicStopWhen({ steps }: { steps: StepResult<any>[] }): boolean {
 const prepareStep: PrepareStepFunction<typeof tools> = ({ messages, step }) => {
   const MAX_CONTEXT_MESSAGES = 50;
 
-  // Future: Model routing based on task complexity
-  // const lastMessage = messages[messages.length - 1];
-  // const content = typeof lastMessage.content === 'string' ? lastMessage.content : '';
-  // if (content.includes('complex') || content.includes('debug')) {
-  //   return { messages, model: models.reasoning() };
-  // }
-  // if (content.includes('simple') || content.includes('quick')) {
-  //   return { messages, model: models.fast() };
-  // }
-
-  // Context management - trim if too large
   if (messages.length > MAX_CONTEXT_MESSAGES) {
     console.log(`\n🔄 Trimming context: ${messages.length} → ${MAX_CONTEXT_MESSAGES} messages`);
     return {
@@ -189,10 +178,8 @@ await fs.mkdir('./logs', { recursive: true });
 
 let stepCount = 0;
 
-// Create generic agent with standard model
-// Future: Can easily create specialized agents (planner, implementer, evaluator)
 const agent = createAgentWithRole('generic', tools, {
-  modelType: 'standard', // Can change to 'fast', 'reasoning', or 'powerful'
+  modelType: 'standard',
   stopWhen: dynamicStopWhen,
   prepareStep,
   onStepFinish: async (stepResult) => {
@@ -205,11 +192,6 @@ const agent = createAgentWithRole('generic', tools, {
     }
   },
 });
-
-// Future: Orchestrator pattern (uncomment when ready)
-// const plannerAgent = createAgentWithRole('planner', { search_codebase, grep_codebase, sequential_thinking, plan_tool }, { modelType: 'fast' });
-// const implementerAgent = createAgentWithRole('implementer', { ...filesystemTools, ...gitTools, plan_tool, validation_tool }, { modelType: 'standard' });
-// const evaluatorAgent = createAgentWithRole('evaluator', { validation_tool, search_codebase, grep_codebase }, { modelType: 'reasoning' });
 
 const result = agent.stream({
   prompt: 'You are a generic agent template. Ask the user what kind of agent they want you to become, then start building yourself for that purpose. Begin by assessing your current capabilities.',

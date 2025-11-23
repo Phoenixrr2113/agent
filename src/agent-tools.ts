@@ -5,11 +5,6 @@ import { promisify } from 'util';
 
 const execAsync = promisify(exec);
 
-/**
- * Plan Management Tool
- * Tracks implementation progress across steps
- */
-
 interface PlanStep {
   name: string;
   status: 'pending' | 'in_progress' | 'completed' | 'blocked';
@@ -108,10 +103,6 @@ export const planTool = tool({
   },
 });
 
-/**
- * Validation Tool
- * Checks code quality after changes
- */
 export const validationTool = tool({
   description: 'Validate code after making changes. Checks TypeScript types, runs tests, and verifies quality.',
   inputSchema: z.object({
@@ -123,12 +114,11 @@ export const validationTool = tool({
     const results: Array<{ check: string; passed: boolean; details?: string }> = [];
     let allPassed = true;
 
-    // Type checking
     if (checkTypes) {
       try {
         const { stdout, stderr } = await execAsync('pnpm exec tsc --noEmit', {
           timeout: 30000,
-          maxBuffer: 10 * 1024 * 1024, // 10MB
+          maxBuffer: 10 * 1024 * 1024,
         });
         results.push({ check: 'TypeScript type check', passed: true });
       } catch (error: any) {
@@ -137,12 +127,11 @@ export const validationTool = tool({
         results.push({
           check: 'TypeScript type check',
           passed: false,
-          details: errorOutput.substring(0, 1000), // Limit error output
+          details: errorOutput.substring(0, 1000),
         });
       }
     }
 
-    // Test execution
     if (runTests) {
       try {
         const { stdout } = await execAsync('pnpm test', {
@@ -172,36 +161,22 @@ export const validationTool = tool({
   },
 });
 
-/**
- * Tool Groups for Different Agent Roles
- * Makes it easy to give specialized agents only the tools they need
- */
 export const toolGroups = {
-  // Planning tools - for planner agent
   planning: {
     plan_tool: planTool,
-    // search_codebase and grep_codebase added from main
-    // sequential_thinking added from MCP
   },
 
-  // Implementation tools - for implementer agent
   implementation: {
     plan_tool: planTool,
     validation_tool: validationTool,
-    // filesystem tools added from MCP
-    // git tools added from MCP
   },
 
-  // Evaluation tools - for evaluator agent
   evaluation: {
     validation_tool: validationTool,
-    // search_codebase and grep_codebase added from main
   },
 
-  // All tools - for generic agent (current behavior)
   all: {
     plan_tool: planTool,
     validation_tool: validationTool,
-    // Everything else added in main file
   },
 };
