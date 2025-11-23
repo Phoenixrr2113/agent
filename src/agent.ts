@@ -1,7 +1,10 @@
+import 'dotenv/config';
 import { tool } from 'ai';
-import type { StepResult, PrepareStepFunction } from 'ai';
+import type { StepResult, PrepareStepFunction, CoreMessage } from 'ai';
 import { z } from 'zod';
 import fs from 'fs/promises';
+import * as readline from 'readline/promises';
+import { stdin as input, stdout as output } from 'process';
 import { createAgentWithRole, models } from './agents.js';
 import { planTool, validationTool } from './agent-tools.js';
 import { systemPrompt } from './prompts.js';
@@ -9,6 +12,16 @@ import { createStdioMCPClient } from './mcp-client.js';
 import { mapMcpToolsToAiTools } from './tools.js';
 import { createCodebaseRAG } from './rag.js';
 import { grepWorkspace } from './grep.js';
+
+const APPROVAL_MODE = process.env.APPROVAL_MODE || 'auto';
+const RUN_MODE = process.env.RUN_MODE || 'once';
+
+let rl: readline.Interface | null = null;
+if (APPROVAL_MODE === 'manual') {
+  rl = readline.createInterface({ input, output });
+}
+
+console.log(`🤖 Initializing AI Agent (approval: ${APPROVAL_MODE}, run: ${RUN_MODE})...\n`);
 
 const usedClients = new Set<string>();
 
@@ -123,6 +136,26 @@ const codebaseTools = {
       return result;
     },
   }),
+  ask_user: tool({
+    description: 'Ask the user a question and wait for their response. Use this when you need clarification, approval, or additional information from the user.',
+    inputSchema: z.object({
+      question: z.string().describe('The question to ask the user'),
+    }),
+    execute: async ({ question }) => {
+      if (APPROVAL_MODE === 'auto') {
+        console.log(`\n🤖 Agent question (auto-approved): ${question}`);
+        return 'yes';
+      }
+
+      if (APPROVAL_MODE === 'manual' && rl) {
+        console.log(`\n🤔 Agent: ${question}`);
+        const answer = await rl.question('👤 You: ');
+        return answer;
+      }
+
+      return 'Tool available but approval mode not configured';
+    },
+  }),
 };
 
 const tools = {
@@ -139,7 +172,7 @@ const tools = {
 console.log('Total tools:', Object.keys(tools).length);
 
 function dynamicStopWhen({ steps }: { steps: StepResult<any>[] }): boolean {
-  const MAX_STEPS = 50;
+  const MAX_STEPS = RUN_MODE === 'loop' ? 20 : 50;
 
   const hasTaskComplete = steps.some(step =>
     step.toolCalls?.some(call => call.toolName === 'task_complete')
@@ -174,8 +207,6 @@ const prepareStep: PrepareStepFunction<typeof tools> = ({ messages, step }) => {
   return { messages };
 };
 
-await fs.mkdir('./logs', { recursive: true });
-
 let stepCount = 0;
 
 const agent = createAgentWithRole('generic', tools, {
@@ -193,40 +224,133 @@ const agent = createAgentWithRole('generic', tools, {
   },
 });
 
-const result = agent.stream({
-  prompt: 'You are a generic agent template. Ask the user what kind of agent they want you to become, then start building yourself for that purpose. Begin by assessing your current capabilities.',
+function cleanup() {
+  console.log('\n🧹 Cleaning up MCP clients...');
+  if (usedClients.has('filesystem')) {
+    mcpClients.filesystem.close();
+  }
+  if (usedClients.has('git')) {
+    mcpClients.git.close();
+  }
+  if (usedClients.has('fetch')) {
+    mcpClients.fetch.close();
+  }
+  if (usedClients.has('memory')) {
+    mcpClients.memory.close();
+  }
+  if (usedClients.has('sequentialThinking')) {
+    mcpClients.sequentialThinking.close();
+  }
+  if (rl) {
+    rl.close();
+  }
+}
+
+process.on('SIGINT', () => {
+  console.log('\n\n👋 Caught interrupt signal');
+  cleanup();
+  process.exit(0);
 });
 
-for await (const chunk of result.textStream) {
-  process.stdout.write(chunk);
-  await fs.appendFile('./logs/agent.log', chunk);
-}
+if (RUN_MODE === 'loop') {
+  console.log('━'.repeat(60));
+  console.log('🤖 Generic Agent Template - Interactive Mode');
+  console.log('━'.repeat(60));
+  console.log('This is a self-building agent that can become whatever you need.');
+  console.log('It will assess its capabilities and build itself for your purpose.');
+  console.log('\nType "exit" or "quit" to end the conversation');
+  console.log('━'.repeat(60) + '\n');
 
-const responseData = await result.response;
+  const conversationHistory: CoreMessage[] = [
+    {
+      role: 'user',
+      content: 'You are a generic agent template. Ask the user what kind of agent they want you to become, then start building yourself for that purpose. Begin by assessing your current capabilities and asking the user what they need.',
+    },
+  ];
 
-await fs.appendFile(
-  './logs/iterations.jsonl',
-  JSON.stringify({ timestamp: Date.now(), messages: responseData.messages }) + '\n'
-);
+  async function chat() {
+    let isFirstMessage = true;
 
-console.log('\n\nRe-indexing codebase after agent run...');
-await codebaseRAG.indexCodebase();
-const newStats = codebaseRAG.getStats();
-console.log(`RAG re-indexed: ${newStats.totalChunks} chunks from ${newStats.files} files`);
+    while (true) {
+      let userInput = '';
 
-console.log('\n🧹 Cleaning up MCP clients...');
-if (usedClients.has('filesystem')) {
-  mcpClients.filesystem.close();
-}
-if (usedClients.has('git')) {
-  mcpClients.git.close();
-}
-if (usedClients.has('fetch')) {
-  mcpClients.fetch.close();
-}
-if (usedClients.has('memory')) {
-  mcpClients.memory.close();
-}
-if (usedClients.has('sequentialThinking')) {
-  mcpClients.sequentialThinking.close();
+      if (!isFirstMessage) {
+        if (!rl) {
+          console.error('Readline interface not initialized');
+          break;
+        }
+        userInput = await rl.question('👤 You: ');
+
+        if (userInput.toLowerCase() === 'exit' || userInput.toLowerCase() === 'quit') {
+          console.log('\n👋 Goodbye!');
+          cleanup();
+          process.exit(0);
+        }
+
+        if (!userInput.trim()) {
+          continue;
+        }
+
+        conversationHistory.push({
+          role: 'user',
+          content: userInput,
+        });
+      } else {
+        isFirstMessage = false;
+      }
+
+      console.log('\n🤖 Agent: ');
+
+      try {
+        const result = agent.stream({
+          messages: conversationHistory,
+        });
+
+        let fullResponse = '';
+        for await (const chunk of result.textStream) {
+          process.stdout.write(chunk);
+          fullResponse += chunk;
+        }
+
+        const responseData = await result.response;
+        conversationHistory.push(...responseData.messages);
+
+        console.log('\n');
+      } catch (error: any) {
+        console.error('\n❌ Error:', error.message);
+        console.log('\n');
+      }
+    }
+  }
+
+  chat().catch(error => {
+    console.error('Fatal error:', error);
+    cleanup();
+    process.exit(1);
+  });
+} else {
+  await fs.mkdir('./logs', { recursive: true });
+
+  const result = agent.stream({
+    prompt: 'You are a generic agent template. Ask the user what kind of agent they want you to become, then start building yourself for that purpose. Begin by assessing your current capabilities.',
+  });
+
+  for await (const chunk of result.textStream) {
+    process.stdout.write(chunk);
+    await fs.appendFile('./logs/agent.log', chunk);
+  }
+
+  const responseData = await result.response;
+
+  await fs.appendFile(
+    './logs/iterations.jsonl',
+    JSON.stringify({ timestamp: Date.now(), messages: responseData.messages }) + '\n'
+  );
+
+  console.log('\n\nRe-indexing codebase after agent run...');
+  await codebaseRAG.indexCodebase();
+  const newStats = codebaseRAG.getStats();
+  console.log(`RAG re-indexed: ${newStats.totalChunks} chunks from ${newStats.files} files`);
+
+  cleanup();
 }

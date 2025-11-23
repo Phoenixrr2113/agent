@@ -19,8 +19,10 @@ Unlike traditional agents that operate in sandboxed environments, this agent:
 - **Pattern Matching**: Regex-based grep for exact code searches
 
 ### Two Modes of Operation
-1. **Autonomous Mode** (`npm run dev`) - Runs in a loop, building itself iteratively
-2. **Interactive Mode** (`npm run chat`) - Chat with the agent, ask it to build features
+1. **Autonomous Mode** (`npm run dev`) - Runs once with auto-approval
+2. **Interactive Mode** (`npm run chat`) - Conversation loop with manual approval
+
+Both modes use the same agent, just different approval and run configurations.
 
 ## 🚀 Quick Start
 
@@ -249,9 +251,10 @@ const result = await client.callTool('read_file', {
 
 ```
 src/
-├── index.ts           # Main autonomous agent loop
-├── interactive.ts     # Interactive chat mode
-├── prompts.ts         # System prompts and agent instructions
+├── agent.ts           # Main entry (autonomous + interactive modes)
+├── agents.ts          # Agent factory, model configs, role prompts
+├── agent-tools.ts     # Plan tracking, validation tools
+├── prompts.ts         # System prompts
 ├── rag.ts            # RAG implementation (indexing, search)
 ├── chunking.ts       # Code chunking strategies
 ├── cache.ts          # Embedding cache with hash validation

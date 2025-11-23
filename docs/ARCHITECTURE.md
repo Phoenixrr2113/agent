@@ -4,16 +4,26 @@
 
 This agent is built with a modular architecture that supports future expansion without refactoring. You can use it simply NOW, and add advanced features LATER with minimal code changes.
 
-## Current State (Simple Mode)
+## Single Unified File
 
-**Single generic agent with all tools**
+**One file, multiple modes** (`src/agent.ts`)
 
-```typescript
-// src/index.ts - Running today
-const agent = createAgentWithRole('generic', tools, {
-  modelType: 'standard',
-  stopWhen, prepareStep, onStepFinish
-});
+The agent has two environment-controlled behaviors:
+
+**Approval Mode:**
+- `APPROVAL_MODE=auto` - Agent auto-approves all `ask_user` calls (autonomous)
+- `APPROVAL_MODE=manual` - Agent waits for user input (interactive)
+
+**Run Mode:**
+- `RUN_MODE=once` - Runs once then exits
+- `RUN_MODE=loop` - Runs in conversation loop
+
+```bash
+# Autonomous mode (auto-approve, run once)
+pnpm run dev
+
+# Interactive mode (manual approval, conversation loop)
+pnpm run chat
 ```
 
 ## Future State (Zero Refactoring Required)
@@ -206,10 +216,9 @@ export const toolGroups = {
 
 ```
 src/
+├── agent.ts           # Main entry point (autonomous + interactive modes)
 ├── agents.ts          # Agent factory, models, system prompts
 ├── agent-tools.ts     # Plan tracking, validation, tool groups
-├── index.ts           # Main autonomous mode (uses agents.ts)
-├── interactive.ts     # Chat mode (uses agents.ts)
 ├── prompts.ts         # System prompts
 ├── tools.ts           # MCP tool mapping
 ├── rag.ts             # Codebase search

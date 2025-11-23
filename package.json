@@ -4,8 +4,8 @@
   "type": "module",
   "scripts": {
     "build": "tsc",
-    "dev": "tsx watch src/index.ts",
-    "chat": "tsx src/interactive.ts",
+    "dev": "APPROVAL_MODE=auto RUN_MODE=once tsx src/agent.ts",
+    "chat": "APPROVAL_MODE=manual RUN_MODE=loop tsx src/agent.ts",
     "start": "node dist/index.js",
     "test": "vitest run",
     "test:watch": "vitest",
