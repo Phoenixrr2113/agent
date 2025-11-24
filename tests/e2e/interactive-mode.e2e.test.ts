@@ -37,6 +37,10 @@ describe.skipIf(!hasModelProvider())('Interactive Mode E2E tests', () => {
       model: getTestModel(),
       messages: [
         {
+          role: 'system',
+          content: 'You are a helpful assistant. You have access to tools that you MUST use to complete tasks. When you need to ask the user a question, use the ask_user tool.',
+        },
+        {
           role: 'user',
           content: 'Ask me if I want to proceed, then ask me my favorite color',
         },
@@ -181,7 +185,18 @@ describe.skipIf(!hasModelProvider())('Interactive Mode E2E tests', () => {
     expect(conversationHistory.length).toBeGreaterThan(2);
     const finalText = result2.response.messages
       .filter((m: any) => m.role === 'assistant')
-      .map((m: any) => m.content)
+      .map((m: any) => {
+        if (typeof m.content === 'string') {
+          return m.content;
+        }
+        if (Array.isArray(m.content)) {
+          return m.content
+            .filter((part: any) => part.type === 'text')
+            .map((part: any) => part.text)
+            .join(' ');
+        }
+        return '';
+      })
       .join(' ')
       .toLowerCase();
 
