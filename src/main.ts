@@ -7,7 +7,6 @@ import * as readline from 'readline/promises';
 import { stdin as input, stdout as output } from 'process';
 import { createAgentWithRole, models } from './agents.js';
 import { planTool, validationTool } from './agent-tools.js';
-import { systemPrompt } from './prompts.js';
 import { createStdioMCPClient } from './mcp-client.js';
 import { mapMcpToolsToAiTools } from './tools.js';
 import { createCodebaseRAG } from './rag.js';
