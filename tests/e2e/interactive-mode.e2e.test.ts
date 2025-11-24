@@ -1,12 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { streamText } from 'ai';
-import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { z } from 'zod';
 import { setupTestWorkspace, teardownTestWorkspace } from '../helpers/test-utils.js';
+import { getTestModel, hasModelProvider } from '../helpers/test-model.js';
 
-const hasOpenRouterKey = !!process.env.OPENROUTER_API_KEY;
-
-describe.skipIf(!hasOpenRouterKey)('Interactive Mode E2E tests', () => {
+describe.skipIf(!hasModelProvider())('Interactive Mode E2E tests', () => {
   let workspace: string;
 
   beforeEach(async () => {
@@ -34,12 +32,8 @@ describe.skipIf(!hasOpenRouterKey)('Interactive Mode E2E tests', () => {
       },
     };
 
-    const openrouter = createOpenRouter({
-      apiKey: process.env.OPENROUTER_API_KEY || '',
-    });
-
     const result = streamText({
-      model: openrouter.chat(process.env.MODEL || 'qwen/qwen3-coder:free'),
+      model: getTestModel(),
       messages: [
         {
           role: 'user',
@@ -77,12 +71,8 @@ describe.skipIf(!hasOpenRouterKey)('Interactive Mode E2E tests', () => {
       },
     };
 
-    const openrouter = createOpenRouter({
-      apiKey: process.env.OPENROUTER_API_KEY || '',
-    });
-
     const result = streamText({
-      model: openrouter.chat(process.env.MODEL || 'qwen/qwen3-coder:free'),
+      model: getTestModel(),
       messages: [
         {
           role: 'user',

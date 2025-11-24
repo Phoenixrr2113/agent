@@ -1,11 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { streamText } from 'ai';
-import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { createStdioMCPClient } from '../../src/mcp-client.js';
 import { mapMcpToolsToAiTools } from '../../src/tools.js';
 import { createCodebaseRAG } from '../../src/rag.js';
 import { grepWorkspace } from '../../src/grep.js';
 import { setupTestWorkspace, teardownTestWorkspace } from '../helpers/test-utils.js';
+import { getTestModel, hasModelProvider } from '../helpers/test-model.js';
 import { z } from 'zod';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -13,10 +13,9 @@ import { fileURLToPath } from 'url';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const hasOpenRouterKey = !!process.env.OPENROUTER_API_KEY;
 const hasGoogleAIKey = !!process.env.GOOGLE_GENERATIVE_AI_API_KEY;
 
-describe.skipIf(!hasOpenRouterKey || !hasGoogleAIKey)('Agent E2E tests', () => {
+describe.skipIf(!hasModelProvider() || !hasGoogleAIKey)('Agent E2E tests', () => {
   let workspace: string;
   let mcpClient: ReturnType<typeof createStdioMCPClient>;
 
@@ -131,12 +130,8 @@ describe.skipIf(!hasOpenRouterKey || !hasGoogleAIKey)('Agent E2E tests', () => {
 
     const tools = { ...aiMcpTools, ...codebaseTools };
 
-    const openrouter = createOpenRouter({
-      apiKey: process.env.OPENROUTER_API_KEY || '',
-    });
-
     const result = streamText({
-      model: openrouter.chat(process.env.MODEL || 'qwen/qwen3-coder:free'),
+      model: getTestModel(),
       messages: [
         {
           role: 'user',
