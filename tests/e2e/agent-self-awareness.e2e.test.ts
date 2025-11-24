@@ -48,7 +48,7 @@ describe.skipIf(!hasModelProvider() || !hasGoogleAIKey)('Agent Self-Awareness E2
     });
 
 
-    const toolCalls = result.messages.filter(
+    const toolCalls = result.response.messages.filter(
       (m: any) => m.role === 'assistant' && m.toolInvocations
     );
 
@@ -88,7 +88,7 @@ describe.skipIf(!hasModelProvider() || !hasGoogleAIKey)('Agent Self-Awareness E2
     });
 
 
-    const grepCalls = result.messages
+    const grepCalls = result.response.messages
       .filter((m: any) => m.role === 'assistant' && m.toolInvocations)
       .flatMap((m: any) =>
         m.toolInvocations.filter((t: any) => t.toolName === 'grep_codebase')
@@ -157,7 +157,7 @@ describe.skipIf(!hasModelProvider() || !hasGoogleAIKey)('Agent Self-Awareness E2
     });
 
 
-    const hasListTools = result.messages.some(
+    const hasListTools = result.response.messages.some(
       (m: any) =>
         m.role === 'assistant' &&
         m.toolInvocations?.some((t: any) => t.toolName === 'list_my_tools')

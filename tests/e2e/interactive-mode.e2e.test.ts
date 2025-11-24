@@ -45,8 +45,8 @@ describe.skipIf(!hasModelProvider())('Interactive Mode E2E tests', () => {
     });
 
 
-    expect(result.messages).toBeDefined();
-    const toolCalls = result.messages.filter(
+    expect(result.response.messages).toBeDefined();
+    const toolCalls = result.response.messages.filter(
       (m: any) => m.role === 'assistant' && m.toolInvocations
     );
     expect(toolCalls.length).toBeGreaterThan(0);
@@ -129,8 +129,8 @@ describe.skipIf(!hasModelProvider())('Interactive Mode E2E tests', () => {
     });
 
 
-    expect(result.steps).toBeLessThan(10);
-    const hasTaskComplete = result.messages.some(
+    expect(result.steps.length).toBeLessThan(10);
+    const hasTaskComplete = result.response.messages.some(
       (m: any) => m.role === 'assistant' &&
         m.toolInvocations?.some((t: any) => t.toolName === 'task_complete')
     );
@@ -163,7 +163,7 @@ describe.skipIf(!hasModelProvider())('Interactive Mode E2E tests', () => {
       maxSteps: 3,
     });
 
-    conversationHistory.push(...result1.messages);
+    conversationHistory.push(...result1.response.messages);
 
     conversationHistory.push({
       role: 'user',
@@ -178,7 +178,7 @@ describe.skipIf(!hasModelProvider())('Interactive Mode E2E tests', () => {
     });
 
     expect(conversationHistory.length).toBeGreaterThan(2);
-    const finalText = result2.messages
+    const finalText = result2.response.messages
       .filter((m: any) => m.role === 'assistant')
       .map((m: any) => m.content)
       .join(' ')

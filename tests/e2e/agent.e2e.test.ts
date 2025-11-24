@@ -143,7 +143,7 @@ describe.skipIf(!hasModelProvider() || !hasGoogleAIKey)('Agent E2E tests', () =>
     });
 
     expect(result).toBeDefined();
-    expect(result.messages).toBeDefined();
+    expect(result.response.messages).toBeDefined();
   });
 
   it('should handle multiple tool calls in sequence', async () => {

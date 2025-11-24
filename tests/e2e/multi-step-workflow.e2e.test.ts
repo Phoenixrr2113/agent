@@ -71,9 +71,9 @@ describe.skipIf(!hasModelProvider() || !hasGoogleAIKey)('Multi-Step Workflow E2E
     });
 
 
-    expect(result.messages).toBeDefined();
+    expect(result.response.messages).toBeDefined();
 
-    const toolNames = result.messages
+    const toolNames = result.response.messages
       .filter((m: any) => m.role === 'assistant' && m.toolInvocations)
       .flatMap((m: any) => m.toolInvocations.map((t: any) => t.toolName));
 
@@ -100,7 +100,7 @@ describe.skipIf(!hasModelProvider() || !hasGoogleAIKey)('Multi-Step Workflow E2E
     });
 
 
-    const toolNames = result.messages
+    const toolNames = result.response.messages
       .filter((m: any) => m.role === 'assistant' && m.toolInvocations)
       .flatMap((m: any) => m.toolInvocations.map((t: any) => t.toolName));
 
@@ -146,7 +146,7 @@ describe.skipIf(!hasModelProvider() || !hasGoogleAIKey)('Multi-Step Workflow E2E
     });
 
 
-    const toolNames = result.messages
+    const toolNames = result.response.messages
       .filter((m: any) => m.role === 'assistant' && m.toolInvocations)
       .flatMap((m: any) => m.toolInvocations.map((t: any) => t.toolName));
 
@@ -241,6 +241,6 @@ describe.skipIf(!hasModelProvider() || !hasGoogleAIKey)('Multi-Step Workflow E2E
     });
 
 
-    expect(result.messages).toBeDefined();
+    expect(result.response.messages).toBeDefined();
   });
 });

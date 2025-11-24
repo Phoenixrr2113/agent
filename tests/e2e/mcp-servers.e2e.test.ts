@@ -140,7 +140,7 @@ describe.skipIf(!hasModelProvider())('Real MCP Servers E2E tests', () => {
     });
 
 
-    const toolNames = result.messages
+    const toolNames = result.response.messages
       .filter((m: any) => m.role === 'assistant' && m.toolInvocations)
       .flatMap((m: any) => m.toolInvocations.map((t: any) => t.toolName));
 
