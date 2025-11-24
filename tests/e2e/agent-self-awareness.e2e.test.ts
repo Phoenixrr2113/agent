@@ -1,15 +1,15 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { streamText } from 'ai';
-import { createOpenRouter } from '@openrouter/ai-sdk-provider';
+import { generateText } from 'ai';
+import { generateTextWithLogging } from '../helpers/test-model.js';
 import { createCodebaseRAG } from '../../src/rag.js';
 import { grepWorkspace } from '../../src/grep.js';
+import { getTestModel, hasModelProvider } from '../helpers/test-model.js';
 import { z } from 'zod';
 import path from 'path';
 
-const hasOpenRouterKey = !!process.env.OPENROUTER_API_KEY;
 const hasGoogleAIKey = !!process.env.GOOGLE_GENERATIVE_AI_API_KEY;
 
-describe.skipIf(!hasOpenRouterKey || !hasGoogleAIKey)('Agent Self-Awareness E2E tests', () => {
+describe.skipIf(!hasModelProvider() || !hasGoogleAIKey)('Agent Self-Awareness E2E tests', () => {
   const projectRoot = path.join(process.cwd());
 
   it('should use search_codebase to understand its own implementation', async () => {
@@ -36,12 +36,8 @@ describe.skipIf(!hasOpenRouterKey || !hasGoogleAIKey)('Agent Self-Awareness E2E 
       },
     };
 
-    const openrouter = createOpenRouter({
-      apiKey: process.env.OPENROUTER_API_KEY || '',
-    });
-
-    const result = streamText({
-      model: openrouter.chat(process.env.MODEL || 'qwen/qwen3-coder:free'),
+    const result = await generateTextWithLogging({
+      model: getTestModel(),
       messages: [
         {
           role: 'user',
@@ -52,9 +48,8 @@ describe.skipIf(!hasOpenRouterKey || !hasGoogleAIKey)('Agent Self-Awareness E2E 
       maxSteps: 5,
     });
 
-    const response = await result.response;
 
-    const toolCalls = response.messages.filter(
+    const toolCalls = result.response.messages.filter(
       (m: any) => m.role === 'assistant' && m.toolInvocations
     );
 
@@ -81,12 +76,8 @@ describe.skipIf(!hasOpenRouterKey || !hasGoogleAIKey)('Agent Self-Awareness E2E 
       },
     };
 
-    const openrouter = createOpenRouter({
-      apiKey: process.env.OPENROUTER_API_KEY || '',
-    });
-
-    const result = streamText({
-      model: openrouter.chat(process.env.MODEL || 'qwen/qwen3-coder:free'),
+    const result = await generateTextWithLogging({
+      model: getTestModel(),
       messages: [
         {
           role: 'user',
@@ -97,9 +88,8 @@ describe.skipIf(!hasOpenRouterKey || !hasGoogleAIKey)('Agent Self-Awareness E2E 
       maxSteps: 5,
     });
 
-    const response = await result.response;
 
-    const grepCalls = response.messages
+    const grepCalls = result.response.messages
       .filter((m: any) => m.role === 'assistant' && m.toolInvocations)
       .flatMap((m: any) =>
         m.toolInvocations.filter((t: any) => t.toolName === 'grep_codebase')
@@ -155,12 +145,8 @@ describe.skipIf(!hasOpenRouterKey || !hasGoogleAIKey)('Agent Self-Awareness E2E 
       },
     };
 
-    const openrouter = createOpenRouter({
-      apiKey: process.env.OPENROUTER_API_KEY || '',
-    });
-
-    const result = streamText({
-      model: openrouter.chat(process.env.MODEL || 'qwen/qwen3-coder:free'),
+    const result = await generateTextWithLogging({
+      model: getTestModel(),
       messages: [
         {
           role: 'user',
@@ -171,7 +157,6 @@ describe.skipIf(!hasOpenRouterKey || !hasGoogleAIKey)('Agent Self-Awareness E2E 
       maxSteps: 5,
     });
 
-    await result.response;
 
     const hasListTools = result.response.messages.some(
       (m: any) =>

@@ -7,7 +7,6 @@ import * as readline from 'readline/promises';
 import { stdin as input, stdout as output } from 'process';
 import { createAgentWithRole, models } from './agents.js';
 import { planTool, validationTool } from './agent-tools.js';
-import { systemPrompt } from './prompts.js';
 import { createStdioMCPClient } from './mcp-client.js';
 import { mapMcpToolsToAiTools } from './tools.js';
 import { createCodebaseRAG } from './rag.js';
@@ -191,7 +190,7 @@ function dynamicStopWhen({ steps }: { steps: StepResult<any>[] }): boolean {
   return hasTaskComplete || maxStepsReached;
 }
 
-const prepareStep: PrepareStepFunction<typeof tools> = ({ messages, step }) => {
+const prepareStep: PrepareStepFunction<typeof tools> = ({ messages }) => {
   const MAX_CONTEXT_MESSAGES = 50;
 
   if (messages.length > MAX_CONTEXT_MESSAGES) {
@@ -213,12 +212,12 @@ const agent = createAgentWithRole('generic', tools, {
   modelType: 'standard',
   stopWhen: dynamicStopWhen,
   prepareStep,
-  onStepFinish: async (stepResult) => {
+  onStepFinish: async (stepResult: StepResult<typeof tools>) => {
     stepCount++;
     console.log(`\n📈 Step ${stepCount} finished`);
 
     if (stepResult.toolCalls && stepResult.toolCalls.length > 0) {
-      const toolNames = stepResult.toolCalls.map(tc => tc.toolName);
+      const toolNames = stepResult.toolCalls.map((tc) => tc.toolName);
       console.log(`📊 Tools used: ${[...new Set(toolNames)].join(', ')}`);
     }
   },
@@ -253,6 +252,8 @@ process.on('SIGINT', () => {
 });
 
 if (RUN_MODE === 'loop') {
+  await fs.mkdir('./logs', { recursive: true });
+
   console.log('━'.repeat(60));
   console.log('🤖 Generic Agent Template - Interactive Mode');
   console.log('━'.repeat(60));
@@ -302,22 +303,45 @@ if (RUN_MODE === 'loop') {
       console.log('\n🤖 Agent: ');
 
       try {
-        const result = agent.stream({
+        const result = await agent.generate({
           messages: conversationHistory,
         });
 
-        let fullResponse = '';
-        for await (const chunk of result.textStream) {
-          process.stdout.write(chunk);
-          fullResponse += chunk;
-        }
+        console.log(result.text);
+        conversationHistory.push(...result.response.messages);
 
-        const responseData = await result.response;
-        conversationHistory.push(...responseData.messages);
+        // Log readable text output
+        const timestamp = new Date().toISOString();
+        await fs.appendFile('./logs/agent.log', `\n=== ${timestamp} ===\n${result.text}\n`);
+
+        // Log detailed structured data
+        const logEntry = {
+          timestamp,
+          text: result.text,
+          reasoningText: result.reasoningText, // For reasoning models like DeepSeek-R1
+          steps: result.steps.map((step: any) => ({
+            text: step.text,
+            toolCalls: step.toolCalls?.map((tc: any) => ({
+              name: tc.toolName,
+              args: tc.args,
+            })),
+            toolResults: step.toolResults?.map((tr: any) => ({
+              name: tr.toolName,
+              result: typeof tr.result === 'string' ? tr.result.substring(0, 200) : tr.result,
+            })),
+            finishReason: step.finishReason,
+          })),
+          usage: {
+            ...result.totalUsage,
+            reasoningTokens: result.usage.reasoningTokens, // Track reasoning token cost
+          },
+        };
+        await fs.appendFile('./logs/iterations.jsonl', JSON.stringify(logEntry, null, 2) + '\n');
 
         console.log('\n');
       } catch (error: any) {
         console.error('\n❌ Error:', error.message);
+        await fs.appendFile('./logs/agent.log', `\n=== ERROR ${new Date().toISOString()} ===\n${error.message}\n${error.stack}\n`);
         console.log('\n');
       }
     }
@@ -331,21 +355,39 @@ if (RUN_MODE === 'loop') {
 } else {
   await fs.mkdir('./logs', { recursive: true });
 
-  const result = agent.stream({
+  const result = await agent.generate({
     prompt: 'You are a generic agent template. Ask the user what kind of agent they want you to become, then start building yourself for that purpose. Begin by assessing your current capabilities.',
   });
 
-  for await (const chunk of result.textStream) {
-    process.stdout.write(chunk);
-    await fs.appendFile('./logs/agent.log', chunk);
-  }
+  console.log(result.text);
 
-  const responseData = await result.response;
+  // Log readable text output
+  const timestamp = new Date().toISOString();
+  await fs.appendFile('./logs/agent.log', `\n=== ${timestamp} ===\n${result.text}\n`);
 
-  await fs.appendFile(
-    './logs/iterations.jsonl',
-    JSON.stringify({ timestamp: Date.now(), messages: responseData.messages }) + '\n'
-  );
+  // Log detailed structured data
+  const logEntry = {
+    timestamp,
+    text: result.text,
+    reasoningText: result.reasoningText, // For reasoning models like DeepSeek-R1
+    steps: result.steps.map((step: any) => ({
+      text: step.text,
+      toolCalls: step.toolCalls?.map((tc: any) => ({
+        name: tc.toolName,
+        args: tc.args,
+      })),
+      toolResults: step.toolResults?.map((tr: any) => ({
+        name: tr.toolName,
+        result: typeof tr.result === 'string' ? tr.result.substring(0, 200) : tr.result,
+      })),
+      finishReason: step.finishReason,
+    })),
+    usage: {
+      ...result.totalUsage,
+      reasoningTokens: result.usage.reasoningTokens, // Track reasoning token cost
+    },
+  };
+  await fs.appendFile('./logs/iterations.jsonl', JSON.stringify(logEntry, null, 2) + '\n');
 
   console.log('\n\nRe-indexing codebase after agent run...');
   await codebaseRAG.indexCodebase();

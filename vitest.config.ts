@@ -14,6 +14,6 @@ export default defineConfig({
       reporter: ['text', 'json', 'html'],
       exclude: ['node_modules/', 'dist/', 'tests/fixtures/', 'tests/helpers/', 'tests/temp/'],
     },
-    testTimeout: 30000,
+    testTimeout: 0, // No timeout - Ollama models can take a while to warm up
   },
 });

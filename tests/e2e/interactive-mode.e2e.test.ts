@@ -1,12 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { streamText } from 'ai';
-import { createOpenRouter } from '@openrouter/ai-sdk-provider';
+import { generateText } from 'ai';
+import { generateTextWithLogging } from '../helpers/test-model.js';
 import { z } from 'zod';
 import { setupTestWorkspace, teardownTestWorkspace } from '../helpers/test-utils.js';
+import { getTestModel, hasModelProvider } from '../helpers/test-model.js';
 
-const hasOpenRouterKey = !!process.env.OPENROUTER_API_KEY;
-
-describe.skipIf(!hasOpenRouterKey)('Interactive Mode E2E tests', () => {
+describe.skipIf(!hasModelProvider())('Interactive Mode E2E tests', () => {
   let workspace: string;
 
   beforeEach(async () => {
@@ -34,13 +33,13 @@ describe.skipIf(!hasOpenRouterKey)('Interactive Mode E2E tests', () => {
       },
     };
 
-    const openrouter = createOpenRouter({
-      apiKey: process.env.OPENROUTER_API_KEY || '',
-    });
-
-    const result = streamText({
-      model: openrouter.chat(process.env.MODEL || 'qwen/qwen3-coder:free'),
+    const result = await generateTextWithLogging({
+      model: getTestModel(),
       messages: [
+        {
+          role: 'system',
+          content: 'You are a helpful assistant. You have access to tools that you MUST use to complete tasks. When you need to ask the user a question, use the ask_user tool.',
+        },
         {
           role: 'user',
           content: 'Ask me if I want to proceed, then ask me my favorite color',
@@ -50,10 +49,9 @@ describe.skipIf(!hasOpenRouterKey)('Interactive Mode E2E tests', () => {
       maxSteps: 5,
     });
 
-    const response = await result.response;
 
-    expect(response.messages).toBeDefined();
-    const toolCalls = response.messages.filter(
+    expect(result.response.messages).toBeDefined();
+    const toolCalls = result.response.messages.filter(
       (m: any) => m.role === 'assistant' && m.toolInvocations
     );
     expect(toolCalls.length).toBeGreaterThan(0);
@@ -77,12 +75,8 @@ describe.skipIf(!hasOpenRouterKey)('Interactive Mode E2E tests', () => {
       },
     };
 
-    const openrouter = createOpenRouter({
-      apiKey: process.env.OPENROUTER_API_KEY || '',
-    });
-
-    const result = streamText({
-      model: openrouter.chat(process.env.MODEL || 'qwen/qwen3-coder:free'),
+    const result = await generateTextWithLogging({
+      model: getTestModel(),
       messages: [
         {
           role: 'user',
@@ -93,7 +87,6 @@ describe.skipIf(!hasOpenRouterKey)('Interactive Mode E2E tests', () => {
       maxSteps: 5,
     });
 
-    await result.response;
 
     expect(taskCompleted).toBe(true);
     expect(completionSummary).toBeTruthy();
@@ -121,10 +114,6 @@ describe.skipIf(!hasOpenRouterKey)('Interactive Mode E2E tests', () => {
       },
     };
 
-    const openrouter = createOpenRouter({
-      apiKey: process.env.OPENROUTER_API_KEY || '',
-    });
-
     function stopWhen(result: any): boolean {
       const hasTaskComplete = result.toolCalls?.some(
         (call: any) => call.toolName === 'task_complete'
@@ -132,8 +121,8 @@ describe.skipIf(!hasOpenRouterKey)('Interactive Mode E2E tests', () => {
       return hasTaskComplete || result.stepCount >= 10;
     }
 
-    const result = streamText({
-      model: openrouter.chat(process.env.MODEL || 'qwen/qwen3-coder:free'),
+    const result = await generateTextWithLogging({
+      model: getTestModel(),
       messages: [
         {
           role: 'user',
@@ -144,10 +133,9 @@ describe.skipIf(!hasOpenRouterKey)('Interactive Mode E2E tests', () => {
       stopWhen,
     });
 
-    const response = await result.response;
 
-    expect(response.steps).toBeLessThan(10);
-    const hasTaskComplete = response.messages.some(
+    expect(result.steps.length).toBeLessThan(10);
+    const hasTaskComplete = result.response.messages.some(
       (m: any) => m.role === 'assistant' &&
         m.toolInvocations?.some((t: any) => t.toolName === 'task_complete')
     );
@@ -168,43 +156,47 @@ describe.skipIf(!hasOpenRouterKey)('Interactive Mode E2E tests', () => {
       },
     };
 
-    const openrouter = createOpenRouter({
-      apiKey: process.env.OPENROUTER_API_KEY || '',
-    });
-
     conversationHistory.push({
       role: 'user',
       content: 'Remember that my name is Alice',
     });
 
-    const result1 = streamText({
-      model: openrouter.chat(process.env.MODEL || 'qwen/qwen3-coder:free'),
+    const result1 = await generateTextWithLogging({
+      model: getTestModel(),
       messages: conversationHistory,
       tools,
       maxSteps: 3,
     });
 
-    const response1 = await result1.response;
-    conversationHistory.push(...response1.messages);
+    conversationHistory.push(...result1.response.messages);
 
     conversationHistory.push({
       role: 'user',
       content: 'What is my name?',
     });
 
-    const result2 = streamText({
-      model: openrouter.chat(process.env.MODEL || 'qwen/qwen3-coder:free'),
+    const result2 = await generateTextWithLogging({
+      model: getTestModel(),
       messages: conversationHistory,
       tools,
       maxSteps: 3,
     });
 
-    const response2 = await result2.response;
-
     expect(conversationHistory.length).toBeGreaterThan(2);
-    const finalText = response2.messages
+    const finalText = result2.response.messages
       .filter((m: any) => m.role === 'assistant')
-      .map((m: any) => m.content)
+      .map((m: any) => {
+        if (typeof m.content === 'string') {
+          return m.content;
+        }
+        if (Array.isArray(m.content)) {
+          return m.content
+            .filter((part: any) => part.type === 'text')
+            .map((part: any) => part.text)
+            .join(' ');
+        }
+        return '';
+      })
       .join(' ')
       .toLowerCase();
 

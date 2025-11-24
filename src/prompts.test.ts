@@ -39,9 +39,9 @@ describe('systemPrompt', () => {
     expect(systemPrompt).toContain('Development Workflow');
     expect(systemPrompt).toContain('Understand the Request');
     expect(systemPrompt).toContain('Research Existing Code');
-    expect(systemPrompt).toContain('Plan the Implementation');
+    expect(systemPrompt).toContain('Create a Plan');
     expect(systemPrompt).toContain('Implement');
-    expect(systemPrompt).toContain('Test');
+    expect(systemPrompt).toContain('Validate');
     expect(systemPrompt).toContain('Commit');
     expect(systemPrompt).toContain('Store Learnings');
   });

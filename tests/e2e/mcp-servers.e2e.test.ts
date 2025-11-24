@@ -1,14 +1,13 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { streamText } from 'ai';
-import { createOpenRouter } from '@openrouter/ai-sdk-provider';
+import { generateText } from 'ai';
+import { generateTextWithLogging } from '../helpers/test-model.js';
 import { createStdioMCPClient } from '../../src/mcp-client.js';
 import { mapMcpToolsToAiTools } from '../../src/tools.js';
 import { setupTestWorkspace, teardownTestWorkspace, writeTestFile } from '../helpers/test-utils.js';
+import { getTestModel, hasModelProvider } from '../helpers/test-model.js';
 import path from 'path';
 
-const hasOpenRouterKey = !!process.env.OPENROUTER_API_KEY;
-
-describe.skipIf(!hasOpenRouterKey)('Real MCP Servers E2E tests', () => {
+describe.skipIf(!hasModelProvider())('Real MCP Servers E2E tests', () => {
   let workspace: string;
   let filesystemClient: ReturnType<typeof createStdioMCPClient>;
   let memoryClient: ReturnType<typeof createStdioMCPClient>;
@@ -127,14 +126,10 @@ describe.skipIf(!hasOpenRouterKey)('Real MCP Servers E2E tests', () => {
 
     expect(Object.keys(allTools).length).toBeGreaterThan(10);
 
-    const openrouter = createOpenRouter({
-      apiKey: process.env.OPENROUTER_API_KEY || '',
-    });
-
     const testFile = path.join(workspace, 'data.json');
 
-    const result = streamText({
-      model: openrouter.chat(process.env.MODEL || 'qwen/qwen3-coder:free'),
+    const result = await generateTextWithLogging({
+      model: getTestModel(),
       messages: [
         {
           role: 'user',
@@ -145,9 +140,8 @@ describe.skipIf(!hasOpenRouterKey)('Real MCP Servers E2E tests', () => {
       maxSteps: 10,
     });
 
-    const response = await result.response;
 
-    const toolNames = response.messages
+    const toolNames = result.response.messages
       .filter((m: any) => m.role === 'assistant' && m.toolInvocations)
       .flatMap((m: any) => m.toolInvocations.map((t: any) => t.toolName));
 
