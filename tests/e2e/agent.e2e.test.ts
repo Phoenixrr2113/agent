@@ -1,10 +1,11 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { streamText } from 'ai';
 import { createStdioMCPClient } from '../../src/mcp-client.js';
 import { mapMcpToolsToAiTools } from '../../src/tools.js';
 import { createCodebaseRAG } from '../../src/rag.js';
 import { grepWorkspace } from '../../src/grep.js';
 import { setupTestWorkspace, teardownTestWorkspace } from '../helpers/test-utils.js';
-import { getTestModel, hasModelProvider, streamTextWithLogging } from '../helpers/test-model.js';
+import { getTestModel, hasModelProvider } from '../helpers/test-model.js';
 import { z } from 'zod';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -129,7 +130,7 @@ describe.skipIf(!hasModelProvider() || !hasGoogleAIKey)('Agent E2E tests', () =>
 
     const tools = { ...aiMcpTools, ...codebaseTools };
 
-    const result = await streamTextWithLogging({
+    const result = await streamText({
       model: getTestModel(),
       messages: [
         {
