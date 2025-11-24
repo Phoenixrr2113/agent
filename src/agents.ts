@@ -1,5 +1,5 @@
 import { Experimental_Agent as Agent, tool } from 'ai';
-import type { LanguageModelV1 } from 'ai';
+import type { LanguageModel } from 'ai';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { createOllama } from 'ollama-ai-provider-v2';
 

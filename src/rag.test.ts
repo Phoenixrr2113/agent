@@ -44,7 +44,9 @@ describe('createCodebaseRAG', () => {
       mockReadFile.mockResolvedValue('function test() {\n  return 42;\n}');
 
       vi.mocked(embedMany).mockResolvedValue({
+        values: ['function test() {\n  return 42;\n}'],
         embeddings: [[0.1, 0.2, 0.3]],
+        usage: { tokens: 10 },
       });
 
       await rag.indexCodebase();
@@ -91,7 +93,9 @@ describe('createCodebaseRAG', () => {
       mockReadFile.mockResolvedValue('code content');
 
       vi.mocked(embedMany).mockResolvedValue({
+        values: ['code content', 'code content', 'code content'],
         embeddings: [[0.1], [0.2], [0.3]],
+        usage: { tokens: 20 },
       });
 
       await rag.indexCodebase();
@@ -112,7 +116,9 @@ describe('createCodebaseRAG', () => {
       mockReadFile.mockResolvedValue('function test() { return 42; }');
 
       vi.mocked(embedMany).mockResolvedValue({
+        values: ['function test() { return 42; }'],
         embeddings: [[0.5, 0.5, 0.5]],
+        usage: { tokens: 10 },
       });
 
       await rag.indexCodebase();
@@ -127,7 +133,9 @@ describe('createCodebaseRAG', () => {
 
     it('should search and return relevant chunks', async () => {
       vi.mocked(embedMany).mockResolvedValueOnce({
+        values: ['test function'],
         embeddings: [[0.5, 0.5, 0.5]],
+        usage: { tokens: 5 },
       });
 
       const results = await rag.searchCodebase('test function', 5);
@@ -150,13 +158,19 @@ describe('createCodebaseRAG', () => {
       mockReadFile.mockResolvedValue(longCode);
 
       const embeddings = Array(3).fill([0.5, 0.5, 0.5]);
-      vi.mocked(embedMany).mockResolvedValue({ embeddings });
+      vi.mocked(embedMany).mockResolvedValue({
+        values: Array(3).fill('chunk'),
+        embeddings,
+        usage: { tokens: 30 },
+      });
 
       const newRag = createCodebaseRAG('/test2', { enableCache: false, chunkingStrategy: 'fixed' });
       await newRag.indexCodebase();
 
       vi.mocked(embedMany).mockResolvedValueOnce({
+        values: ['test'],
         embeddings: [[0.5, 0.5, 0.5]],
+        usage: { tokens: 5 },
       });
 
       const results = await newRag.searchCodebase('test', 2);
@@ -166,7 +180,9 @@ describe('createCodebaseRAG', () => {
 
     it('should filter by similarity threshold', async () => {
       vi.mocked(embedMany).mockResolvedValueOnce({
+        values: ['completely different query'],
         embeddings: [[0.0, 0.0, 0.0]],
+        usage: { tokens: 5 },
       });
 
       const results = await rag.searchCodebase('completely different query', 5, 0.9);
@@ -188,7 +204,9 @@ describe('createCodebaseRAG', () => {
       mockReadFile.mockResolvedValue('const x = 1;');
 
       vi.mocked(embedMany).mockResolvedValue({
+        values: ['const x = 1;', 'const x = 1;'],
         embeddings: [[0.1], [0.2]],
+        usage: { tokens: 10 },
       });
 
       await rag.indexCodebase();
@@ -222,11 +240,13 @@ describe('createCodebaseRAG', () => {
       mockReadFile.mockResolvedValue(largeFile);
 
       vi.mocked(embedMany).mockResolvedValue({
+        values: ['chunk1', 'chunk2', 'chunk3'],
         embeddings: [
           [0.1, 0.2],
           [0.3, 0.4],
           [0.5, 0.6],
         ],
+        usage: { tokens: 30 },
       });
 
       await rag.indexCodebase();

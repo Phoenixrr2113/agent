@@ -191,7 +191,7 @@ function dynamicStopWhen({ steps }: { steps: StepResult<any>[] }): boolean {
   return hasTaskComplete || maxStepsReached;
 }
 
-const prepareStep: PrepareStepFunction<typeof tools> = ({ messages, step }) => {
+const prepareStep: PrepareStepFunction<typeof tools> = ({ messages }) => {
   const MAX_CONTEXT_MESSAGES = 50;
 
   if (messages.length > MAX_CONTEXT_MESSAGES) {
@@ -213,12 +213,12 @@ const agent = createAgentWithRole('generic', tools, {
   modelType: 'standard',
   stopWhen: dynamicStopWhen,
   prepareStep,
-  onStepFinish: async (stepResult) => {
+  onStepFinish: async (stepResult: StepResult<typeof tools>) => {
     stepCount++;
     console.log(`\n📈 Step ${stepCount} finished`);
 
     if (stepResult.toolCalls && stepResult.toolCalls.length > 0) {
-      const toolNames = stepResult.toolCalls.map(tc => tc.toolName);
+      const toolNames = stepResult.toolCalls.map((tc) => tc.toolName);
       console.log(`📊 Tools used: ${[...new Set(toolNames)].join(', ')}`);
     }
   },
