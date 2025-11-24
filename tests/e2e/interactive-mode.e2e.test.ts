@@ -111,10 +111,6 @@ describe.skipIf(!hasModelProvider())('Interactive Mode E2E tests', () => {
       },
     };
 
-    const openrouter = createOpenRouter({
-      apiKey: process.env.OPENROUTER_API_KEY || '',
-    });
-
     function stopWhen(result: any): boolean {
       const hasTaskComplete = result.toolCalls?.some(
         (call: any) => call.toolName === 'task_complete'
@@ -123,7 +119,7 @@ describe.skipIf(!hasModelProvider())('Interactive Mode E2E tests', () => {
     }
 
     const result = streamText({
-      model: openrouter.chat(process.env.MODEL || 'qwen/qwen3-coder:free'),
+      model: getTestModel(),
       messages: [
         {
           role: 'user',
@@ -158,17 +154,13 @@ describe.skipIf(!hasModelProvider())('Interactive Mode E2E tests', () => {
       },
     };
 
-    const openrouter = createOpenRouter({
-      apiKey: process.env.OPENROUTER_API_KEY || '',
-    });
-
     conversationHistory.push({
       role: 'user',
       content: 'Remember that my name is Alice',
     });
 
     const result1 = streamText({
-      model: openrouter.chat(process.env.MODEL || 'qwen/qwen3-coder:free'),
+      model: getTestModel(),
       messages: conversationHistory,
       tools,
       maxSteps: 3,
@@ -183,7 +175,7 @@ describe.skipIf(!hasModelProvider())('Interactive Mode E2E tests', () => {
     });
 
     const result2 = streamText({
-      model: openrouter.chat(process.env.MODEL || 'qwen/qwen3-coder:free'),
+      model: getTestModel(),
       messages: conversationHistory,
       tools,
       maxSteps: 3,

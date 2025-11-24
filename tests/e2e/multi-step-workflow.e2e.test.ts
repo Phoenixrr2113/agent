@@ -86,14 +86,10 @@ describe.skipIf(!hasModelProvider() || !hasGoogleAIKey)('Multi-Step Workflow E2E
     const fsMcpTools = await filesystemClient.listTools();
     const fsTools = mapMcpToolsToAiTools(fsMcpTools, filesystemClient);
 
-    const openrouter = createOpenRouter({
-      apiKey: process.env.OPENROUTER_API_KEY || '',
-    });
-
     const testFilePath = `${workspace}/test-output.txt`;
 
     const result = streamText({
-      model: openrouter.chat(process.env.MODEL || 'qwen/qwen3-coder:free'),
+      model: getTestModel(),
       messages: [
         {
           role: 'user',
