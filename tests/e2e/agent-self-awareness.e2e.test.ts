@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { streamText } from 'ai';
+import { generateText } from 'ai';
 import { createCodebaseRAG } from '../../src/rag.js';
 import { grepWorkspace } from '../../src/grep.js';
 import { getTestModel, hasModelProvider } from '../helpers/test-model.js';
@@ -35,7 +35,7 @@ describe.skipIf(!hasModelProvider() || !hasGoogleAIKey)('Agent Self-Awareness E2
       },
     };
 
-    const result = streamText({
+    const result = await generateText({
       model: getTestModel(),
       messages: [
         {
@@ -47,9 +47,8 @@ describe.skipIf(!hasModelProvider() || !hasGoogleAIKey)('Agent Self-Awareness E2
       maxSteps: 5,
     });
 
-    const response = await result.response;
 
-    const toolCalls = response.messages.filter(
+    const toolCalls = result.messages.filter(
       (m: any) => m.role === 'assistant' && m.toolInvocations
     );
 
@@ -76,7 +75,7 @@ describe.skipIf(!hasModelProvider() || !hasGoogleAIKey)('Agent Self-Awareness E2
       },
     };
 
-    const result = streamText({
+    const result = await generateText({
       model: getTestModel(),
       messages: [
         {
@@ -88,9 +87,8 @@ describe.skipIf(!hasModelProvider() || !hasGoogleAIKey)('Agent Self-Awareness E2
       maxSteps: 5,
     });
 
-    const response = await result.response;
 
-    const grepCalls = response.messages
+    const grepCalls = result.messages
       .filter((m: any) => m.role === 'assistant' && m.toolInvocations)
       .flatMap((m: any) =>
         m.toolInvocations.filter((t: any) => t.toolName === 'grep_codebase')
@@ -146,7 +144,7 @@ describe.skipIf(!hasModelProvider() || !hasGoogleAIKey)('Agent Self-Awareness E2
       },
     };
 
-    const result = streamText({
+    const result = await generateText({
       model: getTestModel(),
       messages: [
         {
@@ -158,9 +156,8 @@ describe.skipIf(!hasModelProvider() || !hasGoogleAIKey)('Agent Self-Awareness E2
       maxSteps: 5,
     });
 
-    await result.response;
 
-    const hasListTools = result.response.messages.some(
+    const hasListTools = result.messages.some(
       (m: any) =>
         m.role === 'assistant' &&
         m.toolInvocations?.some((t: any) => t.toolName === 'list_my_tools')

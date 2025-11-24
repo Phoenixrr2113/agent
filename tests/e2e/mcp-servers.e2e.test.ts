@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { streamText } from 'ai';
+import { generateText } from 'ai';
 import { createStdioMCPClient } from '../../src/mcp-client.js';
 import { mapMcpToolsToAiTools } from '../../src/tools.js';
 import { setupTestWorkspace, teardownTestWorkspace, writeTestFile } from '../helpers/test-utils.js';
@@ -127,7 +127,7 @@ describe.skipIf(!hasModelProvider())('Real MCP Servers E2E tests', () => {
 
     const testFile = path.join(workspace, 'data.json');
 
-    const result = streamText({
+    const result = await generateText({
       model: getTestModel(),
       messages: [
         {
@@ -139,9 +139,8 @@ describe.skipIf(!hasModelProvider())('Real MCP Servers E2E tests', () => {
       maxSteps: 10,
     });
 
-    const response = await result.response;
 
-    const toolNames = response.messages
+    const toolNames = result.messages
       .filter((m: any) => m.role === 'assistant' && m.toolInvocations)
       .flatMap((m: any) => m.toolInvocations.map((t: any) => t.toolName));
 

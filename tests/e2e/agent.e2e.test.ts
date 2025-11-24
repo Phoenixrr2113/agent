@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { streamText } from 'ai';
+import { generateText } from 'ai';
 import { createStdioMCPClient } from '../../src/mcp-client.js';
 import { mapMcpToolsToAiTools } from '../../src/tools.js';
 import { createCodebaseRAG } from '../../src/rag.js';
@@ -130,7 +130,7 @@ describe.skipIf(!hasModelProvider() || !hasGoogleAIKey)('Agent E2E tests', () =>
 
     const tools = { ...aiMcpTools, ...codebaseTools };
 
-    const result = await streamText({
+    const result = await generateText({
       model: getTestModel(),
       messages: [
         {
@@ -142,9 +142,8 @@ describe.skipIf(!hasModelProvider() || !hasGoogleAIKey)('Agent E2E tests', () =>
       maxSteps: 3,
     });
 
-    const response = await result.response;
-    expect(response).toBeDefined();
-    expect(response.messages).toBeDefined();
+    expect(result).toBeDefined();
+    expect(result.messages).toBeDefined();
   });
 
   it('should handle multiple tool calls in sequence', async () => {

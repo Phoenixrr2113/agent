@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { streamText } from 'ai';
+import { generateText } from 'ai';
 import { createStdioMCPClient } from '../../src/mcp-client.js';
 import { mapMcpToolsToAiTools } from '../../src/tools.js';
 import { createCodebaseRAG } from '../../src/rag.js';
@@ -58,7 +58,7 @@ describe.skipIf(!hasModelProvider() || !hasGoogleAIKey)('Multi-Step Workflow E2E
 
     const tools = { ...fsTools, ...codebaseTools };
 
-    const result = streamText({
+    const result = await generateText({
       model: getTestModel(),
       messages: [
         {
@@ -70,11 +70,10 @@ describe.skipIf(!hasModelProvider() || !hasGoogleAIKey)('Multi-Step Workflow E2E
       maxSteps: 5,
     });
 
-    const response = await result.response;
 
-    expect(response.messages).toBeDefined();
+    expect(result.messages).toBeDefined();
 
-    const toolNames = response.messages
+    const toolNames = result.messages
       .filter((m: any) => m.role === 'assistant' && m.toolInvocations)
       .flatMap((m: any) => m.toolInvocations.map((t: any) => t.toolName));
 
@@ -88,7 +87,7 @@ describe.skipIf(!hasModelProvider() || !hasGoogleAIKey)('Multi-Step Workflow E2E
 
     const testFilePath = `${workspace}/test-output.txt`;
 
-    const result = streamText({
+    const result = await generateText({
       model: getTestModel(),
       messages: [
         {
@@ -100,9 +99,8 @@ describe.skipIf(!hasModelProvider() || !hasGoogleAIKey)('Multi-Step Workflow E2E
       maxSteps: 5,
     });
 
-    const response = await result.response;
 
-    const toolNames = response.messages
+    const toolNames = result.messages
       .filter((m: any) => m.role === 'assistant' && m.toolInvocations)
       .flatMap((m: any) => m.toolInvocations.map((t: any) => t.toolName));
 
@@ -135,7 +133,7 @@ describe.skipIf(!hasModelProvider() || !hasGoogleAIKey)('Multi-Step Workflow E2E
 
     const tools = { ...fsTools, ...codebaseTools };
 
-    const result = streamText({
+    const result = await generateText({
       model: getTestModel(),
       messages: [
         {
@@ -147,9 +145,8 @@ describe.skipIf(!hasModelProvider() || !hasGoogleAIKey)('Multi-Step Workflow E2E
       maxSteps: 5,
     });
 
-    const response = await result.response;
 
-    const toolNames = response.messages
+    const toolNames = result.messages
       .filter((m: any) => m.role === 'assistant' && m.toolInvocations)
       .flatMap((m: any) => m.toolInvocations.map((t: any) => t.toolName));
 
@@ -191,7 +188,7 @@ describe.skipIf(!hasModelProvider() || !hasGoogleAIKey)('Multi-Step Workflow E2E
       },
     };
 
-    const result = streamText({
+    const result = await generateText({
       model: getTestModel(),
       messages: [
         {
@@ -203,7 +200,6 @@ describe.skipIf(!hasModelProvider() || !hasGoogleAIKey)('Multi-Step Workflow E2E
       maxSteps: 10,
     });
 
-    await result.response;
 
     expect(executionOrder.length).toBeGreaterThan(0);
     expect(executionOrder[0]).toBe('step1');
@@ -232,7 +228,7 @@ describe.skipIf(!hasModelProvider() || !hasGoogleAIKey)('Multi-Step Workflow E2E
       },
     };
 
-    const result = streamText({
+    const result = await generateText({
       model: getTestModel(),
       messages: [
         {
@@ -244,8 +240,7 @@ describe.skipIf(!hasModelProvider() || !hasGoogleAIKey)('Multi-Step Workflow E2E
       maxSteps: 10,
     });
 
-    const response = await result.response;
 
-    expect(response.messages).toBeDefined();
+    expect(result.messages).toBeDefined();
   });
 });

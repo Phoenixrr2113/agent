@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { streamText } from 'ai';
+import { generateText } from 'ai';
 import { z } from 'zod';
 import { setupTestWorkspace, teardownTestWorkspace } from '../helpers/test-utils.js';
 import { getTestModel, hasModelProvider } from '../helpers/test-model.js';
@@ -32,7 +32,7 @@ describe.skipIf(!hasModelProvider())('Interactive Mode E2E tests', () => {
       },
     };
 
-    const result = streamText({
+    const result = await generateText({
       model: getTestModel(),
       messages: [
         {
@@ -44,10 +44,9 @@ describe.skipIf(!hasModelProvider())('Interactive Mode E2E tests', () => {
       maxSteps: 5,
     });
 
-    const response = await result.response;
 
-    expect(response.messages).toBeDefined();
-    const toolCalls = response.messages.filter(
+    expect(result.messages).toBeDefined();
+    const toolCalls = result.messages.filter(
       (m: any) => m.role === 'assistant' && m.toolInvocations
     );
     expect(toolCalls.length).toBeGreaterThan(0);
@@ -71,7 +70,7 @@ describe.skipIf(!hasModelProvider())('Interactive Mode E2E tests', () => {
       },
     };
 
-    const result = streamText({
+    const result = await generateText({
       model: getTestModel(),
       messages: [
         {
@@ -83,7 +82,6 @@ describe.skipIf(!hasModelProvider())('Interactive Mode E2E tests', () => {
       maxSteps: 5,
     });
 
-    await result.response;
 
     expect(taskCompleted).toBe(true);
     expect(completionSummary).toBeTruthy();
@@ -118,7 +116,7 @@ describe.skipIf(!hasModelProvider())('Interactive Mode E2E tests', () => {
       return hasTaskComplete || result.stepCount >= 10;
     }
 
-    const result = streamText({
+    const result = await generateText({
       model: getTestModel(),
       messages: [
         {
@@ -130,10 +128,9 @@ describe.skipIf(!hasModelProvider())('Interactive Mode E2E tests', () => {
       stopWhen,
     });
 
-    const response = await result.response;
 
-    expect(response.steps).toBeLessThan(10);
-    const hasTaskComplete = response.messages.some(
+    expect(result.steps).toBeLessThan(10);
+    const hasTaskComplete = result.messages.some(
       (m: any) => m.role === 'assistant' &&
         m.toolInvocations?.some((t: any) => t.toolName === 'task_complete')
     );
@@ -159,32 +156,29 @@ describe.skipIf(!hasModelProvider())('Interactive Mode E2E tests', () => {
       content: 'Remember that my name is Alice',
     });
 
-    const result1 = streamText({
+    const result1 = await generateText({
       model: getTestModel(),
       messages: conversationHistory,
       tools,
       maxSteps: 3,
     });
 
-    const response1 = await result1.response;
-    conversationHistory.push(...response1.messages);
+    conversationHistory.push(...result1.messages);
 
     conversationHistory.push({
       role: 'user',
       content: 'What is my name?',
     });
 
-    const result2 = streamText({
+    const result2 = await generateText({
       model: getTestModel(),
       messages: conversationHistory,
       tools,
       maxSteps: 3,
     });
 
-    const response2 = await result2.response;
-
     expect(conversationHistory.length).toBeGreaterThan(2);
-    const finalText = response2.messages
+    const finalText = result2.messages
       .filter((m: any) => m.role === 'assistant')
       .map((m: any) => m.content)
       .join(' ')
