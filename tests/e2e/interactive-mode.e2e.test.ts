@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { generateText } from 'ai';
+import { generateTextWithLogging } from '../helpers/test-model.js';
 import { z } from 'zod';
 import { setupTestWorkspace, teardownTestWorkspace } from '../helpers/test-utils.js';
 import { getTestModel, hasModelProvider } from '../helpers/test-model.js';
@@ -32,7 +33,7 @@ describe.skipIf(!hasModelProvider())('Interactive Mode E2E tests', () => {
       },
     };
 
-    const result = await generateText({
+    const result = await generateTextWithLogging({
       model: getTestModel(),
       messages: [
         {
@@ -70,7 +71,7 @@ describe.skipIf(!hasModelProvider())('Interactive Mode E2E tests', () => {
       },
     };
 
-    const result = await generateText({
+    const result = await generateTextWithLogging({
       model: getTestModel(),
       messages: [
         {
@@ -116,7 +117,7 @@ describe.skipIf(!hasModelProvider())('Interactive Mode E2E tests', () => {
       return hasTaskComplete || result.stepCount >= 10;
     }
 
-    const result = await generateText({
+    const result = await generateTextWithLogging({
       model: getTestModel(),
       messages: [
         {
@@ -156,7 +157,7 @@ describe.skipIf(!hasModelProvider())('Interactive Mode E2E tests', () => {
       content: 'Remember that my name is Alice',
     });
 
-    const result1 = await generateText({
+    const result1 = await generateTextWithLogging({
       model: getTestModel(),
       messages: conversationHistory,
       tools,
@@ -170,7 +171,7 @@ describe.skipIf(!hasModelProvider())('Interactive Mode E2E tests', () => {
       content: 'What is my name?',
     });
 
-    const result2 = await generateText({
+    const result2 = await generateTextWithLogging({
       model: getTestModel(),
       messages: conversationHistory,
       tools,

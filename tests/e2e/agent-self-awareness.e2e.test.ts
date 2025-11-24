@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { generateText } from 'ai';
+import { generateTextWithLogging } from '../helpers/test-model.js';
 import { createCodebaseRAG } from '../../src/rag.js';
 import { grepWorkspace } from '../../src/grep.js';
 import { getTestModel, hasModelProvider } from '../helpers/test-model.js';
@@ -35,7 +36,7 @@ describe.skipIf(!hasModelProvider() || !hasGoogleAIKey)('Agent Self-Awareness E2
       },
     };
 
-    const result = await generateText({
+    const result = await generateTextWithLogging({
       model: getTestModel(),
       messages: [
         {
@@ -75,7 +76,7 @@ describe.skipIf(!hasModelProvider() || !hasGoogleAIKey)('Agent Self-Awareness E2
       },
     };
 
-    const result = await generateText({
+    const result = await generateTextWithLogging({
       model: getTestModel(),
       messages: [
         {
@@ -144,7 +145,7 @@ describe.skipIf(!hasModelProvider() || !hasGoogleAIKey)('Agent Self-Awareness E2
       },
     };
 
-    const result = await generateText({
+    const result = await generateTextWithLogging({
       model: getTestModel(),
       messages: [
         {

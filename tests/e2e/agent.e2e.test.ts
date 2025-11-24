@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { generateText } from 'ai';
+import { generateTextWithLogging } from '../helpers/test-model.js';
 import { createStdioMCPClient } from '../../src/mcp-client.js';
 import { mapMcpToolsToAiTools } from '../../src/tools.js';
 import { createCodebaseRAG } from '../../src/rag.js';
@@ -130,7 +131,7 @@ describe.skipIf(!hasModelProvider() || !hasGoogleAIKey)('Agent E2E tests', () =>
 
     const tools = { ...aiMcpTools, ...codebaseTools };
 
-    const result = await generateText({
+    const result = await generateTextWithLogging({
       model: getTestModel(),
       messages: [
         {

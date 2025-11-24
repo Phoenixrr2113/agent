@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { generateText } from 'ai';
+import { generateTextWithLogging } from '../helpers/test-model.js';
 import { createStdioMCPClient } from '../../src/mcp-client.js';
 import { mapMcpToolsToAiTools } from '../../src/tools.js';
 import { createCodebaseRAG } from '../../src/rag.js';
@@ -58,7 +59,7 @@ describe.skipIf(!hasModelProvider() || !hasGoogleAIKey)('Multi-Step Workflow E2E
 
     const tools = { ...fsTools, ...codebaseTools };
 
-    const result = await generateText({
+    const result = await generateTextWithLogging({
       model: getTestModel(),
       messages: [
         {
@@ -87,7 +88,7 @@ describe.skipIf(!hasModelProvider() || !hasGoogleAIKey)('Multi-Step Workflow E2E
 
     const testFilePath = `${workspace}/test-output.txt`;
 
-    const result = await generateText({
+    const result = await generateTextWithLogging({
       model: getTestModel(),
       messages: [
         {
@@ -133,7 +134,7 @@ describe.skipIf(!hasModelProvider() || !hasGoogleAIKey)('Multi-Step Workflow E2E
 
     const tools = { ...fsTools, ...codebaseTools };
 
-    const result = await generateText({
+    const result = await generateTextWithLogging({
       model: getTestModel(),
       messages: [
         {
@@ -188,7 +189,7 @@ describe.skipIf(!hasModelProvider() || !hasGoogleAIKey)('Multi-Step Workflow E2E
       },
     };
 
-    const result = await generateText({
+    const result = await generateTextWithLogging({
       model: getTestModel(),
       messages: [
         {
@@ -228,7 +229,7 @@ describe.skipIf(!hasModelProvider() || !hasGoogleAIKey)('Multi-Step Workflow E2E
       },
     };
 
-    const result = await generateText({
+    const result = await generateTextWithLogging({
       model: getTestModel(),
       messages: [
         {

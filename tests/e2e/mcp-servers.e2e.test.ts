@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { generateText } from 'ai';
+import { generateTextWithLogging } from '../helpers/test-model.js';
 import { createStdioMCPClient } from '../../src/mcp-client.js';
 import { mapMcpToolsToAiTools } from '../../src/tools.js';
 import { setupTestWorkspace, teardownTestWorkspace, writeTestFile } from '../helpers/test-utils.js';
@@ -127,7 +128,7 @@ describe.skipIf(!hasModelProvider())('Real MCP Servers E2E tests', () => {
 
     const testFile = path.join(workspace, 'data.json');
 
-    const result = await generateText({
+    const result = await generateTextWithLogging({
       model: getTestModel(),
       messages: [
         {
