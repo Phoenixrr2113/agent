@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { EventEmitter } from 'events';
-import { createStdioMCPClient } from './mcp-client.js';
+import { createStdioMCPClient } from './infrastructure/mcp/client.js';
 
 const mockSpawn = vi.fn();
 

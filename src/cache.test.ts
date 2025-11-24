@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { createFileCache, computeHash } from './cache.js';
+import { createFileCache, computeHash } from './core/rag/cache.js';
 import fs from 'fs/promises';
 import path from 'path';
 import { fileURLToPath } from 'url';

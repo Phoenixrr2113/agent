@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { createStdioMCPClient } from '../../src/mcp-client.js';
+import { createStdioMCPClient } from '../../src/infrastructure/mcp/client.js';
 import path from 'path';
 import { fileURLToPath } from 'url';
 

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { grepWorkspace } from './grep.js';
+import { grepWorkspace } from './core/search/grep.js';
 import fs from 'fs/promises';
 
 vi.mock('fs/promises');

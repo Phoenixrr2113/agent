@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { generateText } from 'ai';
 import { generateTextWithLogging } from '../helpers/test-model.js';
-import { createStdioMCPClient } from '../../src/mcp-client.js';
-import { mapMcpToolsToAiTools } from '../../src/tools.js';
+import { createStdioMCPClient } from '../../src/infrastructure/mcp/client.js';
+import { mapMcpToolsToAiTools } from '../../src/infrastructure/mcp/adapter.js';
 import { setupTestWorkspace, teardownTestWorkspace, writeTestFile } from '../helpers/test-utils.js';
 import { getTestModel, hasModelProvider } from '../helpers/test-model.js';
 import path from 'path';

@@ -1,6 +1,6 @@
 import { tool } from 'ai';
 import { z } from 'zod';
-import type { MCPClient } from './mcp-client.js';
+import type { MCPClient } from './client.js';
 
 function jsonSchemaToZod(schema: any): z.ZodTypeAny {
   if (!schema || typeof schema !== 'object') {
