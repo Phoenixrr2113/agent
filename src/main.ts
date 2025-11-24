@@ -310,15 +310,34 @@ if (RUN_MODE === 'loop') {
         console.log(result.text);
         conversationHistory.push(...result.response.messages);
 
-        await fs.appendFile('./logs/agent.log', result.text + '\n');
-        await fs.appendFile(
-          './logs/iterations.jsonl',
-          JSON.stringify({ timestamp: Date.now(), messages: result.response.messages }) + '\n'
-        );
+        // Log readable text output
+        const timestamp = new Date().toISOString();
+        await fs.appendFile('./logs/agent.log', `\n=== ${timestamp} ===\n${result.text}\n`);
+
+        // Log detailed structured data
+        const logEntry = {
+          timestamp,
+          text: result.text,
+          steps: result.steps.map((step: any) => ({
+            text: step.text,
+            toolCalls: step.toolCalls?.map((tc: any) => ({
+              name: tc.toolName,
+              args: tc.args,
+            })),
+            toolResults: step.toolResults?.map((tr: any) => ({
+              name: tr.toolName,
+              result: typeof tr.result === 'string' ? tr.result.substring(0, 200) : tr.result,
+            })),
+            finishReason: step.finishReason,
+          })),
+          usage: result.totalUsage,
+        };
+        await fs.appendFile('./logs/iterations.jsonl', JSON.stringify(logEntry, null, 2) + '\n');
 
         console.log('\n');
       } catch (error: any) {
         console.error('\n❌ Error:', error.message);
+        await fs.appendFile('./logs/agent.log', `\n=== ERROR ${new Date().toISOString()} ===\n${error.message}\n${error.stack}\n`);
         console.log('\n');
       }
     }
@@ -338,11 +357,29 @@ if (RUN_MODE === 'loop') {
 
   console.log(result.text);
 
-  await fs.appendFile('./logs/agent.log', result.text + '\n');
-  await fs.appendFile(
-    './logs/iterations.jsonl',
-    JSON.stringify({ timestamp: Date.now(), messages: result.response.messages }) + '\n'
-  );
+  // Log readable text output
+  const timestamp = new Date().toISOString();
+  await fs.appendFile('./logs/agent.log', `\n=== ${timestamp} ===\n${result.text}\n`);
+
+  // Log detailed structured data
+  const logEntry = {
+    timestamp,
+    text: result.text,
+    steps: result.steps.map((step: any) => ({
+      text: step.text,
+      toolCalls: step.toolCalls?.map((tc: any) => ({
+        name: tc.toolName,
+        args: tc.args,
+      })),
+      toolResults: step.toolResults?.map((tr: any) => ({
+        name: tr.toolName,
+        result: typeof tr.result === 'string' ? tr.result.substring(0, 200) : tr.result,
+      })),
+      finishReason: step.finishReason,
+    })),
+    usage: result.totalUsage,
+  };
+  await fs.appendFile('./logs/iterations.jsonl', JSON.stringify(logEntry, null, 2) + '\n');
 
   console.log('\n\nRe-indexing codebase after agent run...');
   await codebaseRAG.indexCodebase();

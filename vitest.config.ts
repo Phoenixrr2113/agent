@@ -14,6 +14,6 @@ export default defineConfig({
       reporter: ['text', 'json', 'html'],
       exclude: ['node_modules/', 'dist/', 'tests/fixtures/', 'tests/helpers/', 'tests/temp/'],
     },
-    testTimeout: 120000, // 2 minutes for e2e tests with local LLMs (qwen3-coder:30b needs time)
+    testTimeout: 0, // No timeout - Ollama models can take a while to warm up
   },
 });
