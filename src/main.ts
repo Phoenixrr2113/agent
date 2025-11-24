@@ -6,9 +6,9 @@ import fs from 'fs/promises';
 import * as readline from 'readline/promises';
 import { stdin as input, stdout as output } from 'process';
 import { createAgentWithRole, models } from './agents.js';
-import { planTool, validationTool } from './agent-tools.js';
+import { planTool, validationTool } from './workflow-tools.js';
 import { createStdioMCPClient } from './mcp-client.js';
-import { mapMcpToolsToAiTools } from './tools.js';
+import { mapMcpToolsToAiTools } from './mcp-adapter.js';
 import { createCodebaseRAG } from './rag.js';
 import { grepWorkspace } from './grep.js';
 

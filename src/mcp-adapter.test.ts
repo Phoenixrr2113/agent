@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { mapMcpToolsToAiTools } from './tools.js';
+import { mapMcpToolsToAiTools } from './mcp-adapter.js';
 import type { MCPClient } from './mcp-client.js';
 
 describe('mapMcpToolsToAiTools', () => {
