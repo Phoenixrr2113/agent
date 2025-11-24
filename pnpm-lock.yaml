@@ -10,28 +10,28 @@ importers:
     dependencies:
       '@ai-sdk/google':
         specifier: ^2.0.42
-        version: 2.0.42(zod@4.1.12)
+        version: 2.0.42(zod@4.1.13)
       '@ai-sdk/mcp':
         specifier: latest
-        version: 0.0.8(zod@4.1.12)
+        version: 0.0.8(zod@4.1.13)
       '@modelcontextprotocol/sdk':
         specifier: latest
         version: 1.22.0
       '@openrouter/ai-sdk-provider':
         specifier: ^1.0.0
-        version: 1.2.5(ai@5.0.99(zod@4.1.12))(zod@4.1.12)
+        version: 1.2.5(ai@5.0.100(zod@4.1.13))(zod@4.1.13)
       ai:
         specifier: ^5.0.0
-        version: 5.0.99(zod@4.1.12)
+        version: 5.0.100(zod@4.1.13)
       dotenv:
         specifier: ^17.2.3
         version: 17.2.3
       ollama-ai-provider-v2:
         specifier: ^1.5.5
-        version: 1.5.5(zod@4.1.12)
+        version: 1.5.5(zod@4.1.13)
       zod:
         specifier: ^4.0.16
-        version: 4.1.12
+        version: 4.1.13
     devDependencies:
       '@types/node':
         specifier: ^20.0.0
@@ -48,8 +48,8 @@ importers:
 
 packages:
 
-  '@ai-sdk/gateway@2.0.13':
-    resolution: {integrity: sha512-q8M+7+VEKp91I295cjNDgQ4LyGImKj5cDLVARDay7nBTXGjIRZOlthYE7K6Rbz2yHKFyTmKH7MMkYavAM7L/UQ==}
+  '@ai-sdk/gateway@2.0.14':
+    resolution: {integrity: sha512-QU+ZVizSXN/V5uWgwapXrCLvkUEmmJeojAbikMH4gLgbeQF3oRugcQm3D8X9B+Rnestbz5cevNap7vKyJT/jfA==}
     engines: {node: '>=18'}
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
@@ -552,8 +552,8 @@ packages:
     resolution: {integrity: sha512-5cvg6CtKwfgdmVqY1WIiXKc3Q1bkRqGLi+2W/6ao+6Y7gu/RCwRuAhGEzh5B4KlszSuTLgZYuqFqo5bImjNKng==}
     engines: {node: '>= 0.6'}
 
-  ai@5.0.99:
-    resolution: {integrity: sha512-omnQLLi5yNQWLLJAaQdACsgBSj+c9LTCWwl9z+6albiqlATNF3AGdpr1ZMTJosGkupwswZc6LDIMa3cfHR4x/g==}
+  ai@5.0.100:
+    resolution: {integrity: sha512-+ANP4EJomTcUKdEF3UpVAWEl6DGn+ozDLxVZKXmTV7NRfyEC2cLYcKwoU4o3sKJpqXMUKNzpFlJFBKOcsKdMyg==}
     engines: {node: '>=18'}
     peerDependencies:
       zod: ^3.25.76 || ^4.1.8
@@ -874,8 +874,8 @@ packages:
   picocolors@1.1.1:
     resolution: {integrity: sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA==}
 
-  pkce-challenge@5.0.0:
-    resolution: {integrity: sha512-ueGLflrrnvwB3xuo/uGob5pd5FN7l0MsLf0Z87o/UQmRtwjvfylfc9MurIxRAWywCYTgrvpXBcqjV4OfCYGCIQ==}
+  pkce-challenge@5.0.1:
+    resolution: {integrity: sha512-wQ0b/W4Fr01qtpHlqSqspcj3EhBvimsdh0KlHhH8HRZnMsEa0ea2fTULOXOS9ccQr3om+GcGRk4e+isrZWV8qQ==}
     engines: {node: '>=16.20.0'}
 
   postcss@8.5.6:
@@ -1098,37 +1098,37 @@ packages:
   zod@3.25.76:
     resolution: {integrity: sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ==}
 
-  zod@4.1.12:
-    resolution: {integrity: sha512-JInaHOamG8pt5+Ey8kGmdcAcg3OL9reK8ltczgHTAwNhMys/6ThXHityHxVV2p3fkw/c+MAvBHFVYHFZDmjMCQ==}
+  zod@4.1.13:
+    resolution: {integrity: sha512-AvvthqfqrAhNH9dnfmrfKzX5upOdjUVJYFqNSlkmGf64gRaTzlPwz99IHYnVs28qYAybvAlBV+H7pn0saFY4Ig==}
 
 snapshots:
 
-  '@ai-sdk/gateway@2.0.13(zod@4.1.12)':
+  '@ai-sdk/gateway@2.0.14(zod@4.1.13)':
     dependencies:
       '@ai-sdk/provider': 2.0.0
-      '@ai-sdk/provider-utils': 3.0.17(zod@4.1.12)
+      '@ai-sdk/provider-utils': 3.0.17(zod@4.1.13)
       '@vercel/oidc': 3.0.5
-      zod: 4.1.12
+      zod: 4.1.13
 
-  '@ai-sdk/google@2.0.42(zod@4.1.12)':
+  '@ai-sdk/google@2.0.42(zod@4.1.13)':
     dependencies:
       '@ai-sdk/provider': 2.0.0
-      '@ai-sdk/provider-utils': 3.0.17(zod@4.1.12)
-      zod: 4.1.12
+      '@ai-sdk/provider-utils': 3.0.17(zod@4.1.13)
+      zod: 4.1.13
 
-  '@ai-sdk/mcp@0.0.8(zod@4.1.12)':
+  '@ai-sdk/mcp@0.0.8(zod@4.1.13)':
     dependencies:
       '@ai-sdk/provider': 2.0.0
-      '@ai-sdk/provider-utils': 3.0.17(zod@4.1.12)
-      pkce-challenge: 5.0.0
-      zod: 4.1.12
+      '@ai-sdk/provider-utils': 3.0.17(zod@4.1.13)
+      pkce-challenge: 5.0.1
+      zod: 4.1.13
 
-  '@ai-sdk/provider-utils@3.0.17(zod@4.1.12)':
+  '@ai-sdk/provider-utils@3.0.17(zod@4.1.13)':
     dependencies:
       '@ai-sdk/provider': 2.0.0
       '@standard-schema/spec': 1.0.0
       eventsource-parser: 3.0.6
-      zod: 4.1.12
+      zod: 4.1.13
 
   '@ai-sdk/provider@2.0.0':
     dependencies:
@@ -1294,22 +1294,22 @@ snapshots:
       eventsource-parser: 3.0.6
       express: 5.1.0
       express-rate-limit: 7.5.1(express@5.1.0)
-      pkce-challenge: 5.0.0
+      pkce-challenge: 5.0.1
       raw-body: 3.0.2
       zod: 3.25.76
       zod-to-json-schema: 3.25.0(zod@3.25.76)
     transitivePeerDependencies:
       - supports-color
 
-  '@openrouter/ai-sdk-provider@1.2.5(ai@5.0.99(zod@4.1.12))(zod@4.1.12)':
+  '@openrouter/ai-sdk-provider@1.2.5(ai@5.0.100(zod@4.1.13))(zod@4.1.13)':
     dependencies:
       '@openrouter/sdk': 0.1.27
-      ai: 5.0.99(zod@4.1.12)
-      zod: 4.1.12
+      ai: 5.0.100(zod@4.1.13)
+      zod: 4.1.13
 
   '@openrouter/sdk@0.1.27':
     dependencies:
-      zod: 4.1.12
+      zod: 4.1.13
 
   '@opentelemetry/api@1.9.0': {}
 
@@ -1434,13 +1434,13 @@ snapshots:
       mime-types: 3.0.2
       negotiator: 1.0.0
 
-  ai@5.0.99(zod@4.1.12):
+  ai@5.0.100(zod@4.1.13):
     dependencies:
-      '@ai-sdk/gateway': 2.0.13(zod@4.1.12)
+      '@ai-sdk/gateway': 2.0.14(zod@4.1.13)
       '@ai-sdk/provider': 2.0.0
-      '@ai-sdk/provider-utils': 3.0.17(zod@4.1.12)
+      '@ai-sdk/provider-utils': 3.0.17(zod@4.1.13)
       '@opentelemetry/api': 1.9.0
-      zod: 4.1.12
+      zod: 4.1.13
 
   ajv-formats@3.0.1(ajv@8.17.1):
     optionalDependencies:
@@ -1759,11 +1759,11 @@ snapshots:
 
   object-inspect@1.13.4: {}
 
-  ollama-ai-provider-v2@1.5.5(zod@4.1.12):
+  ollama-ai-provider-v2@1.5.5(zod@4.1.13):
     dependencies:
       '@ai-sdk/provider': 2.0.0
-      '@ai-sdk/provider-utils': 3.0.17(zod@4.1.12)
-      zod: 4.1.12
+      '@ai-sdk/provider-utils': 3.0.17(zod@4.1.13)
+      zod: 4.1.13
 
   on-finished@2.4.1:
     dependencies:
@@ -1785,7 +1785,7 @@ snapshots:
 
   picocolors@1.1.1: {}
 
-  pkce-challenge@5.0.0: {}
+  pkce-challenge@5.0.1: {}
 
   postcss@8.5.6:
     dependencies:
@@ -2038,4 +2038,4 @@ snapshots:
 
   zod@3.25.76: {}
 
-  zod@4.1.12: {}
+  zod@4.1.13: {}
