@@ -318,6 +318,7 @@ if (RUN_MODE === 'loop') {
         const logEntry = {
           timestamp,
           text: result.text,
+          reasoningText: result.reasoningText, // For reasoning models like DeepSeek-R1
           steps: result.steps.map((step: any) => ({
             text: step.text,
             toolCalls: step.toolCalls?.map((tc: any) => ({
@@ -330,7 +331,10 @@ if (RUN_MODE === 'loop') {
             })),
             finishReason: step.finishReason,
           })),
-          usage: result.totalUsage,
+          usage: {
+            ...result.totalUsage,
+            reasoningTokens: result.usage.reasoningTokens, // Track reasoning token cost
+          },
         };
         await fs.appendFile('./logs/iterations.jsonl', JSON.stringify(logEntry, null, 2) + '\n');
 
@@ -365,6 +369,7 @@ if (RUN_MODE === 'loop') {
   const logEntry = {
     timestamp,
     text: result.text,
+    reasoningText: result.reasoningText, // For reasoning models like DeepSeek-R1
     steps: result.steps.map((step: any) => ({
       text: step.text,
       toolCalls: step.toolCalls?.map((tc: any) => ({
@@ -377,7 +382,10 @@ if (RUN_MODE === 'loop') {
       })),
       finishReason: step.finishReason,
     })),
-    usage: result.totalUsage,
+    usage: {
+      ...result.totalUsage,
+      reasoningTokens: result.usage.reasoningTokens, // Track reasoning token cost
+    },
   };
   await fs.appendFile('./logs/iterations.jsonl', JSON.stringify(logEntry, null, 2) + '\n');
 
