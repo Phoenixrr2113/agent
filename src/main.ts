@@ -253,6 +253,8 @@ process.on('SIGINT', () => {
 });
 
 if (RUN_MODE === 'loop') {
+  await fs.mkdir('./logs', { recursive: true });
+
   console.log('━'.repeat(60));
   console.log('🤖 Generic Agent Template - Interactive Mode');
   console.log('━'.repeat(60));
@@ -310,10 +312,16 @@ if (RUN_MODE === 'loop') {
         for await (const chunk of result.textStream) {
           process.stdout.write(chunk);
           fullResponse += chunk;
+          await fs.appendFile('./logs/agent.log', chunk);
         }
 
         const responseData = await result.response;
         conversationHistory.push(...responseData.messages);
+
+        await fs.appendFile(
+          './logs/iterations.jsonl',
+          JSON.stringify({ timestamp: Date.now(), messages: responseData.messages }) + '\n'
+        );
 
         console.log('\n');
       } catch (error: any) {
