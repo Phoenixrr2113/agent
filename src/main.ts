@@ -304,23 +304,17 @@ if (RUN_MODE === 'loop') {
       console.log('\n🤖 Agent: ');
 
       try {
-        const result = agent.stream({
+        const result = await agent.generate({
           messages: conversationHistory,
         });
 
-        let fullResponse = '';
-        for await (const chunk of result.textStream) {
-          process.stdout.write(chunk);
-          fullResponse += chunk;
-          await fs.appendFile('./logs/agent.log', chunk);
-        }
+        console.log(result.text);
+        conversationHistory.push(...result.response.messages);
 
-        const responseData = await result.response;
-        conversationHistory.push(...responseData.messages);
-
+        await fs.appendFile('./logs/agent.log', result.text + '\n');
         await fs.appendFile(
           './logs/iterations.jsonl',
-          JSON.stringify({ timestamp: Date.now(), messages: responseData.messages }) + '\n'
+          JSON.stringify({ timestamp: Date.now(), messages: result.response.messages }) + '\n'
         );
 
         console.log('\n');
@@ -339,20 +333,16 @@ if (RUN_MODE === 'loop') {
 } else {
   await fs.mkdir('./logs', { recursive: true });
 
-  const result = agent.stream({
+  const result = await agent.generate({
     prompt: 'You are a generic agent template. Ask the user what kind of agent they want you to become, then start building yourself for that purpose. Begin by assessing your current capabilities.',
   });
 
-  for await (const chunk of result.textStream) {
-    process.stdout.write(chunk);
-    await fs.appendFile('./logs/agent.log', chunk);
-  }
+  console.log(result.text);
 
-  const responseData = await result.response;
-
+  await fs.appendFile('./logs/agent.log', result.text + '\n');
   await fs.appendFile(
     './logs/iterations.jsonl',
-    JSON.stringify({ timestamp: Date.now(), messages: responseData.messages }) + '\n'
+    JSON.stringify({ timestamp: Date.now(), messages: result.response.messages }) + '\n'
   );
 
   console.log('\n\nRe-indexing codebase after agent run...');
