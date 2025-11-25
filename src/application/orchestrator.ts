@@ -1,32 +1,21 @@
-import type { StepResult, PrepareStepFunction } from 'ai';
+import type { StepResult, PrepareStepFunction, StopCondition } from 'ai';
+import { hasToolCall, stepCountIs } from 'ai';
 import { createAgentWithRole } from '../core/agents/factory.js';
 import { logger } from '../core/logger.js';
 
 const RUN_MODE = process.env.RUN_MODE || 'once';
 
-export function createDynamicStopWhen(runMode: string = RUN_MODE) {
-  return function dynamicStopWhen({ steps }: { steps: StepResult<any>[] }): boolean {
-    const MAX_STEPS = runMode === 'loop' ? 20 : 50;
+export function createStopConditions(runMode: string = RUN_MODE): StopCondition<any>[] {
+  const MAX_STEPS = runMode === 'loop' ? 20 : 50;
 
-    const hasTaskComplete = steps.some(step =>
-      step.toolCalls?.some(call => call.toolName === 'task_complete')
-    );
-
-    const maxStepsReached = steps.length >= MAX_STEPS;
-
-    if (hasTaskComplete) {
-      logger.info('✅ Task marked as complete by agent');
-    }
-
-    if (maxStepsReached) {
-      logger.warn('⚠️  Reached maximum steps', { maxSteps: MAX_STEPS });
-    }
-
-    return hasTaskComplete || maxStepsReached;
-  };
+  return [
+    stepCountIs(MAX_STEPS),
+    hasToolCall('task_complete'),
+    hasToolCall('ask_user'),
+  ];
 }
 
-export function createPrepareStep<T>(): PrepareStepFunction<T> {
+export function createPrepareStep(): PrepareStepFunction<any> {
   return ({ messages }) => {
     const MAX_CONTEXT_MESSAGES = 50;
 
@@ -61,7 +50,7 @@ export function createStepFinishHandler() {
 export function createAgent(tools: Record<string, any>) {
   return createAgentWithRole('generic', tools, {
     modelType: 'standard',
-    stopWhen: createDynamicStopWhen(),
+    stopWhen: createStopConditions(),
     prepareStep: createPrepareStep(),
     onStepFinish: createStepFinishHandler(),
   });

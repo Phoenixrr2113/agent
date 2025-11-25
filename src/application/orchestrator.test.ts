@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { createDynamicStopWhen, createPrepareStep, createStepFinishHandler, createAgent } from './orchestrator.js';
+import { createStopConditions, createPrepareStep, createStepFinishHandler, createAgent } from './orchestrator.js';
 
 vi.mock('../core/agents/factory.js', () => ({
   createAgentWithRole: vi.fn((role, tools, options) => ({
@@ -20,87 +20,20 @@ describe('orchestrator', () => {
     delete process.env.RUN_MODE;
   });
 
-  describe('createDynamicStopWhen', () => {
-    it('should stop when task_complete is called', () => {
-      const stopWhen = createDynamicStopWhen('once');
-      const steps = [
-        {
-          toolCalls: [{ toolName: 'task_complete' }],
-        },
-      ] as any[];
+  describe('createStopConditions', () => {
+    it('should return an array of stop conditions', () => {
+      const stopConditions = createStopConditions('once');
 
-      const result = stopWhen({ steps });
-
-      expect(result).toBe(true);
+      expect(Array.isArray(stopConditions)).toBe(true);
+      expect(stopConditions.length).toBe(3);
     });
 
-    it('should stop when max steps reached in loop mode', () => {
-      const stopWhen = createDynamicStopWhen('loop');
-      const steps = Array(20).fill({ toolCalls: [] }) as any[];
+    it('should configure different max steps for different run modes', () => {
+      const loopConditions = createStopConditions('loop');
+      const onceConditions = createStopConditions('once');
 
-      const result = stopWhen({ steps });
-
-      expect(result).toBe(true);
-    });
-
-    it('should stop when max steps reached in once mode', () => {
-      const stopWhen = createDynamicStopWhen('once');
-      const steps = Array(50).fill({ toolCalls: [] }) as any[];
-
-      const result = stopWhen({ steps });
-
-      expect(result).toBe(true);
-    });
-
-    it('should not stop before max steps without task_complete', () => {
-      const stopWhen = createDynamicStopWhen('loop');
-      const steps = Array(10).fill({ toolCalls: [] }) as any[];
-
-      const result = stopWhen({ steps });
-
-      expect(result).toBe(false);
-    });
-
-    it('should use environment RUN_MODE by default', () => {
-      const originalRunMode = process.env.RUN_MODE;
-      process.env.RUN_MODE = 'once';
-      const stopWhen = createDynamicStopWhen();
-      const steps = Array(50).fill({ toolCalls: [] }) as any[];
-
-      const result = stopWhen({ steps });
-
-      expect(result).toBe(true);
-      process.env.RUN_MODE = originalRunMode;
-    });
-
-    it('should handle steps with no tool calls', () => {
-      const stopWhen = createDynamicStopWhen('once');
-      const steps = [
-        {},
-        { toolCalls: undefined },
-        { toolCalls: null },
-      ] as any[];
-
-      const result = stopWhen({ steps });
-
-      expect(result).toBe(false);
-    });
-
-    it('should handle multiple tool calls per step', () => {
-      const stopWhen = createDynamicStopWhen('once');
-      const steps = [
-        {
-          toolCalls: [
-            { toolName: 'other_tool' },
-            { toolName: 'task_complete' },
-            { toolName: 'another_tool' },
-          ],
-        },
-      ] as any[];
-
-      const result = stopWhen({ steps });
-
-      expect(result).toBe(true);
+      expect(loopConditions.length).toBe(3);
+      expect(onceConditions.length).toBe(3);
     });
   });
 

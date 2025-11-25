@@ -1,25 +1,66 @@
 import 'dotenv/config';
-import { initializeAgent, cleanup } from './application/initialization.js';
-import { createAgent } from './application/orchestrator.js';
-import { runLoopMode } from './application/modes/loop.js';
-import { runOnceMode } from './application/modes/once.js';
+import * as readline from 'readline/promises';
+import { stdin as input, stdout as output } from 'process';
+import { createAgentRuntime } from './runtime/agent-runtime.js';
+import { logger } from './core/logger.js';
 
 const RUN_MODE = process.env.RUN_MODE || 'once';
 
-console.log(`🤖 Starting agent in ${RUN_MODE} mode...\n`);
+logger.info(`🤖 Starting agent in ${RUN_MODE} mode`);
 
-const { tools, mcpClients, usedClients, codebaseRAG, readline: rl } = await initializeAgent();
+const rl = readline.createInterface({ input, output });
 
-const agent = createAgent(tools);
+const runtime = await createAgentRuntime({
+  askUserHandler: async (question: string) => {
+    logger.info('🤔 Agent asks', { question });
+    const answer = await rl.question('👤 Your response: ');
+    return answer;
+  },
+});
 
-process.on('SIGINT', () => {
+const session = runtime.createSession();
+
+process.on('SIGINT', async () => {
   console.log('\n\n👋 Caught interrupt signal');
-  cleanup(mcpClients, usedClients, rl);
+  rl.close();
+  await runtime.shutdown();
   process.exit(0);
 });
 
 if (RUN_MODE === 'loop') {
-  await runLoopMode(agent, mcpClients, usedClients, codebaseRAG, rl);
+  console.log('\n💬 Interactive mode. Type "exit" to quit.\n');
+
+  while (true) {
+    const userInput = await rl.question('👤 You: ');
+
+    if (userInput.toLowerCase() === 'exit' || userInput.toLowerCase() === 'quit') {
+      break;
+    }
+
+    if (!userInput.trim()) {
+      continue;
+    }
+
+    const result = await session.send(userInput);
+
+    if (result.text) {
+      console.log(`\n🤖 Agent: ${result.text}\n`);
+    }
+
+    if (result.completed) {
+      console.log('✅ Task completed\n');
+    }
+
+    if (result.toolsUsed.length > 0) {
+      logger.info('Tools used', { tools: result.toolsUsed.join(', ') });
+    }
+  }
 } else {
-  await runOnceMode(agent, mcpClients, usedClients, codebaseRAG, rl);
+  const result = await session.send(
+    'Analyze this codebase and suggest improvements.'
+  );
+  console.log(result.text);
 }
+
+rl.close();
+await runtime.shutdown();
