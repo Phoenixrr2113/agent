@@ -30,33 +30,38 @@ export async function runLoopMode(
 
   async function chat() {
     let isFirstMessage = true;
+    let shouldWaitForInput = true;
 
     while (true) {
       let userInput = '';
 
-      if (!isFirstMessage) {
-        if (!rl) {
-          logger.error('Readline interface not initialized');
-          break;
-        }
-        userInput = await rl.question('👤 You: ');
+      if (shouldWaitForInput) {
+        if (!isFirstMessage) {
+          if (!rl) {
+            logger.error('Readline interface not initialized');
+            break;
+          }
+          userInput = await rl.question('👤 You: ');
 
-        if (userInput.toLowerCase() === 'exit' || userInput.toLowerCase() === 'quit') {
-          logger.info('👋 Goodbye!');
-          cleanup(mcpClients, usedClients, rl);
-          process.exit(0);
-        }
+          if (userInput.toLowerCase() === 'exit' || userInput.toLowerCase() === 'quit') {
+            logger.info('👋 Goodbye!');
+            cleanup(mcpClients, usedClients, rl);
+            process.exit(0);
+          }
 
-        if (!userInput.trim()) {
-          continue;
-        }
+          if (!userInput.trim()) {
+            continue;
+          }
 
-        conversationHistory.push({
-          role: 'user',
-          content: userInput,
-        });
+          conversationHistory.push({
+            role: 'user',
+            content: userInput,
+          });
+        } else {
+          isFirstMessage = false;
+        }
       } else {
-        isFirstMessage = false;
+        logger.info('🔄 Agent working...');
       }
 
       logger.info('🤖 Agent:');
@@ -94,9 +99,37 @@ export async function runLoopMode(
           },
         };
         await fs.appendFile('./logs/iterations.jsonl', JSON.stringify(logEntry, null, 2) + '\n');
+
+        // Determine if we should wait for input
+        const hasAskUser = result.steps.some((step: any) =>
+          step.toolCalls?.some((tc: any) => tc.toolName === 'ask_user')
+        );
+
+        // Check if the text response looks like a JSON tool call (fallback for weak models)
+        const text = result.text.trim();
+        const looksLikeJsonTool = (text.startsWith('{') && text.endsWith('}')) ||
+          (text.startsWith('```json') && text.includes('plan_tool'));
+
+        // If the last step had no tool calls, it's likely a text response, so we wait.
+        // If the last step had tool calls (and not ask_user), we continue automatically.
+        const lastStep = result.steps[result.steps.length - 1];
+        const lastStepHasTools = lastStep?.toolCalls && lastStep.toolCalls.length > 0;
+
+        if (hasAskUser) {
+          shouldWaitForInput = true;
+        } else if (lastStepHasTools || looksLikeJsonTool) {
+          shouldWaitForInput = false;
+          if (looksLikeJsonTool) {
+            logger.warn('⚠️  Model outputted JSON text instead of calling a tool. Continuing loop...');
+          }
+        } else {
+          shouldWaitForInput = true;
+        }
+
       } catch (error: any) {
         logger.error('❌ Error', { message: error.message });
         await fs.appendFile('./logs/agent.log', `\n=== ERROR ${new Date().toISOString()} ===\n${error.message}\n${error.stack}\n`);
+        shouldWaitForInput = true; // Always wait on error
       }
     }
   }

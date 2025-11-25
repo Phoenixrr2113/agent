@@ -32,7 +32,7 @@ export async function initializeAgent(): Promise<InitializationResult> {
   const mcpClients = {
     filesystem: createStdioMCPClient('npx', ['-y', '@modelcontextprotocol/server-filesystem', process.cwd()]),
     git: createStdioMCPClient('npx', ['-y', 'git-mcp-server']),
-    fetch: createStdioMCPClient('python3', ['-m', 'mcp_server_fetch']),
+    fetch: createStdioMCPClient('uvx', ['mcp-server-fetch']),
     memory: createStdioMCPClient('npx', ['-y', '@modelcontextprotocol/server-memory']),
     sequentialThinking: createStdioMCPClient('npx', ['-y', '@modelcontextprotocol/server-sequential-thinking']),
   };
@@ -148,6 +148,7 @@ export async function initializeAgent(): Promise<InitializationResult> {
       execute: async ({ question }) => {
         if (APPROVAL_MODE === 'auto') {
           logger.info('🤖 Agent question (auto-approved)', { question });
+          logger.warn('⚠️  Agent is running in auto-mode. To interact with the agent, use "pnpm chat" instead of "pnpm dev".');
           return 'yes';
         }
 
