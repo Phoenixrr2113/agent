@@ -17,6 +17,16 @@ vi.mock('../initialization.js', () => ({
   cleanup: vi.fn(),
 }));
 
+vi.mock('../../core/logger.js', () => ({
+  logger: {
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
+    setLevel: vi.fn(),
+  },
+}));
+
 describe('loop mode', () => {
   let mockAgent: any;
   let mockMcpClients: any;
@@ -54,8 +64,6 @@ describe('loop mode', () => {
     mockMkdir.mockResolvedValue(undefined);
     mockAppendFile.mockResolvedValue(undefined);
 
-    vi.spyOn(console, 'log').mockImplementation(() => {});
-    vi.spyOn(console, 'error').mockImplementation(() => {});
     vi.spyOn(process, 'exit').mockImplementation((() => {}) as any);
   });
 
@@ -68,12 +76,13 @@ describe('loop mode', () => {
       expect(mockMkdir).toHaveBeenCalledWith('./logs', { recursive: true });
     });
 
-    it('should display welcome message', async () => {
+    it('should display welcome message via logger', async () => {
       const promise = runLoopMode(mockAgent, mockMcpClients, mockUsedClients, mockCodebaseRAG, mockReadline);
 
       await new Promise(resolve => setTimeout(resolve, 100));
 
-      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Interactive Mode'));
+      const { logger } = await import('../../core/logger.js');
+      expect(logger.info).toHaveBeenCalledWith('🤖 Generic Agent Template - Interactive Mode');
     });
 
     it('should initialize with system message', async () => {
@@ -160,7 +169,8 @@ describe('loop mode', () => {
 
       await new Promise(resolve => setTimeout(resolve, 300));
 
-      expect(console.error).toHaveBeenCalledWith(expect.stringContaining('Error'), expect.any(String));
+      const { logger } = await import('../../core/logger.js');
+      expect(logger.error).toHaveBeenCalledWith('❌ Error', { message: 'Test error' });
       expect(mockAppendFile).toHaveBeenCalledWith(
         './logs/agent.log',
         expect.stringContaining('ERROR')
@@ -172,7 +182,8 @@ describe('loop mode', () => {
 
       await new Promise(resolve => setTimeout(resolve, 200));
 
-      expect(console.error).toHaveBeenCalledWith('Readline interface not initialized');
+      const { logger } = await import('../../core/logger.js');
+      expect(logger.error).toHaveBeenCalledWith('Readline interface not initialized');
     });
 
     it('should handle fatal errors in chat loop', async () => {

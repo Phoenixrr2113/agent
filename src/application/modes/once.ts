@@ -1,5 +1,6 @@
 import fs from 'fs/promises';
 import { cleanup } from '../initialization.js';
+import { logger } from '../../core/logger.js';
 
 export async function runOnceMode(
   agent: any,
@@ -14,7 +15,7 @@ export async function runOnceMode(
     prompt: 'You are a generic agent template. Ask the user what kind of agent they want you to become, then start building yourself for that purpose. Begin by assessing your current capabilities.',
   });
 
-  console.log(result.text);
+  logger.info(result.text);
 
   const timestamp = new Date().toISOString();
   await fs.appendFile('./logs/agent.log', `\n=== ${timestamp} ===\n${result.text}\n`);
@@ -42,10 +43,10 @@ export async function runOnceMode(
   };
   await fs.appendFile('./logs/iterations.jsonl', JSON.stringify(logEntry, null, 2) + '\n');
 
-  console.log('\n\nRe-indexing codebase after agent run...');
+  logger.info('Re-indexing codebase after agent run...');
   await codebaseRAG.indexCodebase();
   const newStats = codebaseRAG.getStats();
-  console.log(`RAG re-indexed: ${newStats.totalChunks} chunks from ${newStats.files} files`);
+  logger.info('RAG re-indexed', { chunks: newStats.totalChunks, files: newStats.files });
 
   cleanup(mcpClients, usedClients, rl);
 }

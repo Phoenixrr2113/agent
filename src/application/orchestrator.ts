@@ -1,5 +1,6 @@
 import type { StepResult, PrepareStepFunction } from 'ai';
 import { createAgentWithRole } from '../core/agents/factory.js';
+import { logger } from '../core/logger.js';
 
 const RUN_MODE = process.env.RUN_MODE || 'once';
 
@@ -14,11 +15,11 @@ export function createDynamicStopWhen(runMode: string = RUN_MODE) {
     const maxStepsReached = steps.length >= MAX_STEPS;
 
     if (hasTaskComplete) {
-      console.log('\n✅ Task marked as complete by agent');
+      logger.info('✅ Task marked as complete by agent');
     }
 
     if (maxStepsReached) {
-      console.log(`\n⚠️  Reached maximum steps (${MAX_STEPS})`);
+      logger.warn('⚠️  Reached maximum steps', { maxSteps: MAX_STEPS });
     }
 
     return hasTaskComplete || maxStepsReached;
@@ -30,7 +31,7 @@ export function createPrepareStep<T>(): PrepareStepFunction<T> {
     const MAX_CONTEXT_MESSAGES = 50;
 
     if (messages.length > MAX_CONTEXT_MESSAGES) {
-      console.log(`\n🔄 Trimming context: ${messages.length} → ${MAX_CONTEXT_MESSAGES} messages`);
+      logger.info('🔄 Trimming context', { from: messages.length, to: MAX_CONTEXT_MESSAGES });
       return {
         messages: [
           messages[0],
@@ -48,11 +49,11 @@ export function createStepFinishHandler() {
 
   return async (stepResult: StepResult<any>) => {
     stepCount++;
-    console.log(`\n📈 Step ${stepCount} finished`);
+    logger.info('📈 Step finished', { step: stepCount });
 
     if (stepResult.toolCalls && stepResult.toolCalls.length > 0) {
       const toolNames = stepResult.toolCalls.map((tc) => tc.toolName);
-      console.log(`📊 Tools used: ${[...new Set(toolNames)].join(', ')}`);
+      logger.info('📊 Tools used', { tools: [...new Set(toolNames)].join(', ') });
     }
   };
 }

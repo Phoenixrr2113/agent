@@ -18,6 +18,16 @@ vi.mock('../initialization.js', () => ({
   cleanup: (...args: any[]) => mockCleanup(...args),
 }));
 
+vi.mock('../../core/logger.js', () => ({
+  logger: {
+    info: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    debug: vi.fn(),
+    setLevel: vi.fn(),
+  },
+}));
+
 describe('once mode', () => {
   let mockAgent: any;
   let mockMcpClients: any;
@@ -66,8 +76,6 @@ describe('once mode', () => {
 
     mockMkdir.mockResolvedValue(undefined);
     mockAppendFile.mockResolvedValue(undefined);
-
-    vi.spyOn(console, 'log').mockImplementation(() => {});
   });
 
   describe('runOnceMode', () => {
@@ -85,10 +93,11 @@ describe('once mode', () => {
       });
     });
 
-    it('should print agent response to console', async () => {
+    it('should print agent response via logger', async () => {
       await runOnceMode(mockAgent, mockMcpClients, mockUsedClients, mockCodebaseRAG, mockReadline);
 
-      expect(console.log).toHaveBeenCalledWith('Agent response');
+      const { logger } = await import('../../core/logger.js');
+      expect(logger.info).toHaveBeenCalledWith('Agent response');
     });
 
     it('should log response to agent.log file', async () => {
@@ -195,13 +204,12 @@ describe('once mode', () => {
       expect(mockCodebaseRAG.getStats).toHaveBeenCalled();
     });
 
-    it('should print re-indexing stats', async () => {
+    it('should print re-indexing stats via logger', async () => {
       await runOnceMode(mockAgent, mockMcpClients, mockUsedClients, mockCodebaseRAG, mockReadline);
 
-      expect(console.log).toHaveBeenCalledWith(expect.stringContaining('Re-indexing codebase'));
-      expect(console.log).toHaveBeenCalledWith(
-        expect.stringContaining('10 chunks from 2 files')
-      );
+      const { logger } = await import('../../core/logger.js');
+      expect(logger.info).toHaveBeenCalledWith('Re-indexing codebase after agent run...');
+      expect(logger.info).toHaveBeenCalledWith('RAG re-indexed', { chunks: 10, files: 2 });
     });
 
     it('should call cleanup at the end', async () => {

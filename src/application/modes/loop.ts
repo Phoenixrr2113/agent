@@ -2,6 +2,7 @@ import type { CoreMessage } from 'ai';
 import * as readline from 'readline/promises';
 import fs from 'fs/promises';
 import { cleanup } from '../initialization.js';
+import { logger } from '../../core/logger.js';
 
 export async function runLoopMode(
   agent: any,
@@ -12,13 +13,13 @@ export async function runLoopMode(
 ) {
   await fs.mkdir('./logs', { recursive: true });
 
-  console.log('━'.repeat(60));
-  console.log('🤖 Generic Agent Template - Interactive Mode');
-  console.log('━'.repeat(60));
-  console.log('This is a self-building agent that can become whatever you need.');
-  console.log('It will assess its capabilities and build itself for your purpose.');
-  console.log('\nType "exit" or "quit" to end the conversation');
-  console.log('━'.repeat(60) + '\n');
+  logger.info('━'.repeat(60));
+  logger.info('🤖 Generic Agent Template - Interactive Mode');
+  logger.info('━'.repeat(60));
+  logger.info('This is a self-building agent that can become whatever you need.');
+  logger.info('It will assess its capabilities and build itself for your purpose.');
+  logger.info('Type "exit" or "quit" to end the conversation');
+  logger.info('━'.repeat(60));
 
   const conversationHistory: CoreMessage[] = [
     {
@@ -35,13 +36,13 @@ export async function runLoopMode(
 
       if (!isFirstMessage) {
         if (!rl) {
-          console.error('Readline interface not initialized');
+          logger.error('Readline interface not initialized');
           break;
         }
         userInput = await rl.question('👤 You: ');
 
         if (userInput.toLowerCase() === 'exit' || userInput.toLowerCase() === 'quit') {
-          console.log('\n👋 Goodbye!');
+          logger.info('👋 Goodbye!');
           cleanup(mcpClients, usedClients, rl);
           process.exit(0);
         }
@@ -58,14 +59,14 @@ export async function runLoopMode(
         isFirstMessage = false;
       }
 
-      console.log('\n🤖 Agent: ');
+      logger.info('🤖 Agent:');
 
       try {
         const result = await agent.generate({
           messages: conversationHistory,
         });
 
-        console.log(result.text);
+        logger.info(result.text);
         conversationHistory.push(...result.response.messages);
 
         const timestamp = new Date().toISOString();
@@ -93,18 +94,15 @@ export async function runLoopMode(
           },
         };
         await fs.appendFile('./logs/iterations.jsonl', JSON.stringify(logEntry, null, 2) + '\n');
-
-        console.log('\n');
       } catch (error: any) {
-        console.error('\n❌ Error:', error.message);
+        logger.error('❌ Error', { message: error.message });
         await fs.appendFile('./logs/agent.log', `\n=== ERROR ${new Date().toISOString()} ===\n${error.message}\n${error.stack}\n`);
-        console.log('\n');
       }
     }
   }
 
   chat().catch(error => {
-    console.error('Fatal error:', error);
+    logger.error('Fatal error', { error: error.message, stack: error.stack });
     cleanup(mcpClients, usedClients, rl);
     process.exit(1);
   });

@@ -3,10 +3,11 @@ import { z } from 'zod';
 import * as readline from 'readline/promises';
 import { stdin as input, stdout as output } from 'process';
 import { createStdioMCPClient } from '../infrastructure/mcp/client.js';
-import { mapMcpToolsToAiTools } from '../infrastructure/mcp/adapter.js';
+import { mapMcpToolsToAiTools} from '../infrastructure/mcp/adapter.js';
 import { createCodebaseRAG } from '../core/rag/index.js';
 import { grepWorkspace } from '../core/search/grep.js';
 import { planTool, validationTool } from '../tools/workflow.js';
+import { logger } from '../core/logger.js';
 
 const APPROVAL_MODE = process.env.APPROVAL_MODE || 'auto';
 
@@ -24,7 +25,7 @@ export async function initializeAgent(): Promise<InitializationResult> {
     rl = readline.createInterface({ input, output });
   }
 
-  console.log(`🤖 Initializing AI Agent (approval: ${APPROVAL_MODE})...\n`);
+  logger.info(`🤖 Initializing AI Agent`, { approvalMode: APPROVAL_MODE });
 
   const usedClients = new Set<string>();
 
@@ -48,11 +49,11 @@ export async function initializeAgent(): Promise<InitializationResult> {
   const memoryMcpTools = await mcpClients.memory.listTools();
   const sequentialThinkingMcpTools = await mcpClients.sequentialThinking.listTools();
 
-  console.log('Filesystem tools:', fsMcpTools.length);
-  console.log('Git tools:', gitMcpTools.length);
-  console.log('Fetch tools:', fetchMcpTools.length);
-  console.log('Memory tools:', memoryMcpTools.length);
-  console.log('Sequential thinking tools:', sequentialThinkingMcpTools.length);
+  logger.info('Filesystem tools', { count: fsMcpTools.length });
+  logger.info('Git tools', { count: gitMcpTools.length });
+  logger.info('Fetch tools', { count: fetchMcpTools.length });
+  logger.info('Memory tools', { count: memoryMcpTools.length });
+  logger.info('Sequential thinking tools', { count: sequentialThinkingMcpTools.length });
 
   function wrapToolsWithTracking(tools: Record<string, any>, clientName: string) {
     const wrapped: Record<string, any> = {};
@@ -91,10 +92,10 @@ export async function initializeAgent(): Promise<InitializationResult> {
   );
 
   const codebaseRAG = createCodebaseRAG(process.cwd());
-  console.log('Indexing codebase...');
+  logger.info('Indexing codebase...');
   await codebaseRAG.indexCodebase();
   const ragStats = codebaseRAG.getStats();
-  console.log(`RAG indexed ${ragStats.totalChunks} chunks from ${ragStats.files} files`);
+  logger.info('RAG indexed', { chunks: ragStats.totalChunks, files: ragStats.files });
 
   const codebaseTools = {
     search_codebase: tool({
@@ -146,12 +147,12 @@ export async function initializeAgent(): Promise<InitializationResult> {
       }),
       execute: async ({ question }) => {
         if (APPROVAL_MODE === 'auto') {
-          console.log(`\n🤖 Agent question (auto-approved): ${question}`);
+          logger.info('🤖 Agent question (auto-approved)', { question });
           return 'yes';
         }
 
         if (APPROVAL_MODE === 'manual' && rl) {
-          console.log(`\n🤔 Agent: ${question}`);
+          logger.info('🤔 Agent', { question });
           const answer = await rl.question('👤 You: ');
           return answer;
         }
@@ -172,7 +173,7 @@ export async function initializeAgent(): Promise<InitializationResult> {
     ...codebaseTools,
   };
 
-  console.log('Total tools:', Object.keys(tools).length);
+  logger.info('Total tools', { count: Object.keys(tools).length });
 
   return {
     tools,
@@ -184,7 +185,7 @@ export async function initializeAgent(): Promise<InitializationResult> {
 }
 
 export function cleanup(mcpClients: Record<string, any>, usedClients: Set<string>, rl: readline.Interface | null) {
-  console.log('\n🧹 Cleaning up MCP clients...');
+  logger.info('🧹 Cleaning up MCP clients...');
   if (usedClients.has('filesystem')) {
     mcpClients.filesystem.close();
   }
