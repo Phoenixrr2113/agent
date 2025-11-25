@@ -4,9 +4,8 @@ import { stdin as input, stdout as output } from 'process';
 import { createAgentRuntime } from './runtime/agent-runtime.js';
 import { logger } from './core/logger.js';
 
-const RUN_MODE = process.env.RUN_MODE || 'once';
-
-logger.info(`🤖 Starting agent in ${RUN_MODE} mode`);
+console.log('\n💬 Interactive Chat Mode\n');
+console.log('Type your requests or "exit" to quit\n');
 
 const rl = readline.createInterface({ input, output });
 
@@ -21,26 +20,25 @@ const runtime = await createAgentRuntime({
 const session = runtime.createSession();
 
 process.on('SIGINT', async () => {
-  console.log('\n\n👋 Caught interrupt signal');
+  console.log('\n\n👋 Shutting down...');
   rl.close();
   await runtime.shutdown();
   process.exit(0);
 });
 
-if (RUN_MODE === 'loop') {
-  console.log('\n💬 Interactive mode. Type "exit" to quit.\n');
+while (true) {
+  const userInput = await rl.question('👤 You: ');
 
-  while (true) {
-    const userInput = await rl.question('👤 You: ');
+  if (userInput.toLowerCase() === 'exit' || userInput.toLowerCase() === 'quit') {
+    console.log('\n👋 Goodbye!\n');
+    break;
+  }
 
-    if (userInput.toLowerCase() === 'exit' || userInput.toLowerCase() === 'quit') {
-      break;
-    }
+  if (!userInput.trim()) {
+    continue;
+  }
 
-    if (!userInput.trim()) {
-      continue;
-    }
-
+  try {
     const result = await session.send(userInput);
 
     if (result.text) {
@@ -52,14 +50,12 @@ if (RUN_MODE === 'loop') {
     }
 
     if (result.toolsUsed.length > 0) {
-      logger.info('Tools used', { tools: result.toolsUsed.join(', ') });
+      logger.info('🔧 Tools used', { tools: result.toolsUsed.join(', ') });
     }
+  } catch (error) {
+    logger.error('❌ Error', { error: String(error) });
+    console.log('\n❌ An error occurred. Please try again.\n');
   }
-} else {
-  const result = await session.send(
-    'Analyze this codebase and suggest improvements.'
-  );
-  console.log(result.text);
 }
 
 rl.close();
