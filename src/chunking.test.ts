@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { chunkCode, estimateChunkQuality } from './chunking.js';
+import { chunkCode, estimateChunkQuality } from './core/rag/chunking.js';
 
 describe('chunking', () => {
   describe('fixed strategy', () => {

@@ -1,4 +1,4 @@
-import { models } from '../../src/agents.js';
+import { models } from '../../src/core/agents/models.js';
 import { generateText } from 'ai';
 import fs from 'fs/promises';
 import path from 'path';

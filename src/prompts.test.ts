@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { systemPrompt } from './prompts.js';
+import { systemPrompt } from './infrastructure/prompts/templates.js';
 
 describe('systemPrompt', () => {
   it('should contain generic agent template language', () => {

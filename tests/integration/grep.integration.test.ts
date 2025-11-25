@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { grepWorkspace } from '../../src/grep.js';
+import { grepWorkspace } from '../../src/core/search/grep.js';
 import { setupTestWorkspace, teardownTestWorkspace, writeTestFile } from '../helpers/test-utils.js';
 
 describe('grep integration tests', () => {

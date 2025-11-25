@@ -1,10 +1,10 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { generateText } from 'ai';
 import { generateTextWithLogging } from '../helpers/test-model.js';
-import { createStdioMCPClient } from '../../src/mcp-client.js';
-import { mapMcpToolsToAiTools } from '../../src/tools.js';
-import { createCodebaseRAG } from '../../src/rag.js';
-import { grepWorkspace } from '../../src/grep.js';
+import { createStdioMCPClient } from '../../src/infrastructure/mcp/client.js';
+import { mapMcpToolsToAiTools } from '../../src/infrastructure/mcp/adapter.js';
+import { createCodebaseRAG } from '../../src/core/rag/index.js';
+import { grepWorkspace } from '../../src/core/search/grep.js';
 import { setupTestWorkspace, teardownTestWorkspace } from '../helpers/test-utils.js';
 import { getTestModel, hasModelProvider } from '../helpers/test-model.js';
 import { z } from 'zod';

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createCodebaseRAG, type CodebaseRAG } from './rag.js';
+import { createCodebaseRAG, type CodebaseRAG } from './core/rag/index.js';
 import fs from 'fs/promises';
 import { embedMany } from 'ai';
 

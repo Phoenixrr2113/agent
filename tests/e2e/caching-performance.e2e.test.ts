@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { createCodebaseRAG } from '../../src/rag.js';
+import { createCodebaseRAG } from '../../src/core/rag/index.js';
 import { setupTestWorkspace, teardownTestWorkspace, writeTestFile } from '../helpers/test-utils.js';
 import path from 'path';
 import fs from 'fs/promises';

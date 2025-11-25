@@ -21,16 +21,36 @@ pnpm run chat  # APPROVAL_MODE=manual RUN_MODE=loop
 
 ```
 src/
-├── main.ts            # Entry point, mode routing
-├── agents.ts          # Agent factory, model configs, role prompts
-├── agent-tools.ts     # plan_tool, validation_tool, tool groups
-├── prompts.ts         # System prompt
-├── tools.ts           # MCP tool mapping
-├── rag.ts             # Semantic search
-├── grep.ts            # Pattern matching
-├── mcp-client.ts      # MCP protocol client
-├── chunking.ts        # Code chunking
-└── cache.ts           # Embedding cache
+├── core/                      # Core domain logic (no external dependencies)
+│   ├── agents/
+│   │   ├── factory.ts        # createAgentWithRole (agent creation logic)
+│   │   ├── models.ts         # Model configurations (OpenRouter, Ollama)
+│   │   └── roles.ts          # Agent role definitions & system prompts
+│   ├── rag/
+│   │   ├── index.ts          # RAG implementation (indexing, search)
+│   │   ├── chunking.ts       # Code chunking strategies (fixed, semantic, adaptive)
+│   │   └── cache.ts          # Embedding cache with hash validation
+│   └── search/
+│       └── grep.ts           # Regex pattern matching utility
+│
+├── infrastructure/            # External integrations & adapters
+│   ├── mcp/
+│   │   ├── client.ts         # MCP protocol client (JSON-RPC over stdio)
+│   │   └── adapter.ts        # MCP to AI SDK tool adapter
+│   └── prompts/
+│       └── templates.ts      # System prompt templates
+│
+├── tools/                     # Agent tool definitions
+│   └── workflow.ts           # plan_tool, validation_tool (workflow management)
+│
+├── application/               # Application orchestration & execution
+│   ├── initialization.ts     # MCP client setup, RAG indexing, tool preparation
+│   ├── orchestrator.ts       # Agent creation, dynamic stop, prepare step
+│   └── modes/
+│       ├── loop.ts           # Interactive conversation loop
+│       └── once.ts           # Single execution mode
+│
+└── main.ts                    # Entry point router (50 lines)
 ```
 
 ## Expansion: Model Routing

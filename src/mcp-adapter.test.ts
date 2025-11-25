@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
-import { mapMcpToolsToAiTools } from './mcp-adapter.js';
-import type { MCPClient } from './mcp-client.js';
+import { mapMcpToolsToAiTools } from './infrastructure/mcp/adapter.js';
+import type { MCPClient } from './infrastructure/mcp/client.js';
 
 describe('mapMcpToolsToAiTools', () => {
   it('should map MCP tools to AI SDK tools correctly', () => {

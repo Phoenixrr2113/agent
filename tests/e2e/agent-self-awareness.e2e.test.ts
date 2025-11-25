@@ -1,8 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { generateText } from 'ai';
 import { generateTextWithLogging } from '../helpers/test-model.js';
-import { createCodebaseRAG } from '../../src/rag.js';
-import { grepWorkspace } from '../../src/grep.js';
+import { createCodebaseRAG } from '../../src/core/rag/index.js';
+import { grepWorkspace } from '../../src/core/search/grep.js';
 import { getTestModel, hasModelProvider } from '../helpers/test-model.js';
 import { z } from 'zod';
 import path from 'path';

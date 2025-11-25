@@ -251,16 +251,36 @@ const result = await client.callTool('read_file', {
 
 ```
 src/
-├── main.ts            # Main entry (autonomous + interactive modes)
-├── agents.ts          # Agent factory, model configs, role prompts
-├── agent-tools.ts     # Plan tracking, validation tools
-├── prompts.ts         # System prompts
-├── rag.ts            # RAG implementation (indexing, search)
-├── chunking.ts       # Code chunking strategies
-├── cache.ts          # Embedding cache with hash validation
-├── grep.ts           # Regex pattern matching
-├── mcp-client.ts     # MCP client (JSON-RPC over stdio)
-└── tools.ts          # Tool mapping (MCP → AI SDK format)
+├── core/                      # Core domain logic
+│   ├── agents/
+│   │   ├── factory.ts        # createAgentWithRole
+│   │   ├── models.ts         # Model configurations
+│   │   └── roles.ts          # Agent role definitions & prompts
+│   ├── rag/
+│   │   ├── index.ts          # RAG implementation
+│   │   ├── chunking.ts       # Code chunking strategies
+│   │   └── cache.ts          # Embedding cache
+│   └── search/
+│       └── grep.ts           # Pattern matching utility
+│
+├── infrastructure/            # External integrations
+│   ├── mcp/
+│   │   ├── client.ts         # MCP protocol client
+│   │   └── adapter.ts        # MCP to AI SDK adapter
+│   └── prompts/
+│       └── templates.ts      # System prompt templates
+│
+├── tools/                     # Agent tools
+│   └── workflow.ts           # plan_tool, validation_tool
+│
+├── application/               # Application orchestration
+│   ├── initialization.ts     # MCP clients, RAG setup, tool preparation
+│   ├── orchestrator.ts       # Agent creation, step handling
+│   └── modes/
+│       ├── loop.ts           # Interactive conversation mode
+│       └── once.ts           # Single execution mode
+│
+└── main.ts                    # Entry point (50 lines)
 
 tests/
 ├── fixtures/         # Sample code for testing
