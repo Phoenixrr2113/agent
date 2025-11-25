@@ -1,52 +1,46 @@
-import fs from 'fs/promises';
-import { cleanup } from '../initialization.js';
 import { logger } from '../../core/logger.js';
+import { cleanup } from '../initialization.js';
 
 export async function runOnceMode(
   agent: any,
   mcpClients: Record<string, any>,
   usedClients: Set<string>,
   codebaseRAG: any,
-  rl: readline.Interface | null
+  rl: any
 ) {
-  await fs.mkdir('./logs', { recursive: true });
+  logger.info('🔄 Running single iteration...');
 
-  const result = await agent.generate({
-    prompt: 'You are a generic agent template. Ask the user what kind of agent they want you to become, then start building yourself for that purpose. Begin by assessing your current capabilities.',
-  });
+  try {
+    const result = await agent.generate({
+      prompt: 'You are a generic agent template. Ask the user what kind of agent they want you to become, then start building yourself for that purpose. Begin by assessing your current capabilities.',
+    });
 
-  logger.info(result.text);
+    console.log('\n📝 Agent Response:\n');
+    console.log(result.text);
 
-  const timestamp = new Date().toISOString();
-  await fs.appendFile('./logs/agent.log', `\n=== ${timestamp} ===\n${result.text}\n`);
+    const toolsUsed = [...new Set(
+      result.steps.flatMap((step: any) =>
+        step.toolCalls?.map((tc: any) => tc.toolName) || []
+      )
+    )];
 
-  const logEntry = {
-    timestamp,
-    text: result.text,
-    reasoningText: result.reasoningText,
-    steps: result.steps.map((step: any) => ({
-      text: step.text,
-      toolCalls: step.toolCalls?.map((tc: any) => ({
-        name: tc.toolName,
-        args: tc.args,
-      })),
-      toolResults: step.toolResults?.map((tr: any) => ({
-        name: tr.toolName,
-        result: typeof tr.result === 'string' ? tr.result.substring(0, 200) : tr.result,
-      })),
-      finishReason: step.finishReason,
-    })),
-    usage: {
-      ...result.totalUsage,
-      reasoningTokens: result.usage.reasoningTokens,
-    },
-  };
-  await fs.appendFile('./logs/iterations.jsonl', JSON.stringify(logEntry, null, 2) + '\n');
+    if (toolsUsed.length > 0) {
+      logger.info('Tools used', { tools: toolsUsed.join(', ') });
+    }
 
-  logger.info('Re-indexing codebase after agent run...');
-  await codebaseRAG.indexCodebase();
-  const newStats = codebaseRAG.getStats();
-  logger.info('RAG re-indexed', { chunks: newStats.totalChunks, files: newStats.files });
+    const modifiedFiles = result.steps.some((step: any) =>
+      step.toolCalls?.some((tc: any) =>
+        ['write_file', 'edit_file', 'create_directory'].includes(tc.toolName)
+      )
+    );
+    if (modifiedFiles) {
+      logger.info('📚 Reindexing codebase...');
+      await codebaseRAG.indexCodebase();
+    }
 
-  cleanup(mcpClients, usedClients, rl);
+  } catch (error) {
+    logger.error('Agent error', { error: String(error) });
+  } finally {
+    cleanup(mcpClients, usedClients, rl);
+  }
 }
