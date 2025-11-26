@@ -5,3 +5,5 @@ logs
 workspace.rag-cache/
 .rag-cache
 tests/temp
+*.db
+memory.db

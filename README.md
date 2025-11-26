@@ -9,13 +9,13 @@ Instead of 50+ MCP servers, this agent uses **6 native tools**:
 - **shell** - Bash execution (git, filesystem, grep, etc.)
 - **web_search** - Brave + Tavily APIs
 - **fetch_page** - Parse web content with readability
-- **memory** - Graphiti knowledge graph (Neo4j-backed)
+- **memory** - Knowledge graph with LLM-based entity extraction (SQLite or Graphiti)
 - **ask_user** - Get user input
 - **task_complete** - Signal completion
 
 ### Core Capabilities
 - **RAG-Powered Codebase Understanding**: Semantic search with intelligent chunking
-- **Graph-Based Memory**: Graphiti extracts entities/relationships automatically via AI
+- **Graph-Based Memory**: Automatic entity/relationship extraction via LLM
 - **Shell Access**: Full bash execution for git, filesystem, and system operations
 - **Web Intelligence**: Search and fetch with Brave, Tavily, and readability parsing
 - **Pattern Matching**: Regex-based grep for exact code searches
@@ -25,6 +25,7 @@ This is a **library/template** meant to be embedded in your applications:
 - REST APIs and web services
 - CLI tools
 - Background workers
+- React Native apps (via API)
 - Any Node.js application
 
 ## 🚀 Quick Start
@@ -32,13 +33,11 @@ This is a **library/template** meant to be embedded in your applications:
 ### Prerequisites
 - Node.js 20+
 - pnpm
-- Docker (for Graphiti memory)
 - API Keys:
   - OpenRouter ([get one free](https://openrouter.ai/))
   - Google Generative AI ([get one free](https://aistudio.google.com/apikey))
   - Tavily ([get one](https://tavily.com/)) - optional
   - Brave Search ([get one](https://brave.com/search/api/)) - optional
-  - OpenAI (for Graphiti entity extraction)
 
 ### Installation
 
@@ -51,15 +50,8 @@ Edit `.env`:
 ```env
 OPENROUTER_API_KEY=sk-or-v1-...
 GOOGLE_GENERATIVE_AI_API_KEY=AIza...
-OPENAI_API_KEY=sk-...
 TAVILY_API_KEY=tvly-...
 BRAVE_API_KEY=BSA...
-```
-
-### Start Memory Service (Graphiti + Neo4j)
-
-```bash
-docker compose -f docker/graphiti-compose.yml up -d
 ```
 
 ### Test the Agent
@@ -68,7 +60,17 @@ docker compose -f docker/graphiti-compose.yml up -d
 pnpm chat
 ```
 
-This starts an interactive chat for testing. For production use, integrate the runtime into your application (see Usage section).
+This starts an interactive chat for testing. Memory is stored locally in SQLite by default.
+
+### Optional: Graphiti Memory (Advanced)
+
+For production deployments requiring Neo4j-backed graph memory:
+
+```bash
+docker compose -f docker/graphiti-compose.yml up -d
+```
+
+The agent auto-detects Graphiti and uses it when available.
 
 ## 📚 Architecture
 
@@ -100,9 +102,8 @@ The agent operates in a loop:
                ├─► RAG System (src/core/rag/)
                │   └─► Semantic vector search over codebase
                │
-               └─► External Services
-                   ├─► Graphiti (localhost:8000)
-                   └─► Neo4j (localhost:7687)
+               └─► Memory System (src/core/memory/)
+                   └─► SQLite (default) or Graphiti (optional)
 ```
 
 ### Native Tools
@@ -112,10 +113,12 @@ The agent operates in a loop:
 | `shell` | Execute bash commands (git, ls, grep, etc.) |
 | `web_search` | Search with Brave and/or Tavily APIs |
 | `fetch_page` | Fetch and parse web pages with readability |
-| `memory_add` | Add content to Graphiti knowledge graph |
+| `memory_add` | Add content to knowledge graph |
 | `memory_search` | Search memory for facts/relationships |
 | `memory_get_episodes` | Get recent memory episodes |
-| `memory_get_fact` | Get specific fact by UUID |
+| `memory_get_fact` | Get specific fact by ID |
+| `memory_get_entity` | Get entity details |
+| `memory_get_related` | Get related entities via graph traversal |
 | `search_codebase` | Semantic RAG search |
 | `grep_codebase` | Regex pattern matching |
 | `plan` | Create/update implementation plans |
@@ -123,13 +126,17 @@ The agent operates in a loop:
 | `ask_user` | Ask user a question |
 | `task_complete` | Signal task completion |
 
-### Graphiti Memory
+### Memory System
 
-Graphiti (by Zep) provides intelligent memory:
-- **Automatic Entity Extraction**: AI extracts entities and relationships
-- **Temporal Awareness**: Tracks how knowledge changes over time
-- **Hybrid Search**: Semantic + keyword + graph traversal
-- **Runs via Docker**: Neo4j + Graphiti REST API
+The agent includes a knowledge graph memory with:
+- **Automatic Entity Extraction**: LLM extracts entities and relationships
+- **Temporal Awareness**: Tracks when facts become valid/invalid
+- **Semantic Search**: Embedding-based similarity search
+- **Graph Traversal**: Find related entities through relationships
+
+**Two backends available:**
+- **MemoryLite (default)**: SQLite-based, zero-config, npm-installable
+- **Graphiti (optional)**: Neo4j-backed, production-grade, requires Docker
 
 ## 🧪 Testing
 
@@ -145,11 +152,11 @@ pnpm test:watch    # Watch mode
 | Variable | Required | Description |
 |----------|----------|-------------|
 | `OPENROUTER_API_KEY` | Yes | OpenRouter API key |
-| `GOOGLE_GENERATIVE_AI_API_KEY` | Yes | For RAG embeddings |
-| `OPENAI_API_KEY` | Yes | For Graphiti entity extraction |
+| `GOOGLE_GENERATIVE_AI_API_KEY` | Yes | For RAG embeddings + memory |
 | `TAVILY_API_KEY` | No | Tavily search API |
 | `BRAVE_API_KEY` | No | Brave search API |
-| `GRAPHITI_URL` | No | Graphiti API URL (default: http://localhost:8000) |
+| `MEMORY_DB_PATH` | No | SQLite path for MemoryLite (default: ./memory.db) |
+| `GRAPHITI_URL` | No | If set and reachable, uses Graphiti instead of MemoryLite |
 
 ## 📖 Usage
 
@@ -239,12 +246,18 @@ src/
 │   ├── shell.ts              # Bash execution
 │   ├── web-search.ts         # Brave + Tavily search
 │   ├── fetch-page.ts         # Web page parsing
-│   ├── memory.ts             # Graphiti API client
+│   ├── memory.ts             # Memory tools (auto-selects backend)
 │   ├── codebase.ts           # RAG + grep tools
 │   ├── agent.ts              # ask_user, task_complete
 │   └── workflow.ts           # plan, validate tools
 │
-├── core/                      # Core domain logic
+├── core/
+│   ├── memory/               # Knowledge graph memory
+│   │   ├── types.ts          # Core interfaces
+│   │   ├── extraction.ts     # LLM entity extraction
+│   │   ├── storage.ts        # Storage adapters
+│   │   ├── index.ts          # MemoryLite provider
+│   │   └── factory.ts        # Auto-detection
 │   └── rag/                  # RAG implementation
 │
 ├── application/               # Application orchestration
@@ -258,7 +271,7 @@ src/
 └── index.ts                   # Library exports
 
 docker/
-└── graphiti-compose.yml      # Neo4j + Graphiti services
+└── graphiti-compose.yml      # Optional: Neo4j + Graphiti
 ```
 
 ### Adding Custom Tools

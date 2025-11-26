@@ -1,48 +1,32 @@
 import { tool } from 'ai';
 import { z } from 'zod';
-import { randomUUID } from 'crypto';
+import type { MemoryProvider } from '../core/memory/types.js';
+import { createAutoMemoryProvider } from '../core/memory/factory.js';
 
-const GRAPHITI_URL = process.env.GRAPHITI_URL || 'http://localhost:8000';
+let memoryProvider: MemoryProvider | null = null;
 
-async function graphitiRequest(path: string, method: string, body?: unknown) {
-  const response = await fetch(`${GRAPHITI_URL}${path}`, {
-    method,
-    headers: { 'Content-Type': 'application/json' },
-    body: body ? JSON.stringify(body) : undefined,
-  });
-
-  if (!response.ok) {
-    const error = await response.text();
-    throw new Error(`Graphiti API error: ${response.status} - ${error}`);
+async function getProvider(): Promise<MemoryProvider> {
+  if (!memoryProvider) {
+    memoryProvider = await createAutoMemoryProvider({
+      storagePath: process.env.MEMORY_DB_PATH || './memory.db',
+    });
   }
-
-  return response.json();
+  return memoryProvider;
 }
 
 export const memoryAddTool = tool({
-  description: `Add messages/content to memory. Graphiti extracts entities and relationships automatically and builds a knowledge graph.`,
+  description: `Add content to memory. Automatically extracts entities and relationships to build a knowledge graph.`,
   inputSchema: z.object({
     content: z.string().describe('The content to remember'),
     role: z.enum(['user', 'assistant', 'system']).optional().describe('Role of the speaker'),
-    roleType: z.enum(['user', 'assistant', 'system']).optional().describe('Type of role'),
     groupId: z.string().optional().describe('Group ID to organize related memories (default: "default")'),
-    name: z.string().optional().describe('Optional name/label for this message'),
+    source: z.string().optional().describe('Source of this memory'),
   }),
-  execute: async ({ content, role = 'user', roleType = 'user', groupId = 'default', name }: { content: string; role?: string; roleType?: string; groupId?: string; name?: string }) => {
+  execute: async ({ content, role = 'user', groupId = 'default', source }: { content: string; role?: 'user' | 'assistant' | 'system'; groupId?: string; source?: string }) => {
     try {
-      const result = await graphitiRequest('/messages', 'POST', {
-        group_id: groupId,
-        messages: [{
-          uuid: randomUUID(),
-          content,
-          role,
-          role_type: roleType,
-          name: name || `memory_${Date.now()}`,
-          timestamp: new Date().toISOString(),
-          source_description: 'agent_memory',
-        }],
-      });
-      return JSON.stringify({ success: true, result });
+      const provider = await getProvider();
+      const result = await provider.add({ content, role, groupId, source });
+      return JSON.stringify({ success: true, ...result });
     } catch (error: any) {
       return JSON.stringify({ error: error.message });
     }
@@ -50,19 +34,16 @@ export const memoryAddTool = tool({
 });
 
 export const memorySearchTool = tool({
-  description: `Search memory for relevant facts and relationships. Uses hybrid search (semantic + keyword + graph traversal).`,
+  description: `Search memory for relevant facts and relationships. Uses semantic search with embedding similarity.`,
   inputSchema: z.object({
     query: z.string().describe('Search query'),
     groupIds: z.array(z.string()).optional().describe('Limit search to specific groups'),
-    maxFacts: z.number().optional().describe('Max facts to return (default: 10)'),
+    maxResults: z.number().optional().describe('Max results to return (default: 10)'),
   }),
-  execute: async ({ query, groupIds, maxFacts = 10 }: { query: string; groupIds?: string[]; maxFacts?: number }) => {
+  execute: async ({ query, groupIds, maxResults = 10 }: { query: string; groupIds?: string[]; maxResults?: number }) => {
     try {
-      const result = await graphitiRequest('/search', 'POST', {
-        query,
-        group_ids: groupIds,
-        max_facts: maxFacts,
-      });
+      const provider = await getProvider();
+      const result = await provider.search({ query, groupIds, maxResults });
       return JSON.stringify(result);
     } catch (error: any) {
       return JSON.stringify({ error: error.message });
@@ -74,11 +55,12 @@ export const memoryGetEpisodesTool = tool({
   description: `Get recent episodes (memories) for a group.`,
   inputSchema: z.object({
     groupId: z.string().describe('Group ID to get episodes from'),
-    lastN: z.number().optional().describe('Number of recent episodes to retrieve (default: 10)'),
+    limit: z.number().optional().describe('Number of recent episodes to retrieve (default: 10)'),
   }),
-  execute: async ({ groupId, lastN = 10 }: { groupId: string; lastN?: number }) => {
+  execute: async ({ groupId, limit = 10 }: { groupId: string; limit?: number }) => {
     try {
-      const result = await graphitiRequest(`/episodes/${groupId}?last_n=${lastN}`, 'GET');
+      const provider = await getProvider();
+      const result = await provider.getEpisodes(groupId, limit);
       return JSON.stringify(result);
     } catch (error: any) {
       return JSON.stringify({ error: error.message });
@@ -87,13 +69,47 @@ export const memoryGetEpisodesTool = tool({
 });
 
 export const memoryGetFactTool = tool({
-  description: `Get details about a specific fact (edge/relationship) by UUID.`,
+  description: `Get details about a specific fact by ID.`,
   inputSchema: z.object({
-    uuid: z.string().describe('UUID of the fact/edge to retrieve'),
+    factId: z.string().describe('ID of the fact to retrieve'),
   }),
-  execute: async ({ uuid }: { uuid: string }) => {
+  execute: async ({ factId }: { factId: string }) => {
     try {
-      const result = await graphitiRequest(`/entity-edge/${uuid}`, 'GET');
+      const provider = await getProvider();
+      const result = await provider.getFact(factId);
+      return JSON.stringify(result);
+    } catch (error: any) {
+      return JSON.stringify({ error: error.message });
+    }
+  },
+});
+
+export const memoryGetEntityTool = tool({
+  description: `Get details about a specific entity by ID.`,
+  inputSchema: z.object({
+    entityId: z.string().describe('ID of the entity to retrieve'),
+  }),
+  execute: async ({ entityId }: { entityId: string }) => {
+    try {
+      const provider = await getProvider();
+      const result = await provider.getEntity(entityId);
+      return JSON.stringify(result);
+    } catch (error: any) {
+      return JSON.stringify({ error: error.message });
+    }
+  },
+});
+
+export const memoryGetRelatedTool = tool({
+  description: `Get entities related to a given entity through the knowledge graph.`,
+  inputSchema: z.object({
+    entityId: z.string().describe('ID of the entity to find relations for'),
+    depth: z.number().optional().describe('How many hops to traverse (default: 1)'),
+  }),
+  execute: async ({ entityId, depth = 1 }: { entityId: string; depth?: number }) => {
+    try {
+      const provider = await getProvider();
+      const result = await provider.getRelatedEntities(entityId, depth);
       return JSON.stringify(result);
     } catch (error: any) {
       return JSON.stringify({ error: error.message });
@@ -106,5 +122,14 @@ export const memoryTools = {
   memory_search: memorySearchTool,
   memory_get_episodes: memoryGetEpisodesTool,
   memory_get_fact: memoryGetFactTool,
+  memory_get_entity: memoryGetEntityTool,
+  memory_get_related: memoryGetRelatedTool,
 };
+
+export async function closeMemory(): Promise<void> {
+  if (memoryProvider) {
+    await memoryProvider.close();
+    memoryProvider = null;
+  }
+}
 

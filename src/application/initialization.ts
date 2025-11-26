@@ -7,7 +7,7 @@ import { logger } from '../core/logger.js';
 import { shellTool } from '../tools/shell.js';
 import { webSearchTool } from '../tools/web-search.js';
 import { fetchPageTool } from '../tools/fetch-page.js';
-import { memoryTools } from '../tools/memory.js';
+import { memoryTools, closeMemory } from '../tools/memory.js';
 import { planTool, validationTool } from '../tools/workflow.js';
 import { createCodebaseTools } from '../tools/codebase.js';
 import { createAgentTools } from '../tools/agent.js';
@@ -15,7 +15,6 @@ import { createAgentTools } from '../tools/agent.js';
 export interface InitializationConfig {
   workspaceRoot?: string;
   enableReadline?: boolean;
-  enableRAG?: boolean;
 }
 
 export interface InitializationResult {
@@ -25,30 +24,31 @@ export interface InitializationResult {
 }
 
 export async function initializeAgent(config: InitializationConfig = {}): Promise<InitializationResult> {
-  const {
-    workspaceRoot = process.cwd(),
-    enableReadline = false,
-    enableRAG = true,
-  } = config;
+  const { workspaceRoot, enableReadline = false } = config;
 
   let rl: readline.Interface | null = null;
   if (enableReadline) {
     rl = readline.createInterface({ input, output });
   }
 
-  logger.info(`🤖 Initializing AI Agent`, { workspaceRoot });
+  logger.info(`🤖 Initializing AI Agent`, { workspaceRoot: workspaceRoot || '(none)' });
 
   let codebaseRAG: any = null;
-  if (enableRAG) {
+  if (workspaceRoot) {
     codebaseRAG = createCodebaseRAG(workspaceRoot);
-    logger.info('Indexing codebase...');
+    logger.info('Indexing codebase...', { path: workspaceRoot });
     await codebaseRAG.indexCodebase();
     const ragStats = codebaseRAG.getStats();
     logger.info('RAG indexed', { chunks: ragStats.totalChunks, files: ragStats.files });
+  } else {
+    logger.info('No workspace provided - codebase tools disabled');
   }
 
-  const codebaseTools = codebaseRAG
-    ? createCodebaseTools(codebaseRAG, grepWorkspace, workspaceRoot)
+  const workspaceTools = codebaseRAG && workspaceRoot
+    ? {
+        ...createCodebaseTools(codebaseRAG, grepWorkspace, workspaceRoot),
+        validate: validationTool,
+      }
     : {};
   const agentTools = createAgentTools(rl);
 
@@ -58,8 +58,7 @@ export async function initializeAgent(config: InitializationConfig = {}): Promis
     fetch_page: fetchPageTool,
     ...memoryTools,
     plan: planTool,
-    validate: validationTool,
-    ...codebaseTools,
+    ...workspaceTools,
     ...agentTools,
   };
 
@@ -77,4 +76,5 @@ export async function cleanup(rl: readline.Interface | null) {
   if (rl) {
     rl.close();
   }
+  await closeMemory();
 }

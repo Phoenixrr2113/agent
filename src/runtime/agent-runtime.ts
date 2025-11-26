@@ -5,7 +5,6 @@ import { logger } from '../core/logger.js';
 
 export interface AgentConfig {
   workspaceRoot?: string;
-  enableRAG?: boolean;
   askUserHandler?: AskUserHandler;
 }
 
@@ -43,7 +42,6 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
 
   const initResult = await initializeAgent({
     workspaceRoot: config.workspaceRoot,
-    enableRAG: config.enableRAG ?? true,
     enableReadline: false,
   });
   const { tools, codebaseRAG } = initResult;
@@ -98,13 +96,15 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
 
       conversationHistory = result.response.messages;
 
-      const modifiedFiles = result.steps.some((step: any) =>
-        step.toolCalls?.some((tc: any) =>
-          ['write_file', 'edit_file', 'create_directory'].includes(tc.toolName)
-        )
-      );
-      if (modifiedFiles) {
-        await codebaseRAG.indexCodebase();
+      if (codebaseRAG) {
+        const modifiedFiles = result.steps.some((step: any) =>
+          step.toolCalls?.some((tc: any) =>
+            ['write_file', 'edit_file', 'create_directory'].includes(tc.toolName)
+          )
+        );
+        if (modifiedFiles) {
+          await codebaseRAG.indexCodebase();
+        }
       }
 
       const completed = result.steps.some((step: any) =>
