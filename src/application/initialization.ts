@@ -12,21 +12,19 @@ import { planTool, validationTool } from '../tools/workflow.js';
 import { createCodebaseTools } from '../tools/codebase.js';
 import { createAgentTools } from '../tools/agent.js';
 
-const APPROVAL_MODE = process.env.APPROVAL_MODE || 'auto';
-
 export interface InitializationResult {
   tools: Record<string, any>;
   codebaseRAG: any;
   readline: readline.Interface | null;
 }
 
-export async function initializeAgent(): Promise<InitializationResult> {
+export async function initializeAgent(enableReadline: boolean = false): Promise<InitializationResult> {
   let rl: readline.Interface | null = null;
-  if (APPROVAL_MODE === 'manual') {
+  if (enableReadline) {
     rl = readline.createInterface({ input, output });
   }
 
-  logger.info(`🤖 Initializing AI Agent`, { approvalMode: APPROVAL_MODE });
+  logger.info(`🤖 Initializing AI Agent`);
 
   const codebaseRAG = createCodebaseRAG(process.cwd());
   logger.info('Indexing codebase...');
@@ -35,7 +33,7 @@ export async function initializeAgent(): Promise<InitializationResult> {
   logger.info('RAG indexed', { chunks: ragStats.totalChunks, files: ragStats.files });
 
   const codebaseTools = createCodebaseTools(codebaseRAG, grepWorkspace, process.cwd());
-  const agentTools = createAgentTools(rl, APPROVAL_MODE);
+  const agentTools = createAgentTools(rl);
 
   const tools = {
     shell: shellTool,

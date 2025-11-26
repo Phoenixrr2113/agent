@@ -3,7 +3,7 @@ import { z } from 'zod';
 import * as readline from 'readline/promises';
 import { logger } from '../core/logger.js';
 
-export function createAgentTools(rl: readline.Interface | null, approvalMode: string) {
+export function createAgentTools(rl: readline.Interface | null) {
   return {
     task_complete: tool({
       description: 'Call this when you have fully completed the user\'s request and have nothing more to do. This will end the current agent iteration.',
@@ -25,19 +25,14 @@ export function createAgentTools(rl: readline.Interface | null, approvalMode: st
         question: z.string().describe('The question to ask the user'),
       }),
       execute: async ({ question }: { question: string }) => {
-        if (approvalMode === 'auto') {
-          logger.info('🤖 Agent question (auto-approved)', { question });
-          logger.warn('⚠️  Agent is running in auto-mode. To interact with the agent, use "pnpm chat" instead of "pnpm dev".');
-          return 'yes';
+        if (!rl) {
+          logger.warn('⚠️  No readline interface available for user input');
+          return 'User interaction not available';
         }
 
-        if (approvalMode === 'manual' && rl) {
-          logger.info('🤔 Agent', { question });
-          const answer = await rl.question('👤 You: ');
-          return answer;
-        }
-
-        return 'Tool available but approval mode not configured';
+        logger.info('🤔 Agent', { question });
+        const answer = await rl.question('👤 You: ');
+        return answer;
       },
     }),
   };

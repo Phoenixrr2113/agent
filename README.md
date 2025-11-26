@@ -19,7 +19,7 @@ Unlike traditional agents that operate in sandboxed environments, this agent:
 - **Pattern Matching**: Regex-based grep for exact code searches
 
 ### Two Modes of Operation
-1. **Autonomous Mode** (`npm run dev`) - Single task execution with auto-approval
+1. **Autonomous Mode** (`npm run dev`) - Single task execution
 2. **Interactive Mode** (`npm run chat`) - Conversation loop with user input
 
 Both modes use the pluggable runtime architecture for clean separation and service integration.
@@ -53,7 +53,7 @@ MODEL=qwen/qwen3-coder:free
 pnpm run chat
 ```
 
-**Autonomous Mode** (runs in a loop):
+**Autonomous Mode**:
 ```bash
 pnpm run dev
 ```
