@@ -1,6 +1,25 @@
 {
-  "name": "generic-agent-template",
-  "version": "1.0.0",
+  "name": "ai-agent-runtime",
+  "version": "0.1.0",
+  "description": "Server-side AI agent runtime with persistent memory, web search, shell execution, and optional codebase understanding",
+  "keywords": [
+    "ai",
+    "agent",
+    "llm",
+    "runtime",
+    "ai-agent",
+    "openrouter",
+    "vercel-ai-sdk",
+    "memory",
+    "rag",
+    "hono"
+  ],
+  "author": "",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": ""
+  },
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -8,16 +27,37 @@
     ".": {
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
+    },
+    "./server": {
+      "import": "./dist/server.js",
+      "types": "./dist/server.d.ts"
     }
   },
+  "bin": {
+    "ai-agent-server": "./dist/cli.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
   "engines": {
     "node": ">=20"
   },
-  "os": ["darwin", "linux", "win32"],
-  "cpu": ["x64", "arm64"],
+  "os": [
+    "darwin",
+    "linux",
+    "win32"
+  ],
+  "cpu": [
+    "x64",
+    "arm64"
+  ],
   "scripts": {
     "build": "tsc",
     "chat": "tsx src/chat.ts",
+    "server": "tsx src/server.ts",
+    "start": "node dist/server.js",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:unit": "vitest run src/",
@@ -27,11 +67,13 @@
   },
   "dependencies": {
     "@ai-sdk/google": "^2.0.42",
+    "@hono/node-server": "^1.19.6",
     "@mozilla/readability": "^0.6.0",
     "@openrouter/ai-sdk-provider": "^1.0.0",
     "ai": "^5.0.0",
     "better-sqlite3": "^12.4.6",
     "dotenv": "^17.2.3",
+    "hono": "^4.10.7",
     "jsdom": "^27.2.0",
     "zod": "^3.25.76"
   },

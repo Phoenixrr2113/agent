@@ -1,7 +1,6 @@
 import { tool } from 'ai';
 import { z } from 'zod';
 import { Readability } from '@mozilla/readability';
-import { JSDOM } from 'jsdom';
 
 interface ParsedPage {
   title: string;
@@ -10,6 +9,16 @@ interface ParsedPage {
   byline?: string;
   siteName?: string;
   length: number;
+}
+
+let JSDOM: typeof import('jsdom').JSDOM;
+
+async function getJSDOM() {
+  if (!JSDOM) {
+    const jsdom = await import('jsdom');
+    JSDOM = jsdom.JSDOM;
+  }
+  return JSDOM;
 }
 
 async function fetchAndParse(url: string): Promise<ParsedPage> {
@@ -25,7 +34,8 @@ async function fetchAndParse(url: string): Promise<ParsedPage> {
   }
 
   const html = await response.text();
-  const dom = new JSDOM(html, { url });
+  const JSDOMClass = await getJSDOM();
+  const dom = new JSDOMClass(html, { url });
   const reader = new Readability(dom.window.document);
   const article = reader.parse();
 
