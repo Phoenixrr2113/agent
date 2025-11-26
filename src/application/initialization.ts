@@ -2,8 +2,7 @@ import { tool } from 'ai';
 import { z } from 'zod';
 import * as readline from 'readline/promises';
 import { stdin as input, stdout as output } from 'process';
-import { createStdioMCPClient } from '../infrastructure/mcp/client.js';
-import { mapMcpToolsToAiTools} from '../infrastructure/mcp/adapter.js';
+import { createStdioMCPClient, type MCPClientWrapper } from '../infrastructure/mcp/client.js';
 import { createCodebaseRAG } from '../core/rag/index.js';
 import { grepWorkspace } from '../core/search/grep.js';
 import { planTool, validationTool } from '../tools/workflow.js';
@@ -13,7 +12,7 @@ const APPROVAL_MODE = process.env.APPROVAL_MODE || 'auto';
 
 export interface InitializationResult {
   tools: Record<string, any>;
-  mcpClients: Record<string, any>;
+  mcpClients: Record<string, MCPClientWrapper>;
   usedClients: Set<string>;
   codebaseRAG: any;
   readline: readline.Interface | null;
@@ -30,35 +29,29 @@ export async function initializeAgent(): Promise<InitializationResult> {
   const usedClients = new Set<string>();
 
   const mcpClients = {
-    filesystem: createStdioMCPClient('npx', ['-y', '@modelcontextprotocol/server-filesystem', process.cwd()]),
-    git: createStdioMCPClient('npx', ['-y', 'git-mcp-server']),
-    fetch: createStdioMCPClient('uvx', ['mcp-server-fetch']),
-    memory: createStdioMCPClient('npx', ['-y', '@modelcontextprotocol/server-memory']),
-    sequentialThinking: createStdioMCPClient('npx', ['-y', '@modelcontextprotocol/server-sequential-thinking']),
+    filesystem: await createStdioMCPClient('node', ['node_modules/@modelcontextprotocol/server-filesystem/dist/index.js', process.cwd()]),
+    git: await createStdioMCPClient('npx', ['-y', 'git-mcp-server']),
+    fetch: await createStdioMCPClient('uvx', ['mcp-server-fetch']),
+    memory: await createStdioMCPClient('npx', ['-y', '@modelcontextprotocol/server-memory']),
+    sequentialThinking: await createStdioMCPClient('npx', ['-y', '@modelcontextprotocol/server-sequential-thinking']),
   };
 
-  await mcpClients.filesystem.initialize();
-  await mcpClients.git.initialize();
-  await mcpClients.fetch.initialize();
-  await mcpClients.memory.initialize();
-  await mcpClients.sequentialThinking.initialize();
+  const filesystemTools = await mcpClients.filesystem.tools();
+  const gitTools = await mcpClients.git.tools();
+  const fetchTools = await mcpClients.fetch.tools();
+  const memoryTools = await mcpClients.memory.tools();
+  const sequentialThinkingTools = await mcpClients.sequentialThinking.tools();
 
-  const fsMcpTools = await mcpClients.filesystem.listTools();
-  const gitMcpTools = await mcpClients.git.listTools();
-  const fetchMcpTools = await mcpClients.fetch.listTools();
-  const memoryMcpTools = await mcpClients.memory.listTools();
-  const sequentialThinkingMcpTools = await mcpClients.sequentialThinking.listTools();
-
-  logger.info('Filesystem tools', { count: fsMcpTools.length });
-  logger.info('Git tools', { count: gitMcpTools.length });
-  logger.info('Fetch tools', { count: fetchMcpTools.length });
-  logger.info('Memory tools', { count: memoryMcpTools.length });
-  logger.info('Sequential thinking tools', { count: sequentialThinkingMcpTools.length });
+  logger.info('Filesystem tools', { count: Object.keys(filesystemTools).length });
+  logger.info('Git tools', { count: Object.keys(gitTools).length });
+  logger.info('Fetch tools', { count: Object.keys(fetchTools).length });
+  logger.info('Memory tools', { count: Object.keys(memoryTools).length });
+  logger.info('Sequential thinking tools', { count: Object.keys(sequentialThinkingTools).length });
 
   function wrapToolsWithTracking(tools: Record<string, any>, clientName: string) {
     const wrapped: Record<string, any> = {};
-    for (const [name, tool] of Object.entries(tools)) {
-      const originalTool = tool as Record<string, any>;
+    for (const [name, toolDef] of Object.entries(tools)) {
+      const originalTool = toolDef as Record<string, any>;
       wrapped[name] = {
         ...originalTool,
         execute: async (...args: any[]) => {
@@ -70,26 +63,11 @@ export async function initializeAgent(): Promise<InitializationResult> {
     return wrapped;
   }
 
-  const filesystemTools = wrapToolsWithTracking(
-    mapMcpToolsToAiTools(fsMcpTools, mcpClients.filesystem),
-    'filesystem'
-  );
-  const gitTools = wrapToolsWithTracking(
-    mapMcpToolsToAiTools(gitMcpTools, mcpClients.git),
-    'git'
-  );
-  const fetchTools = wrapToolsWithTracking(
-    mapMcpToolsToAiTools(fetchMcpTools, mcpClients.fetch),
-    'fetch'
-  );
-  const memoryTools = wrapToolsWithTracking(
-    mapMcpToolsToAiTools(memoryMcpTools, mcpClients.memory),
-    'memory'
-  );
-  const sequentialThinkingTools = wrapToolsWithTracking(
-    mapMcpToolsToAiTools(sequentialThinkingMcpTools, mcpClients.sequentialThinking),
-    'sequentialThinking'
-  );
+  const wrappedFilesystemTools = wrapToolsWithTracking(filesystemTools, 'filesystem');
+  const wrappedGitTools = wrapToolsWithTracking(gitTools, 'git');
+  const wrappedFetchTools = wrapToolsWithTracking(fetchTools, 'fetch');
+  const wrappedMemoryTools = wrapToolsWithTracking(memoryTools, 'memory');
+  const wrappedSequentialThinkingTools = wrapToolsWithTracking(sequentialThinkingTools, 'sequentialThinking');
 
   const codebaseRAG = createCodebaseRAG(process.cwd());
   logger.info('Indexing codebase...');
@@ -166,11 +144,11 @@ export async function initializeAgent(): Promise<InitializationResult> {
   const tools = {
     plan_tool: planTool,
     validation_tool: validationTool,
-    ...filesystemTools,
-    ...gitTools,
-    ...fetchTools,
-    ...memoryTools,
-    ...sequentialThinkingTools,
+    ...wrappedFilesystemTools,
+    ...wrappedGitTools,
+    ...wrappedFetchTools,
+    ...wrappedMemoryTools,
+    ...wrappedSequentialThinkingTools,
     ...codebaseTools,
   };
 
@@ -185,22 +163,22 @@ export async function initializeAgent(): Promise<InitializationResult> {
   };
 }
 
-export function cleanup(mcpClients: Record<string, any>, usedClients: Set<string>, rl: readline.Interface | null) {
+export async function cleanup(mcpClients: Record<string, MCPClientWrapper>, usedClients: Set<string>, rl: readline.Interface | null) {
   logger.info('🧹 Cleaning up MCP clients...');
   if (usedClients.has('filesystem')) {
-    mcpClients.filesystem.close();
+    await mcpClients.filesystem.close();
   }
   if (usedClients.has('git')) {
-    mcpClients.git.close();
+    await mcpClients.git.close();
   }
   if (usedClients.has('fetch')) {
-    mcpClients.fetch.close();
+    await mcpClients.fetch.close();
   }
   if (usedClients.has('memory')) {
-    mcpClients.memory.close();
+    await mcpClients.memory.close();
   }
   if (usedClients.has('sequentialThinking')) {
-    mcpClients.sequentialThinking.close();
+    await mcpClients.sequentialThinking.close();
   }
   if (rl) {
     rl.close();

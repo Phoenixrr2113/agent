@@ -1,36 +1,37 @@
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
-import { createOllama } from 'ollama-ai-provider-v2';
+import { logger } from '../logger.js';
 
-const ollama = createOllama({
-  baseURL: process.env.OLLAMA_BASE_URL || 'http://localhost:11434/api',
-});
+const openrouter = createOpenRouter();
+
+const MODEL_TIERS = {
+  fast: process.env.MODEL_FAST || 'deepseek/deepseek-chat-v3-0324:free',
+  standard: process.env.MODEL_STANDARD || 'google/gemini-2.0-flash-001',
+  reasoning: process.env.MODEL_REASONING || 'deepseek/deepseek-r1:free',
+  powerful: process.env.MODEL_POWERFUL || 'anthropic/claude-sonnet-4',
+};
 
 export const models = {
   fast: () => {
-    if (process.env.OLLAMA_ENABLED === 'true') {
-      return ollama(process.env.OLLAMA_FAST_MODEL || 'llama3.2:3b');
-    }
-    return createOpenRouter().chat(process.env.MODEL || 'qwen/qwen3-coder:free');
+    const modelName = MODEL_TIERS.fast;
+    logger.info('🔌 Using OpenRouter model', { tier: 'fast', model: modelName });
+    return openrouter.chat(modelName);
   },
 
   standard: () => {
-    if (process.env.OLLAMA_ENABLED === 'true') {
-      return ollama(process.env.OLLAMA_STANDARD_MODEL || 'qwen2.5-coder:14b');
-    }
-    return createOpenRouter().chat(process.env.MODEL || 'qwen/qwen3-coder:free');
+    const modelName = MODEL_TIERS.standard;
+    logger.info('🔌 Using OpenRouter model', { tier: 'standard', model: modelName });
+    return openrouter.chat(modelName);
   },
 
   reasoning: () => {
-    if (process.env.OLLAMA_ENABLED === 'true') {
-      return ollama(process.env.OLLAMA_REASONING_MODEL || 'deepseek-r1:14b');
-    }
-    return createOpenRouter().chat('deepseek/deepseek-chat-v3:free');
+    const modelName = MODEL_TIERS.reasoning;
+    logger.info('🔌 Using OpenRouter model', { tier: 'reasoning', model: modelName });
+    return openrouter.chat(modelName);
   },
 
   powerful: () => {
-    if (process.env.OLLAMA_ENABLED === 'true') {
-      return ollama(process.env.OLLAMA_POWERFUL_MODEL || 'qwen2.5-coder:32b');
-    }
-    return createOpenRouter().chat('anthropic/claude-sonnet-4.5');
+    const modelName = MODEL_TIERS.powerful;
+    logger.info('🔌 Using OpenRouter model', { tier: 'powerful', model: modelName });
+    return openrouter.chat(modelName);
   },
 };

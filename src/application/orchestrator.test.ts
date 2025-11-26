@@ -44,7 +44,7 @@ describe('orchestrator', () => {
 
       const result = prepareStep({ messages } as any);
 
-      expect(result.messages).toHaveLength(30);
+      expect(result?.messages).toHaveLength(30);
     });
 
     it('should trim messages when over limit', () => {
@@ -53,7 +53,7 @@ describe('orchestrator', () => {
 
       const result = prepareStep({ messages } as any);
 
-      expect(result.messages).toHaveLength(50);
+      expect(result?.messages).toHaveLength(50);
     });
 
     it('should preserve first message when trimming', () => {
@@ -66,7 +66,7 @@ describe('orchestrator', () => {
 
       const result = prepareStep({ messages } as any);
 
-      expect(result.messages[0]).toBe(firstMessage);
+      expect(result?.messages[0]).toBe(firstMessage);
     });
 
     it('should keep last 49 messages plus first message when trimming', () => {
@@ -81,9 +81,9 @@ describe('orchestrator', () => {
 
       const result = prepareStep({ messages } as any);
 
-      expect(result.messages).toHaveLength(50);
-      expect(result.messages[0]).toBe(firstMessage);
-      expect(result.messages[result.messages.length - 1]).toBe(lastMessage);
+      expect(result?.messages).toHaveLength(50);
+      expect(result?.messages[0]).toBe(firstMessage);
+      expect(result?.messages[result?.messages.length - 1]).toBe(lastMessage);
     });
 
     it('should handle exactly 50 messages', () => {
@@ -92,7 +92,7 @@ describe('orchestrator', () => {
 
       const result = prepareStep({ messages } as any);
 
-      expect(result.messages).toHaveLength(50);
+      expect(result?.messages).toHaveLength(50);
     });
 
     it('should handle single message', () => {
@@ -101,7 +101,7 @@ describe('orchestrator', () => {
 
       const result = prepareStep({ messages } as any);
 
-      expect(result.messages).toHaveLength(1);
+      expect(result?.messages).toHaveLength(1);
     });
   });
 

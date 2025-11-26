@@ -2,23 +2,16 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { initializeAgent, cleanup } from './initialization.js';
 
 vi.mock('../infrastructure/mcp/client.js', () => ({
-  createStdioMCPClient: vi.fn(() => ({
-    initialize: vi.fn().mockResolvedValue(undefined),
-    listTools: vi.fn().mockResolvedValue([
-      { name: 'test_tool', description: 'Test tool', inputSchema: { type: 'object', properties: {} } }
-    ]),
-    close: vi.fn(),
-  })),
-}));
-
-vi.mock('../infrastructure/mcp/adapter.js', () => ({
-  mapMcpToolsToAiTools: vi.fn(() => ({
-    test_tool: {
-      description: 'Test tool',
-      parameters: {},
-      execute: vi.fn().mockResolvedValue('test result'),
-    },
-  })),
+  createStdioMCPClient: vi.fn().mockResolvedValue({
+    tools: vi.fn().mockResolvedValue({
+      test_tool: {
+        description: 'Test tool',
+        parameters: {},
+        execute: vi.fn().mockResolvedValue('test result'),
+      },
+    }),
+    close: vi.fn().mockResolvedValue(undefined),
+  }),
 }));
 
 vi.mock('../core/rag/index.js', () => ({
@@ -66,11 +59,11 @@ describe('initialization', () => {
       expect(result.mcpClients).toHaveProperty('memory');
       expect(result.mcpClients).toHaveProperty('sequentialThinking');
 
-      expect(result.mcpClients.filesystem.initialize).toHaveBeenCalled();
-      expect(result.mcpClients.git.initialize).toHaveBeenCalled();
-      expect(result.mcpClients.fetch.initialize).toHaveBeenCalled();
-      expect(result.mcpClients.memory.initialize).toHaveBeenCalled();
-      expect(result.mcpClients.sequentialThinking.initialize).toHaveBeenCalled();
+      expect(result.mcpClients.filesystem.tools).toBeDefined();
+      expect(result.mcpClients.git.tools).toBeDefined();
+      expect(result.mcpClients.fetch.tools).toBeDefined();
+      expect(result.mcpClients.memory.tools).toBeDefined();
+      expect(result.mcpClients.sequentialThinking.tools).toBeDefined();
     });
 
     it('should create codebase RAG and index', async () => {
@@ -138,18 +131,18 @@ describe('initialization', () => {
   });
 
   describe('cleanup', () => {
-    it('should close only used clients', () => {
+    it('should close only used clients', async () => {
       const mockClients = {
-        filesystem: { close: vi.fn() },
-        git: { close: vi.fn() },
-        fetch: { close: vi.fn() },
-        memory: { close: vi.fn() },
-        sequentialThinking: { close: vi.fn() },
+        filesystem: { close: vi.fn().mockResolvedValue(undefined), tools: vi.fn() },
+        git: { close: vi.fn().mockResolvedValue(undefined), tools: vi.fn() },
+        fetch: { close: vi.fn().mockResolvedValue(undefined), tools: vi.fn() },
+        memory: { close: vi.fn().mockResolvedValue(undefined), tools: vi.fn() },
+        sequentialThinking: { close: vi.fn().mockResolvedValue(undefined), tools: vi.fn() },
       };
 
       const usedClients = new Set(['filesystem', 'git']);
 
-      cleanup(mockClients, usedClients, null);
+      await cleanup(mockClients, usedClients, null);
 
       expect(mockClients.filesystem.close).toHaveBeenCalled();
       expect(mockClients.git.close).toHaveBeenCalled();
@@ -158,49 +151,49 @@ describe('initialization', () => {
       expect(mockClients.sequentialThinking.close).not.toHaveBeenCalled();
     });
 
-    it('should close readline interface if provided', () => {
+    it('should close readline interface if provided', async () => {
       const mockClients = {
-        filesystem: { close: vi.fn() },
-        git: { close: vi.fn() },
-        fetch: { close: vi.fn() },
-        memory: { close: vi.fn() },
-        sequentialThinking: { close: vi.fn() },
+        filesystem: { close: vi.fn().mockResolvedValue(undefined), tools: vi.fn() },
+        git: { close: vi.fn().mockResolvedValue(undefined), tools: vi.fn() },
+        fetch: { close: vi.fn().mockResolvedValue(undefined), tools: vi.fn() },
+        memory: { close: vi.fn().mockResolvedValue(undefined), tools: vi.fn() },
+        sequentialThinking: { close: vi.fn().mockResolvedValue(undefined), tools: vi.fn() },
       };
 
       const mockReadline = { close: vi.fn() };
       const usedClients = new Set<string>();
 
-      cleanup(mockClients, usedClients, mockReadline as any);
+      await cleanup(mockClients, usedClients, mockReadline as any);
 
       expect(mockReadline.close).toHaveBeenCalled();
     });
 
-    it('should not throw if readline is null', () => {
+    it('should not throw if readline is null', async () => {
       const mockClients = {
-        filesystem: { close: vi.fn() },
-        git: { close: vi.fn() },
-        fetch: { close: vi.fn() },
-        memory: { close: vi.fn() },
-        sequentialThinking: { close: vi.fn() },
+        filesystem: { close: vi.fn().mockResolvedValue(undefined), tools: vi.fn() },
+        git: { close: vi.fn().mockResolvedValue(undefined), tools: vi.fn() },
+        fetch: { close: vi.fn().mockResolvedValue(undefined), tools: vi.fn() },
+        memory: { close: vi.fn().mockResolvedValue(undefined), tools: vi.fn() },
+        sequentialThinking: { close: vi.fn().mockResolvedValue(undefined), tools: vi.fn() },
       };
 
       const usedClients = new Set<string>();
 
-      expect(() => cleanup(mockClients, usedClients, null)).not.toThrow();
+      await expect(cleanup(mockClients, usedClients, null)).resolves.not.toThrow();
     });
 
-    it('should close all clients when all are used', () => {
+    it('should close all clients when all are used', async () => {
       const mockClients = {
-        filesystem: { close: vi.fn() },
-        git: { close: vi.fn() },
-        fetch: { close: vi.fn() },
-        memory: { close: vi.fn() },
-        sequentialThinking: { close: vi.fn() },
+        filesystem: { close: vi.fn().mockResolvedValue(undefined), tools: vi.fn() },
+        git: { close: vi.fn().mockResolvedValue(undefined), tools: vi.fn() },
+        fetch: { close: vi.fn().mockResolvedValue(undefined), tools: vi.fn() },
+        memory: { close: vi.fn().mockResolvedValue(undefined), tools: vi.fn() },
+        sequentialThinking: { close: vi.fn().mockResolvedValue(undefined), tools: vi.fn() },
       };
 
       const usedClients = new Set(['filesystem', 'git', 'fetch', 'memory', 'sequentialThinking']);
 
-      cleanup(mockClients, usedClients, null);
+      await cleanup(mockClients, usedClients, null);
 
       expect(mockClients.filesystem.close).toHaveBeenCalled();
       expect(mockClients.git.close).toHaveBeenCalled();

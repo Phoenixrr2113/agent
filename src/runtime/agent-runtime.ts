@@ -1,4 +1,4 @@
-import type { CoreMessage } from 'ai';
+import type { ModelMessage } from 'ai';
 import { initializeAgent, cleanup } from '../application/initialization.js';
 import { createAgent } from '../application/orchestrator.js';
 import { logger } from '../core/logger.js';
@@ -12,12 +12,12 @@ export interface AgentConfig {
 
 export interface TaskInput {
   prompt?: string;
-  messages?: CoreMessage[];
+  messages?: ModelMessage[];
 }
 
 export interface TaskResult {
   text: string;
-  messages: CoreMessage[];
+  messages: ModelMessage[];
   completed: boolean;
   needsInput: boolean;
   pendingQuestion?: string;
@@ -30,7 +30,7 @@ export type AskUserHandler = (question: string) => Promise<string>;
 export interface AgentSession {
   send(message: string): Promise<TaskResult>;
   runTask(input: TaskInput): Promise<TaskResult>;
-  getHistory(): CoreMessage[];
+  getHistory(): ModelMessage[];
   clearHistory(): void;
 }
 
@@ -66,7 +66,7 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
   const agent = createAgent(tools);
 
   const createSession = (): AgentSession => {
-    let conversationHistory: CoreMessage[] = [];
+    let conversationHistory: ModelMessage[] = [];
 
     const runTask = async (input: TaskInput): Promise<TaskResult> => {
       if (input.prompt) {
@@ -75,9 +75,24 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
         conversationHistory = [...conversationHistory, ...input.messages];
       }
 
+      logger.info('🧠 Sending request to AI model...');
+      logger.debug('📤 Messages being sent', { count: conversationHistory.length });
+      const startTime = Date.now();
+
       const result = await agent.generate({
         messages: conversationHistory,
       });
+
+      const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);
+      logger.info('✅ AI model responded', { elapsedSeconds: elapsed, steps: result.steps.length });
+      logger.debug('📥 Raw response text', { text: result.text?.slice(0, 500) });
+
+      const allToolCalls = result.steps.flatMap((step: any) => step.toolCalls || []);
+      if (allToolCalls.length > 0) {
+        logger.info('🔧 Total tool calls made', { count: allToolCalls.length });
+      } else {
+        logger.warn('⚠️ No tool calls made - model may not be using tools correctly');
+      }
 
       conversationHistory = result.response.messages;
 
@@ -132,7 +147,7 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
     createSession,
     shutdown: async () => {
       logger.info('🧹 Shutting down agent runtime');
-      cleanup(mcpClients, usedClients, rl);
+      await cleanup(mcpClients, usedClients, rl);
     },
   };
 }

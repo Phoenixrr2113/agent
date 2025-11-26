@@ -1,19 +1,7 @@
-import type { StepResult, PrepareStepFunction, StopCondition } from 'ai';
-import { hasToolCall, stepCountIs } from 'ai';
+import type { StepResult, PrepareStepFunction } from 'ai';
+import { stepCountIs } from 'ai';
 import { createAgentWithRole } from '../core/agents/factory.js';
 import { logger } from '../core/logger.js';
-
-const RUN_MODE = process.env.RUN_MODE || 'once';
-
-export function createStopConditions(runMode: string = RUN_MODE): StopCondition<any>[] {
-  const MAX_STEPS = runMode === 'loop' ? 20 : 50;
-
-  return [
-    stepCountIs(MAX_STEPS),
-    hasToolCall('task_complete'),
-    hasToolCall('ask_user'),
-  ];
-}
 
 export function createPrepareStep(): PrepareStepFunction<any> {
   return ({ messages }) => {
@@ -33,24 +21,78 @@ export function createPrepareStep(): PrepareStepFunction<any> {
   };
 }
 
+function cleanAIText(text: string): string {
+  const xmlTagPattern = /<\/?[a-zA-Z_][a-zA-Z0-9_-]*(?:\s+[^>]*)?\/?>/g;
+  const cleaned = text.replace(xmlTagPattern, '').trim();
+  return cleaned;
+}
+
 export function createStepFinishHandler() {
   let stepCount = 0;
 
   return async (stepResult: StepResult<any>) => {
     stepCount++;
-    logger.info('📈 Step finished', { step: stepCount });
+
+    console.log('\n' + '═'.repeat(80));
+    console.log(`📈 STEP ${stepCount}`);
+    console.log('═'.repeat(80));
+
+    if (stepResult.text && stepResult.text.trim()) {
+      const cleanedText = cleanAIText(stepResult.text);
+      if (cleanedText) {
+        console.log('\n💭 AI THINKING:');
+        console.log('─'.repeat(40));
+        console.log(cleanedText);
+      }
+    }
 
     if (stepResult.toolCalls && stepResult.toolCalls.length > 0) {
-      const toolNames = stepResult.toolCalls.map((tc) => tc.toolName);
-      logger.info('📊 Tools used', { tools: [...new Set(toolNames)].join(', ') });
+      for (let i = 0; i < stepResult.toolCalls.length; i++) {
+        const tc = stepResult.toolCalls[i];
+        const tr = stepResult.toolResults?.find(r => r.toolCallId === tc.toolCallId);
+
+        console.log(`\n🔧 TOOL CALL: ${tc.toolName}`);
+        console.log('─'.repeat(40));
+
+        const input = tc.input;
+        if (input && typeof input === 'object' && Object.keys(input).length > 0) {
+          console.log('📥 INPUT:');
+          const inputStr = JSON.stringify(input, null, 2);
+          console.log(inputStr.length > 500 ? inputStr.slice(0, 500) + '...' : inputStr);
+        } else {
+          console.log('📥 INPUT: (none)');
+        }
+
+        if (tr) {
+          console.log('\n📤 OUTPUT:');
+          if (tr.output !== undefined && tr.output !== null) {
+            const outputStr = typeof tr.output === 'string'
+              ? tr.output
+              : JSON.stringify(tr.output, null, 2);
+            if (outputStr) {
+              console.log(outputStr.length > 1000 ? outputStr.slice(0, 1000) + '...' : outputStr);
+            } else {
+              console.log('(empty result)');
+            }
+          } else {
+            console.log('(no output)');
+          }
+        } else {
+          console.log('\n📤 OUTPUT: (tool execution pending)');
+        }
+      }
+    } else {
+      console.log('\n💬 No tool calls this step');
     }
+
+    console.log('\n');
   };
 }
 
-export function createAgent(tools: Record<string, any>) {
+export function createAgent(tools: Record<string, any>, maxSteps: number = 50) {
   return createAgentWithRole('generic', tools, {
     modelType: 'standard',
-    stopWhen: createStopConditions(),
+    stopWhen: stepCountIs(maxSteps),
     prepareStep: createPrepareStep(),
     onStepFinish: createStepFinishHandler(),
   });
