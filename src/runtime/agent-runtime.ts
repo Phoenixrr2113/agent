@@ -43,10 +43,9 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
   logger.info('🚀 Creating agent runtime');
 
   const initResult = await initializeAgent();
-  const { tools, mcpClients, usedClients, codebaseRAG, readline: rl } = initResult;
+  const { tools, codebaseRAG, readline: rl } = initResult;
 
   if (config.askUserHandler) {
-    const originalExecute = tools.ask_user.execute;
     tools.ask_user = {
       ...tools.ask_user,
       execute: async (args: { question: string }) => {
@@ -147,7 +146,7 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
     createSession,
     shutdown: async () => {
       logger.info('🧹 Shutting down agent runtime');
-      await cleanup(mcpClients, usedClients, rl);
+      await cleanup(rl);
     },
   };
 }

@@ -1,3 +1,51 @@
+## CURRENT REFACTORING PLAN: Minimal Tool Architecture
+
+### Goal
+Replace 50+ MCP-based tools with 6 native tools:
+1. **shell** - Bash execution (covers git, fs, grep, glob, etc.)
+2. **web_search** - Brave + Tavily APIs
+3. **fetch_page** - Parse web content with readability
+4. **memory** - FalkorDB/Graphiti graph-based persistent memory
+5. **ask_user** - Get user input (already exists)
+6. **task_complete** - Signal completion (already exists)
+
+### Tasks
+- [ ] **Phase 1: Shell Tool**
+  - [ ] Create `src/tools/shell.ts` with bash execution
+  - [ ] Add safety measures (confirmation for destructive commands)
+  - [ ] Test with git, filesystem, grep commands
+
+- [ ] **Phase 2: Web Tools**
+  - [ ] Create `src/tools/web-search.ts` with Brave + Tavily
+  - [ ] Create `src/tools/fetch-page.ts` with readability parsing
+  - [ ] Add API keys to .env.example
+  - [ ] Test search and page fetching
+
+- [ ] **Phase 3: Memory**
+  - [ ] Research FalkorDB Node.js client
+  - [ ] Create `src/tools/memory.ts` with graph operations
+  - [ ] Docker setup for FalkorDB
+  - [ ] Test entity creation, relationships, queries
+
+- [ ] **Phase 4: Cleanup**
+  - [ ] Remove MCP initialization from `src/application/initialization.ts`
+  - [ ] Remove MCP client code
+  - [ ] Update tool registration in agent runtime
+  - [ ] Remove unused dependencies
+
+- [ ] **Phase 5: Integration**
+  - [ ] Update system prompt for new tools
+  - [ ] Update agent runtime to use native tools
+  - [ ] End-to-end testing
+  - [ ] Update documentation
+
+### API Keys Needed
+- `BRAVE_API_KEY` - https://brave.com/search/api/
+- `TAVILY_API_KEY` - https://tavily.com/
+- FalkorDB runs locally via Docker
+
+---
+
 ## PROCESS (FOLLOW EXACTLY)
 1. **UNDERSTAND**: Read request fully, ask if uncertain
 2. **PLAN**: For complex tasks, create a plan:

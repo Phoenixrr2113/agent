@@ -19,12 +19,16 @@
     "@ai-sdk/mcp": "latest",
     "@modelcontextprotocol/sdk": "latest",
     "@modelcontextprotocol/server-filesystem": "^2025.11.25",
+    "@mozilla/readability": "^0.6.0",
     "@openrouter/ai-sdk-provider": "^1.0.0",
     "ai": "^5.0.0",
     "dotenv": "^17.2.3",
+    "falkordb": "^6.3.1",
+    "jsdom": "^27.2.0",
     "zod": "^3.25.76"
   },
   "devDependencies": {
+    "@types/jsdom": "^27.0.0",
     "@types/node": "^20.0.0",
     "tsx": "^4.0.0",
     "typescript": "^5.0.0",

@@ -1,19 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { initializeAgent, cleanup } from './initialization.js';
 
-vi.mock('../infrastructure/mcp/client.js', () => ({
-  createStdioMCPClient: vi.fn().mockResolvedValue({
-    tools: vi.fn().mockResolvedValue({
-      test_tool: {
-        description: 'Test tool',
-        parameters: {},
-        execute: vi.fn().mockResolvedValue('test result'),
-      },
-    }),
-    close: vi.fn().mockResolvedValue(undefined),
-  }),
-}));
-
 vi.mock('../core/rag/index.js', () => ({
   createCodebaseRAG: vi.fn(() => ({
     indexCodebase: vi.fn().mockResolvedValue(undefined),
@@ -39,6 +26,75 @@ vi.mock('../tools/workflow.js', () => ({
   },
 }));
 
+vi.mock('../tools/shell.js', () => ({
+  shellTool: {
+    description: 'Shell tool',
+    parameters: {},
+    execute: vi.fn(),
+  },
+}));
+
+vi.mock('../tools/web-search.js', () => ({
+  webSearchTool: {
+    description: 'Web search tool',
+    parameters: {},
+    execute: vi.fn(),
+  },
+}));
+
+vi.mock('../tools/fetch-page.js', () => ({
+  fetchPageTool: {
+    description: 'Fetch page tool',
+    parameters: {},
+    execute: vi.fn(),
+  },
+}));
+
+vi.mock('../tools/memory.js', () => ({
+  memoryTools: {
+    memory_add: {
+      description: 'Memory add tool',
+      parameters: {},
+      execute: vi.fn(),
+    },
+    memory_search: {
+      description: 'Memory search tool',
+      parameters: {},
+      execute: vi.fn(),
+    },
+  },
+}));
+
+vi.mock('../tools/codebase.js', () => ({
+  createCodebaseTools: vi.fn(() => ({
+    search_codebase: {
+      description: 'Search codebase using semantic search',
+      parameters: {},
+      execute: vi.fn(),
+    },
+    grep_codebase: {
+      description: 'Search for regex patterns',
+      parameters: {},
+      execute: vi.fn(),
+    },
+  })),
+}));
+
+vi.mock('../tools/agent.js', () => ({
+  createAgentTools: vi.fn(() => ({
+    task_complete: {
+      description: 'Mark task as completed',
+      parameters: {},
+      execute: vi.fn(),
+    },
+    ask_user: {
+      description: 'Ask the user a question',
+      parameters: {},
+      execute: vi.fn(),
+    },
+  })),
+}));
+
 describe('initialization', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -50,22 +106,6 @@ describe('initialization', () => {
   });
 
   describe('initializeAgent', () => {
-    it('should initialize all MCP clients', async () => {
-      const result = await initializeAgent();
-
-      expect(result.mcpClients).toHaveProperty('filesystem');
-      expect(result.mcpClients).toHaveProperty('git');
-      expect(result.mcpClients).toHaveProperty('fetch');
-      expect(result.mcpClients).toHaveProperty('memory');
-      expect(result.mcpClients).toHaveProperty('sequentialThinking');
-
-      expect(result.mcpClients.filesystem.tools).toBeDefined();
-      expect(result.mcpClients.git.tools).toBeDefined();
-      expect(result.mcpClients.fetch.tools).toBeDefined();
-      expect(result.mcpClients.memory.tools).toBeDefined();
-      expect(result.mcpClients.sequentialThinking.tools).toBeDefined();
-    });
-
     it('should create codebase RAG and index', async () => {
       const result = await initializeAgent();
 
@@ -73,22 +113,20 @@ describe('initialization', () => {
       expect(result.codebaseRAG.indexCodebase).toHaveBeenCalled();
     });
 
-    it('should create all required tools', async () => {
+    it('should create all required native tools', async () => {
       const result = await initializeAgent();
 
-      expect(result.tools).toHaveProperty('plan_tool');
-      expect(result.tools).toHaveProperty('validation_tool');
+      expect(result.tools).toHaveProperty('shell');
+      expect(result.tools).toHaveProperty('web_search');
+      expect(result.tools).toHaveProperty('fetch_page');
+      expect(result.tools).toHaveProperty('memory_add');
+      expect(result.tools).toHaveProperty('memory_search');
+      expect(result.tools).toHaveProperty('plan');
+      expect(result.tools).toHaveProperty('validate');
       expect(result.tools).toHaveProperty('search_codebase');
       expect(result.tools).toHaveProperty('grep_codebase');
       expect(result.tools).toHaveProperty('task_complete');
       expect(result.tools).toHaveProperty('ask_user');
-    });
-
-    it('should initialize usedClients as empty set', async () => {
-      const result = await initializeAgent();
-
-      expect(result.usedClients).toBeInstanceOf(Set);
-      expect(result.usedClients.size).toBe(0);
     });
 
     it('should not create readline interface when APPROVAL_MODE is auto', async () => {
@@ -98,35 +136,13 @@ describe('initialization', () => {
       expect(result.readline).toBeNull();
     });
 
-    it('should track client usage when wrapped tools are executed', async () => {
+    it('should create tools with correct descriptions', async () => {
       const result = await initializeAgent();
 
-      expect(result.usedClients.size).toBe(0);
-
-      const filesystemTool = result.tools.test_tool;
-      if (filesystemTool && typeof filesystemTool.execute === 'function') {
-        await filesystemTool.execute({});
-      }
-
-      expect(result.usedClients.size).toBeGreaterThan(0);
-    });
-
-    it('should create codebase tools with correct descriptions', async () => {
-      const result = await initializeAgent();
-
-      expect(result.tools.search_codebase.description).toContain('semantic search');
+      expect(result.tools.search_codebase.description).toContain('semantic');
       expect(result.tools.grep_codebase.description).toContain('regex');
       expect(result.tools.task_complete.description).toContain('completed');
       expect(result.tools.ask_user.description).toContain('question');
-    });
-
-    it('should create tools with correct input schemas', async () => {
-      const result = await initializeAgent();
-
-      expect(result.tools.search_codebase.inputSchema).toBeDefined();
-      expect(result.tools.grep_codebase.inputSchema).toBeDefined();
-      expect(result.tools.task_complete.inputSchema).toBeDefined();
-      expect(result.tools.ask_user.inputSchema).toBeDefined();
     });
   });
 
