@@ -8,4 +8,4 @@ export {
   type AskUserHandler,
 } from './runtime/agent-runtime.js';
 
-export type { CoreMessage } from 'ai';
+export type { ModelMessage } from 'ai';

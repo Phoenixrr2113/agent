@@ -1,12 +1,11 @@
 import type { ModelMessage } from 'ai';
-import { initializeAgent, cleanup } from '../application/initialization.js';
+import { initializeAgent } from '../application/initialization.js';
 import { createAgent } from '../application/orchestrator.js';
 import { logger } from '../core/logger.js';
 
 export interface AgentConfig {
   workspaceRoot?: string;
-  modelType?: 'fast' | 'standard' | 'reasoning' | 'powerful';
-  maxSteps?: number;
+  enableRAG?: boolean;
   askUserHandler?: AskUserHandler;
 }
 
@@ -42,8 +41,12 @@ export interface AgentRuntime {
 export async function createAgentRuntime(config: AgentConfig = {}): Promise<AgentRuntime> {
   logger.info('🚀 Creating agent runtime');
 
-  const initResult = await initializeAgent();
-  const { tools, codebaseRAG, readline: rl } = initResult;
+  const initResult = await initializeAgent({
+    workspaceRoot: config.workspaceRoot,
+    enableRAG: config.enableRAG ?? true,
+    enableReadline: false,
+  });
+  const { tools, codebaseRAG } = initResult;
 
   if (config.askUserHandler) {
     tools.ask_user = {
@@ -146,7 +149,6 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
     createSession,
     shutdown: async () => {
       logger.info('🧹 Shutting down agent runtime');
-      await cleanup(rl);
     },
   };
 }

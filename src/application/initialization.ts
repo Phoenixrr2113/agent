@@ -12,27 +12,44 @@ import { planTool, validationTool } from '../tools/workflow.js';
 import { createCodebaseTools } from '../tools/codebase.js';
 import { createAgentTools } from '../tools/agent.js';
 
+export interface InitializationConfig {
+  workspaceRoot?: string;
+  enableReadline?: boolean;
+  enableRAG?: boolean;
+}
+
 export interface InitializationResult {
   tools: Record<string, any>;
   codebaseRAG: any;
   readline: readline.Interface | null;
 }
 
-export async function initializeAgent(enableReadline: boolean = false): Promise<InitializationResult> {
+export async function initializeAgent(config: InitializationConfig = {}): Promise<InitializationResult> {
+  const {
+    workspaceRoot = process.cwd(),
+    enableReadline = false,
+    enableRAG = true,
+  } = config;
+
   let rl: readline.Interface | null = null;
   if (enableReadline) {
     rl = readline.createInterface({ input, output });
   }
 
-  logger.info(`🤖 Initializing AI Agent`);
+  logger.info(`🤖 Initializing AI Agent`, { workspaceRoot });
 
-  const codebaseRAG = createCodebaseRAG(process.cwd());
-  logger.info('Indexing codebase...');
-  await codebaseRAG.indexCodebase();
-  const ragStats = codebaseRAG.getStats();
-  logger.info('RAG indexed', { chunks: ragStats.totalChunks, files: ragStats.files });
+  let codebaseRAG: any = null;
+  if (enableRAG) {
+    codebaseRAG = createCodebaseRAG(workspaceRoot);
+    logger.info('Indexing codebase...');
+    await codebaseRAG.indexCodebase();
+    const ragStats = codebaseRAG.getStats();
+    logger.info('RAG indexed', { chunks: ragStats.totalChunks, files: ragStats.files });
+  }
 
-  const codebaseTools = createCodebaseTools(codebaseRAG, grepWorkspace, process.cwd());
+  const codebaseTools = codebaseRAG
+    ? createCodebaseTools(codebaseRAG, grepWorkspace, workspaceRoot)
+    : {};
   const agentTools = createAgentTools(rl);
 
   const tools = {
