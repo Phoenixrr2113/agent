@@ -2,19 +2,21 @@
 
 ## Current Implementation
 
-Single file (`src/main.ts`) with environment-controlled behavior:
+Pluggable runtime architecture with two entry points:
 
-**Approval Modes:**
-- `APPROVAL_MODE=auto` - Auto-approves `ask_user` tool calls
-- `APPROVAL_MODE=manual` - Waits for user input
+**Autonomous Mode** (`src/dev.ts`):
+- Single task execution
+- Auto-approves `ask_user` tool calls
+- Uses runtime with default handler
 
-**Run Modes:**
-- `RUN_MODE=once` - Single execution
-- `RUN_MODE=loop` - Conversation loop
+**Interactive Mode** (`src/chat.ts`):
+- Conversation loop
+- Custom `askUserHandler` for user input
+- Session-based architecture
 
 ```bash
-pnpm run dev   # APPROVAL_MODE=auto RUN_MODE=once
-pnpm run chat  # APPROVAL_MODE=manual RUN_MODE=loop
+pnpm run dev   # Autonomous development mode
+pnpm run chat  # Interactive conversation mode
 ```
 
 ## File Structure
@@ -45,12 +47,14 @@ src/
 │
 ├── application/               # Application orchestration & execution
 │   ├── initialization.ts     # MCP client setup, RAG indexing, tool preparation
-│   ├── orchestrator.ts       # Agent creation, dynamic stop, prepare step
-│   └── modes/
-│       ├── loop.ts           # Interactive conversation loop
-│       └── once.ts           # Single execution mode
+│   └── orchestrator.ts       # Agent creation, stop conditions, step handlers
 │
-└── main.ts                    # Entry point router (50 lines)
+├── runtime/                   # Pluggable runtime architecture
+│   └── agent-runtime.ts      # Session-based runtime with injectable handlers
+│
+├── dev.ts                     # Autonomous mode entry point
+├── chat.ts                    # Interactive mode entry point
+└── index.ts                   # Library exports for service integration
 ```
 
 ## Expansion: Model Routing

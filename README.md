@@ -19,10 +19,10 @@ Unlike traditional agents that operate in sandboxed environments, this agent:
 - **Pattern Matching**: Regex-based grep for exact code searches
 
 ### Two Modes of Operation
-1. **Autonomous Mode** (`npm run dev`) - Runs once with auto-approval
-2. **Interactive Mode** (`npm run chat`) - Conversation loop with manual approval
+1. **Autonomous Mode** (`npm run dev`) - Single task execution with auto-approval
+2. **Interactive Mode** (`npm run chat`) - Conversation loop with user input
 
-Both modes use the same agent, just different approval and run configurations.
+Both modes use the pluggable runtime architecture for clean separation and service integration.
 
 ## 🚀 Quick Start
 
@@ -80,14 +80,20 @@ The agent operates in a loop:
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│                      Agent Main Loop                         │
-│              (src/index.ts or src/interactive.ts)            │
+│                   Agent Runtime                              │
+│              (src/runtime/agent-runtime.ts)                  │
+│   ┌────────────────────────────────────────────────────┐   │
+│   │  AgentSession (isolated conversations)              │   │
+│   │  - send(message) → TaskResult                       │   │
+│   │  - runTask(input) → TaskResult                      │   │
+│   │  - getHistory() / clearHistory()                    │   │
+│   └────────────────────────────────────────────────────┘   │
 └──────────────┬──────────────────────────────────────────────┘
                │
-               ├─► RAG System (src/rag.ts)
+               ├─► RAG System (src/core/rag/)
                │   ├─► Indexes entire codebase (root directory)
-               │   ├─► Intelligent Chunking (src/chunking.ts)
-               │   ├─► Embedding Cache (src/cache.ts)
+               │   ├─► Intelligent Chunking (src/core/rag/chunking.ts)
+               │   ├─► Embedding Cache (src/core/rag/cache.ts)
                │   └─► Semantic Vector Search
                │
                ├─► MCP Tool Servers
@@ -97,7 +103,7 @@ The agent operates in a loop:
                │   ├─► Fetch Server (web access)
                │   └─► Sequential Thinking Server
                │
-               └─► Grep Tool (src/grep.ts)
+               └─► Grep Tool (src/core/search/grep.ts)
                    └─► Regex pattern matching across codebase
 ```
 
@@ -275,12 +281,14 @@ src/
 │
 ├── application/               # Application orchestration
 │   ├── initialization.ts     # MCP clients, RAG setup, tool preparation
-│   ├── orchestrator.ts       # Agent creation, step handling
-│   └── modes/
-│       ├── loop.ts           # Interactive conversation mode
-│       └── once.ts           # Single execution mode
+│   └── orchestrator.ts       # Agent creation, stop conditions
 │
-└── main.ts                    # Entry point (50 lines)
+├── runtime/                   # Pluggable runtime architecture
+│   └── agent-runtime.ts      # Session-based agent runtime
+│
+├── dev.ts                     # Autonomous mode entry point
+├── chat.ts                    # Interactive mode entry point
+└── index.ts                   # Library exports for service integration
 
 tests/
 ├── fixtures/         # Sample code for testing
