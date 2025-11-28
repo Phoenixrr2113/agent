@@ -44,7 +44,28 @@ export const memorySearchTool = tool({
     try {
       const provider = await getProvider();
       const result = await provider.search({ query, groupIds, maxResults });
-      return JSON.stringify(result);
+
+      const sanitized = {
+        facts: result.facts.map(f => ({
+          id: f.id,
+          content: f.content,
+          entityIds: f.entityIds,
+          validFrom: f.validFrom,
+          validTo: f.validTo,
+          confidence: f.confidence,
+          source: f.source,
+        })),
+        entities: result.entities.map(e => ({
+          id: e.id,
+          name: e.name,
+          type: e.type,
+          attributes: e.attributes,
+        })),
+        relations: result.relations,
+        score: result.score,
+      };
+
+      return JSON.stringify(sanitized);
     } catch (error: any) {
       return JSON.stringify({ error: error.message });
     }
@@ -76,8 +97,22 @@ export const memoryGetFactTool = tool({
   execute: async ({ factId }: { factId: string }) => {
     try {
       const provider = await getProvider();
-      const result = await provider.getFact(factId);
-      return JSON.stringify(result);
+      const fact = await provider.getFact(factId);
+      if (!fact) {
+        return JSON.stringify({ error: 'Fact not found' });
+      }
+      const sanitized = {
+        id: fact.id,
+        content: fact.content,
+        entityIds: fact.entityIds,
+        relationIds: fact.relationIds,
+        validFrom: fact.validFrom,
+        validTo: fact.validTo,
+        confidence: fact.confidence,
+        source: fact.source,
+        createdAt: fact.createdAt,
+      };
+      return JSON.stringify(sanitized);
     } catch (error: any) {
       return JSON.stringify({ error: error.message });
     }
@@ -92,8 +127,19 @@ export const memoryGetEntityTool = tool({
   execute: async ({ entityId }: { entityId: string }) => {
     try {
       const provider = await getProvider();
-      const result = await provider.getEntity(entityId);
-      return JSON.stringify(result);
+      const entity = await provider.getEntity(entityId);
+      if (!entity) {
+        return JSON.stringify({ error: 'Entity not found' });
+      }
+      const sanitized = {
+        id: entity.id,
+        name: entity.name,
+        type: entity.type,
+        attributes: entity.attributes,
+        createdAt: entity.createdAt,
+        updatedAt: entity.updatedAt,
+      };
+      return JSON.stringify(sanitized);
     } catch (error: any) {
       return JSON.stringify({ error: error.message });
     }
@@ -109,8 +155,16 @@ export const memoryGetRelatedTool = tool({
   execute: async ({ entityId, depth = 1 }: { entityId: string; depth?: number }) => {
     try {
       const provider = await getProvider();
-      const result = await provider.getRelatedEntities(entityId, depth);
-      return JSON.stringify(result);
+      const entities = await provider.getRelatedEntities(entityId, depth);
+      const sanitized = entities.map(e => ({
+        id: e.id,
+        name: e.name,
+        type: e.type,
+        attributes: e.attributes,
+        createdAt: e.createdAt,
+        updatedAt: e.updatedAt,
+      }));
+      return JSON.stringify(sanitized);
     } catch (error: any) {
       return JSON.stringify({ error: error.message });
     }
