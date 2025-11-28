@@ -153,12 +153,9 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
       )];
 
       let memoryExtractionMs: number | undefined;
-      const hasNoToolCalls = toolsUsed.length === 0;
-      if (hasNoToolCalls) {
-        performanceTimer.start('memory.extract', 'agent-runtime');
-        await memoryExtractor.extractFromConversation(conversationHistory);
-        memoryExtractionMs = performanceTimer.end('memory.extract', 'agent-runtime');
-      }
+      performanceTimer.start('memory.extract', 'agent-runtime');
+      await memoryExtractor.extractFromConversation(conversationHistory);
+      memoryExtractionMs = performanceTimer.end('memory.extract', 'agent-runtime');
 
       const askUserCall = result.steps
         .flatMap((step: any) => step.toolCalls || [])
