@@ -112,10 +112,20 @@ export function createMemoryLite(config: Omit<MemoryConfig, 'provider'>): Memory
         relationsFound: extracted.relations.length,
       });
 
+      const entityProcessingStart = performance.now();
+      const entities = await Promise.all(
+        extracted.entities.map(e => getOrCreateEntity(e))
+      );
+      const entityProcessingDuration = performance.now() - entityProcessingStart;
+      logger.info('⏱️  [memory] All entities processed (parallel)', {
+        durationMs: entityProcessingDuration.toFixed(2),
+        durationSec: (entityProcessingDuration / 1000).toFixed(3),
+        count: entities.length,
+      });
+
       const entityMap = new Map<string, Entity>();
-      for (const e of extracted.entities) {
-        const entity = await getOrCreateEntity(e);
-        entityMap.set(e.name, entity);
+      for (let i = 0; i < extracted.entities.length; i++) {
+        entityMap.set(extracted.entities[i].name, entities[i]);
       }
 
       const relationIds: string[] = [];
@@ -138,59 +148,92 @@ export function createMemoryLite(config: Omit<MemoryConfig, 'provider'>): Memory
       }
 
       const factIds: string[] = [];
-      for (let i = 0; i < extracted.facts.length; i++) {
-        const f = extracted.facts[i];
-        const factStartTime = performance.now();
-        logger.debug(`⏱️  [memory] Processing fact ${i + 1}/${extracted.facts.length}`);
 
-        const relatedEntityIds = f.entityNames
-          .map(name => entityMap.get(name)?.id)
-          .filter((id): id is string => !!id);
-
+      if (extracted.facts.length === 0) {
+        logger.debug('⏱️  [memory] No facts to process');
+      } else {
         const existingFacts = await storage.facts.findValid();
 
-        const contradictionStartTime = performance.now();
-        const contradictions = await detectContradictions(
-          f.content,
-          existingFacts.map(ef => ef.content),
-          extractionModel
+        const contradictionCheckStartTime = performance.now();
+        logger.info('⏱️  [memory] Starting parallel contradiction detection', {
+          factCount: extracted.facts.length,
+          existingFactCount: existingFacts.length,
+        });
+
+        const contradictionResults = await Promise.all(
+          extracted.facts.map(f =>
+            detectContradictions(
+              f.content,
+              existingFacts.map(ef => ef.content),
+              extractionModel
+            )
+          )
         );
-        const contradictionDuration = performance.now() - contradictionStartTime;
-        logger.info('⏱️  [memory] Contradiction detection completed', {
-          durationMs: contradictionDuration.toFixed(2),
-          durationSec: (contradictionDuration / 1000).toFixed(3),
-          factIndex: i + 1,
-          supersedes: contradictions.supersedes.length,
+
+        const contradictionCheckDuration = performance.now() - contradictionCheckStartTime;
+        logger.info('⏱️  [memory] All contradiction detection completed (parallel)', {
+          durationMs: contradictionCheckDuration.toFixed(2),
+          durationSec: (contradictionCheckDuration / 1000).toFixed(3),
+          factCount: extracted.facts.length,
         });
 
-        for (const supersededContent of contradictions.supersedes) {
-          const superseded = existingFacts.find(ef => ef.content === supersededContent);
-          if (superseded) {
-            await storage.facts.invalidate(superseded.id, new Date());
+        const embeddingBatchStartTime = performance.now();
+        logger.info('⏱️  [memory] Starting batch embedding generation for facts', {
+          factCount: extracted.facts.length,
+        });
+
+        const factEmbeddings = await Promise.all(
+          extracted.facts.map(f => getEmbedding(f.content))
+        );
+
+        const embeddingBatchDuration = performance.now() - embeddingBatchStartTime;
+        logger.info('⏱️  [memory] All fact embeddings generated (parallel)', {
+          durationMs: embeddingBatchDuration.toFixed(2),
+          durationSec: (embeddingBatchDuration / 1000).toFixed(3),
+          factCount: extracted.facts.length,
+        });
+
+        for (let i = 0; i < extracted.facts.length; i++) {
+          const f = extracted.facts[i];
+          const contradictions = contradictionResults[i];
+          const embedding = factEmbeddings[i];
+          const factStartTime = performance.now();
+
+          logger.debug(`⏱️  [memory] Processing fact ${i + 1}/${extracted.facts.length}`);
+
+          const relatedEntityIds = f.entityNames
+            .map(name => entityMap.get(name)?.id)
+            .filter((id): id is string => !!id);
+
+          for (const supersededContent of contradictions.supersedes) {
+            const superseded = existingFacts.find(ef => ef.content === supersededContent);
+            if (superseded) {
+              await storage.facts.invalidate(superseded.id, new Date());
+            }
           }
+
+          const fact: Fact = {
+            id: randomUUID(),
+            content: f.content,
+            embedding,
+            entityIds: relatedEntityIds,
+            relationIds: [],
+            validFrom: new Date(),
+            validTo: null,
+            createdAt: new Date(),
+            source: input.source || 'user_input',
+            confidence: f.confidence,
+          };
+          await storage.facts.create(fact);
+          factIds.push(fact.id);
+
+          const factDuration = performance.now() - factStartTime;
+          logger.info(`⏱️  [memory] Fact ${i + 1}/${extracted.facts.length} processed`, {
+            durationMs: factDuration.toFixed(2),
+            durationSec: (factDuration / 1000).toFixed(3),
+            supersedes: contradictions.supersedes.length,
+          });
         }
-
-        const embedding = await getEmbedding(f.content);
-        const fact: Fact = {
-          id: randomUUID(),
-          content: f.content,
-          embedding,
-          entityIds: relatedEntityIds,
-          relationIds: [],
-          validFrom: new Date(),
-          validTo: null,
-          createdAt: new Date(),
-          source: input.source || 'user_input',
-          confidence: f.confidence,
-        };
-        await storage.facts.create(fact);
-        factIds.push(fact.id);
-
-        const factDuration = performance.now() - factStartTime;
-        logger.info(`⏱️  [memory] Fact ${i + 1}/${extracted.facts.length} processed`, {
-          durationMs: factDuration.toFixed(2),
-          durationSec: (factDuration / 1000).toFixed(3),
-        });
       }
 
       const episode: Episode = {

@@ -27,7 +27,6 @@ export interface TaskResult {
   performanceMetrics?: {
     totalDurationMs: number;
     agentExecutionMs: number;
-    memoryExtractionMs?: number;
     codebaseIndexingMs?: number;
   };
 }
@@ -152,10 +151,9 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
         )
       )];
 
-      let memoryExtractionMs: number | undefined;
-      performanceTimer.start('memory.extract', 'agent-runtime');
-      await memoryExtractor.extractFromConversation(conversationHistory);
-      memoryExtractionMs = performanceTimer.end('memory.extract', 'agent-runtime');
+      memoryExtractor.extractFromConversation(conversationHistory).catch(error => {
+        logger.error('Background memory extraction failed', { error: String(error) });
+      });
 
       const askUserCall = result.steps
         .flatMap((step: any) => step.toolCalls || [])
@@ -179,7 +177,6 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
         performanceMetrics: {
           totalDurationMs: totalDurationMs ?? 0,
           agentExecutionMs: agentExecutionMs ?? 0,
-          memoryExtractionMs,
           codebaseIndexingMs,
         },
       };
