@@ -1,6 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import crypto from 'crypto';
+import { logger } from '../logger.js';
 
 interface CacheEntry<T> {
   data: T;
@@ -22,6 +23,7 @@ export function createFileCache<T>(cacheDir: string): Cache<T> {
     try {
       await fs.mkdir(cacheDir, { recursive: true });
     } catch (error) {
+      logger.debug('Failed to create cache directory', { cacheDir, error });
     }
   };
 
@@ -38,6 +40,7 @@ export function createFileCache<T>(cacheDir: string): Cache<T> {
         const entry: CacheEntry<T> = JSON.parse(content);
         return entry.data;
       } catch (error) {
+        logger.debug('Cache miss or read error', { key, error });
         return null;
       }
     },
@@ -68,6 +71,7 @@ export function createFileCache<T>(cacheDir: string): Cache<T> {
         const cachePath = getCachePath(key);
         await fs.unlink(cachePath);
       } catch (error) {
+        logger.debug('Failed to delete cache entry', { key, error });
       }
     },
 
@@ -78,6 +82,7 @@ export function createFileCache<T>(cacheDir: string): Cache<T> {
           files.map(file => fs.unlink(path.join(cacheDir, file)))
         );
       } catch (error) {
+        logger.debug('Failed to clear cache', { cacheDir, error });
       }
     },
 

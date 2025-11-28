@@ -22,14 +22,6 @@ export interface BM25Index {
   serialize: () => string;
 }
 
-function tokenize(text: string): string[] {
-  return text
-    .toLowerCase()
-    .replace(/[^\w\s]/g, ' ')
-    .split(/\s+/)
-    .filter((token) => token.length > 1);
-}
-
 export function createBM25Index(): BM25Index {
   const engine = bm25();
   let documentCount = 0;

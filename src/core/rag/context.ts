@@ -1,6 +1,7 @@
 import { generateText } from 'ai';
 import { google } from '@ai-sdk/google';
 import type { CodeChunk } from './chunking.js';
+import { logger } from '../logger.js';
 
 export interface ContextualChunk extends CodeChunk {
   context: string;
@@ -80,6 +81,10 @@ export async function generateContextBatch(
         contextualContent: buildContextualContent(chunk, context),
       };
     } catch (error) {
+      logger.warn('Failed to generate chunk context, using fallback', {
+        filePath: chunk.filePath,
+        error
+      });
       const fallbackContext = buildFallbackContext(chunk);
       return {
         ...chunk,

@@ -136,7 +136,8 @@ export function createSQLiteStorage(dbPath: string): StorageAdapter {
       async search(embedding, limit): Promise<EntityWithScore[]> {
         const all: Entity[] = db.prepare('SELECT * FROM entities WHERE embedding IS NOT NULL').all().map(parseEntity);
         return all
-          .map((e: Entity): EntityWithScore => ({ entity: e, score: cosineSimilarity(embedding, e.embedding!) }))
+          .filter((e: Entity): e is Entity & { embedding: number[] } => e.embedding !== undefined && e.embedding !== null)
+          .map((e): EntityWithScore => ({ entity: e, score: cosineSimilarity(embedding, e.embedding) }))
           .sort((a: EntityWithScore, b: EntityWithScore) => b.score - a.score)
           .slice(0, limit);
       },

@@ -154,8 +154,12 @@ export async function startServer(config: ServerConfig = {}) {
     server.close();
   };
 
-  process.on('SIGINT', shutdown);
-  process.on('SIGTERM', shutdown);
+  process.on('SIGINT', () => {
+    void shutdown();
+  });
+  process.on('SIGTERM', () => {
+    void shutdown();
+  });
 
   return { server, shutdown };
 }
@@ -163,6 +167,9 @@ export async function startServer(config: ServerConfig = {}) {
 if (import.meta.url === `file://${process.argv[1]}`) {
   startServer({
     workspaceRoot: process.env.WORKSPACE_ROOT,
+  }).catch((error) => {
+    console.error('Failed to start server:', error);
+    process.exit(1);
   });
 }
 

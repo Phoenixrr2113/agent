@@ -5,5 +5,8 @@ import { startServer } from './server.js';
 const port = Number(process.env.PORT) || 3000;
 const workspaceRoot = process.env.WORKSPACE_ROOT;
 
-startServer({ port, workspaceRoot });
+startServer({ port, workspaceRoot }).catch((error) => {
+  console.error('Failed to start server:', error);
+  process.exit(1);
+});
 

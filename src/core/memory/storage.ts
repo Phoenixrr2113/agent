@@ -74,8 +74,8 @@ export function createInMemoryStorage(): StorageAdapter {
       },
       async search(embedding, limit) {
         return Array.from(entities.values())
-          .filter(e => e.embedding)
-          .map(e => ({ entity: e, score: cosineSimilarity(embedding, e.embedding!) }))
+          .filter((e): e is Entity & { embedding: number[] } => e.embedding !== undefined && e.embedding !== null)
+          .map(e => ({ entity: e, score: cosineSimilarity(embedding, e.embedding) }))
           .sort((a, b) => b.score - a.score)
           .slice(0, limit);
       },

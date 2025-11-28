@@ -58,6 +58,8 @@
     "chat": "tsx src/chat.ts",
     "server": "tsx src/server.ts",
     "start": "node dist/server.js",
+    "lint": "eslint src",
+    "lint:fix": "eslint src --fix",
     "test": "vitest run",
     "test:watch": "vitest",
     "test:unit": "vitest run src/",

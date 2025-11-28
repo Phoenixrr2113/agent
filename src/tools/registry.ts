@@ -252,6 +252,7 @@ export function createActivateToolTool(
     inputSchema: z.object({
       toolName: z.string().describe('Name of the tool to activate'),
     }),
+    // eslint-disable-next-line @typescript-eslint/require-await
     execute: async ({ toolName }: { toolName: string }) => {
       const toolDef = registry.get(toolName);
       if (!toolDef) {

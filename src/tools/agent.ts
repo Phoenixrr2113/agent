@@ -11,6 +11,7 @@ export function createAgentTools(rl: readline.Interface | null) {
         summary: z.string().describe('A brief summary of what was accomplished'),
         nextSteps: z.string().optional().default('').describe('Optional suggestions for what the user might want to do next'),
       }),
+      // eslint-disable-next-line @typescript-eslint/require-await
       execute: async ({ summary, nextSteps = '' }: { summary: string; nextSteps?: string }) => {
         let result = `Task completed: ${summary}`;
         if (nextSteps) {

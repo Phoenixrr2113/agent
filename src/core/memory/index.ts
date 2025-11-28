@@ -12,8 +12,7 @@ import type {
   Episode,
   MemoryConfig,
 } from './types.js';
-import type { StorageAdapter } from './storage.js';
-import { createInMemoryStorage } from './storage.js';
+import { createInMemoryStorage, type StorageAdapter } from './storage.js';
 import { createSQLiteStorage } from './storage-sqlite.js';
 import { extractFromText, detectContradictions, resolveEntityConflicts } from './extraction.js';
 

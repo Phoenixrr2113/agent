@@ -52,15 +52,17 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
   const memoryExtractor = createMemoryExtractor({ memoryProvider });
 
   if (config.askUserHandler) {
+    const askUserHandler = config.askUserHandler;
     tools.ask_user = {
       ...tools.ask_user,
       execute: async (args: { question: string }) => {
-        return config.askUserHandler!(args.question);
+        return askUserHandler(args.question);
       },
     };
   } else {
     tools.ask_user = {
       ...tools.ask_user,
+      // eslint-disable-next-line @typescript-eslint/require-await
       execute: async (args: { question: string }) => {
         logger.info('🤖 ask_user auto-approved', { question: args.question });
         return 'yes';
@@ -124,7 +126,7 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
 
       const hasNoToolCalls = toolsUsed.length === 0;
       if (hasNoToolCalls) {
-        memoryExtractor.extractFromConversation(conversationHistory);
+        await memoryExtractor.extractFromConversation(conversationHistory);
       }
 
       const askUserCall = result.steps

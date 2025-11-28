@@ -33,7 +33,7 @@ export abstract class BaseChunkingStrategy implements ChunkingStrategy {
 
   abstract chunkFile(content: string, filePath: string, extension: string): Promise<Chunk[]>;
 
-  async chunkDirectory(directoryPath: string, options?: any): Promise<Chunk[]> {
+  async chunkDirectory(_directoryPath: string, _options?: any): Promise<Chunk[]> {
     throw new Error(`${this.name} does not support directory chunking`);
   }
 }

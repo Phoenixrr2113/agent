@@ -175,7 +175,10 @@ export function createCodebaseRAG(
         if (!fileChunksMap.has(chunk.filePath)) {
           fileChunksMap.set(chunk.filePath, []);
         }
-        fileChunksMap.get(chunk.filePath)!.push(chunk);
+        const fileChunks = fileChunksMap.get(chunk.filePath);
+        if (fileChunks) {
+          fileChunks.push(chunk);
+        }
       }
 
       const allEmbedded: EmbeddedChunk[] = [];

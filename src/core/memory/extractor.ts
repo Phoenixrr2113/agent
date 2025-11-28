@@ -8,7 +8,7 @@ export interface MemoryExtractorConfig {
 }
 
 export interface MemoryExtractor {
-  extractFromConversation(messages: ModelMessage[]): void;
+  extractFromConversation(messages: ModelMessage[]): Promise<void>;
   waitForPending(): Promise<void>;
 }
 
@@ -76,21 +76,25 @@ export function createMemoryExtractor(config: MemoryExtractorConfig): MemoryExtr
   }
 
   return {
-    extractFromConversation(messages: ModelMessage[]): void {
+    async extractFromConversation(messages: ModelMessage[]): Promise<void> {
       const dialogueText = extractDialogueText(messages);
       const extraction = doExtraction(dialogueText);
       pendingExtractions.push(extraction);
 
-      extraction.finally(() => {
+      try {
+        await extraction;
+      } finally {
         const index = pendingExtractions.indexOf(extraction);
         if (index > -1) {
           pendingExtractions.splice(index, 1);
         }
-      });
+      }
     },
 
     async waitForPending(): Promise<void> {
-      await Promise.all(pendingExtractions);
+      if (pendingExtractions.length > 0) {
+        await Promise.all(pendingExtractions);
+      }
     },
   };
 }

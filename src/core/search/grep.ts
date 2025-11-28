@@ -1,5 +1,6 @@
 import fs from 'fs/promises';
 import path from 'path';
+import { logger } from '../logger.js';
 
 interface GrepMatch {
   file: string;
@@ -66,6 +67,7 @@ export async function grepWorkspace(
               }
             }
           } catch (error) {
+            logger.debug('Skipping file due to read error', { file: fullPath, error });
             continue;
           }
         }

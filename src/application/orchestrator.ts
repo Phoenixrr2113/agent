@@ -1,5 +1,4 @@
-import type { StepResult, PrepareStepFunction } from 'ai';
-import { stepCountIs } from 'ai';
+import { stepCountIs, type StepResult, type PrepareStepFunction } from 'ai';
 import { createAgentWithRole } from '../core/agents/factory.js';
 import { logger } from '../core/logger.js';
 

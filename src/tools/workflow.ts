@@ -30,6 +30,7 @@ export const planTool = tool({
     status: z.enum(['pending', 'in_progress', 'completed', 'blocked']).optional().describe('New status'),
     note: z.string().optional().describe('Note to add to step'),
   }),
+  // eslint-disable-next-line @typescript-eslint/require-await
   execute: async ({ action, title, steps, stepName, status, note }) => {
     switch (action) {
       case 'create':
@@ -120,7 +121,12 @@ export const validationTool = tool({
           timeout: 30000,
           maxBuffer: 10 * 1024 * 1024,
         });
-        results.push({ check: 'TypeScript type check', passed: true });
+        const output = stdout || stderr || '';
+        results.push({
+          check: 'TypeScript type check',
+          passed: true,
+          details: output ? output.substring(0, 500) : 'No type errors found'
+        });
       } catch (error: any) {
         allPassed = false;
         const errorOutput = error.stderr || error.stdout || error.message;
@@ -138,7 +144,12 @@ export const validationTool = tool({
           timeout: 60000,
           maxBuffer: 10 * 1024 * 1024,
         });
-        results.push({ check: 'Test suite', passed: true });
+        const testSummary = stdout.split('\n').slice(-10).join('\n');
+        results.push({
+          check: 'Test suite',
+          passed: true,
+          details: testSummary || 'All tests passed'
+        });
       } catch (error: any) {
         allPassed = false;
         const errorOutput = error.stderr || error.stdout || error.message;

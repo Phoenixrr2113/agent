@@ -22,11 +22,13 @@ const runtime = await createAgentRuntime({
 
 const session = runtime.createSession();
 
-process.on('SIGINT', async () => {
-  console.log('\n\n👋 Shutting down...');
-  rl.close();
-  await runtime.shutdown();
-  process.exit(0);
+process.on('SIGINT', () => {
+  void (async () => {
+    console.log('\n\n👋 Shutting down...');
+    rl.close();
+    await runtime.shutdown();
+    process.exit(0);
+  })();
 });
 
 while (true) {
