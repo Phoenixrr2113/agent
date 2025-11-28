@@ -125,11 +125,11 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
         logger.warn('⚠️ No tool calls made - model may not be using tools correctly');
       }
 
-      memoryExtractor.extractFromConversation(result.response.messages).catch(error => {
+      conversationHistory.push(...result.response.messages);
+
+      memoryExtractor.extractFromConversation(conversationHistory).catch(error => {
         logger.error('Background memory extraction failed', { error: String(error) });
       });
-
-      conversationHistory = result.response.messages;
 
       let codebaseIndexingMs: number | undefined;
       if (codebaseRAG) {
