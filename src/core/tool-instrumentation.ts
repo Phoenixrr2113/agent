@@ -16,7 +16,7 @@ export function instrumentTool<TArgs = any, TResult = any>(
   return async (args: TArgs): Promise<TResult> => {
     const startTime = performance.now();
 
-    logger.debug(`⏱️  [${toolName}] Starting execution`, { args });
+    logger.info(`⏱️  [${toolName}] Starting`, { args });
 
     try {
       const result = await execute(args);

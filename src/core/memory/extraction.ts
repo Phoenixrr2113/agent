@@ -1,6 +1,7 @@
 import { generateObject } from 'ai';
 import { z } from 'zod';
 import type { ExtractionResult } from './types.js';
+import { logger } from '../logger.js';
 
 const ExtractionSchema = z.object({
   entities: z.array(z.object({
@@ -45,6 +46,12 @@ export async function extractFromText(
   model: Parameters<typeof generateObject>[0]['model'],
   existingEntities?: string[]
 ): Promise<ExtractionResult> {
+  const startTime = performance.now();
+  logger.info('⏱️  [memory-extraction] Starting LLM extraction', {
+    textLength: text.length,
+    existingEntitiesCount: existingEntities?.length || 0,
+  });
+
   const contextPrompt = existingEntities?.length
     ? `\n\nKnown entities (prefer these names if referring to the same thing): ${existingEntities.join(', ')}`
     : '';
@@ -53,6 +60,15 @@ export async function extractFromText(
     model,
     schema: ExtractionSchema,
     prompt: `${EXTRACTION_PROMPT}${contextPrompt}\n\nText to analyze:\n${text}`,
+  });
+
+  const duration = performance.now() - startTime;
+  logger.info('⏱️  [memory-extraction] LLM extraction completed', {
+    durationMs: duration.toFixed(2),
+    durationSec: (duration / 1000).toFixed(3),
+    entitiesExtracted: object.entities.length,
+    factsExtracted: object.facts.length,
+    relationsExtracted: object.relations.length,
   });
 
   return {
@@ -73,6 +89,12 @@ export async function resolveEntityConflicts(
   existingEntity: { name: string; type: string; attributes: Record<string, unknown> },
   model: Parameters<typeof generateObject>[0]['model']
 ): Promise<{ shouldMerge: boolean; mergedAttributes?: Record<string, unknown> }> {
+  const startTime = performance.now();
+  logger.debug('⏱️  [memory-extraction] Starting entity conflict resolution', {
+    newEntity: newEntity.name,
+    existingEntity: existingEntity.name,
+  });
+
   const { object } = await generateObject({
     model,
     schema: z.object({
@@ -88,6 +110,14 @@ Entity 2: ${JSON.stringify(existingEntity)}
 If they are the same entity, merge their attributes (prefer newer/more specific values).`,
   });
 
+  const duration = performance.now() - startTime;
+  logger.info('⏱️  [memory-extraction] Entity conflict resolution completed', {
+    durationMs: duration.toFixed(2),
+    durationSec: (duration / 1000).toFixed(3),
+    shouldMerge: object.shouldMerge,
+    reasoning: object.reasoning,
+  });
+
   return {
     shouldMerge: object.shouldMerge,
     mergedAttributes: object.mergedAttributes as Record<string, unknown> | undefined,
@@ -100,8 +130,14 @@ export async function detectContradictions(
   model: Parameters<typeof generateObject>[0]['model']
 ): Promise<{ contradicts: string[]; supersedes: string[] }> {
   if (existingFacts.length === 0) {
+    logger.debug('⏱️  [memory-extraction] Skipping contradiction detection (no existing facts)');
     return { contradicts: [], supersedes: [] };
   }
+
+  const startTime = performance.now();
+  logger.debug('⏱️  [memory-extraction] Starting contradiction detection', {
+    existingFactsCount: existingFacts.length,
+  });
 
   const { object } = await generateObject({
     model,
@@ -118,6 +154,14 @@ ${existingFacts.map((f, i) => `${i}: "${f}"`).join('\n')}
 
 - contradicts: Facts that cannot both be true (logical contradiction)
 - supersedes: Facts that the new fact updates (same topic, newer information)`,
+  });
+
+  const duration = performance.now() - startTime;
+  logger.info('⏱️  [memory-extraction] Contradiction detection completed', {
+    durationMs: duration.toFixed(2),
+    durationSec: (duration / 1000).toFixed(3),
+    contradicts: object.contradicts.length,
+    supersedes: object.supersedes.length,
   });
 
   return {
