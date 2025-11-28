@@ -7,3 +7,6 @@ workspace.rag-cache/
 tests/temp
 *.db
 memory.db
+memory.db-shm
+memory.db-wal
+*.log
