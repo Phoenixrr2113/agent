@@ -118,13 +118,16 @@ export const memoryGetRelatedTool = tool({
 });
 
 export const memoryTools = {
-  memory_add: memoryAddTool,
   memory_search: memorySearchTool,
   memory_get_episodes: memoryGetEpisodesTool,
   memory_get_fact: memoryGetFactTool,
   memory_get_entity: memoryGetEntityTool,
   memory_get_related: memoryGetRelatedTool,
 };
+
+export async function getMemoryProvider(): Promise<MemoryProvider> {
+  return getProvider();
+}
 
 export async function closeMemory(): Promise<void> {
   if (memoryProvider) {

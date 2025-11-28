@@ -2,6 +2,8 @@ import type { ModelMessage } from 'ai';
 import { initializeAgent } from '../application/initialization.js';
 import { createAgent } from '../application/orchestrator.js';
 import { logger } from '../core/logger.js';
+import { createMemoryExtractor } from '../core/memory/extractor.js';
+import { getMemoryProvider } from '../tools/memory.js';
 
 export interface AgentConfig {
   workspaceRoot?: string;
@@ -45,6 +47,9 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
     enableReadline: false,
   });
   const { tools, codebaseRAG } = initResult;
+
+  const memoryProvider = await getMemoryProvider();
+  const memoryExtractor = createMemoryExtractor({ memoryProvider });
 
   if (config.askUserHandler) {
     tools.ask_user = {
@@ -111,18 +116,23 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
         step.toolCalls?.some((tc: any) => tc.toolName === 'task_complete')
       );
 
+      const toolsUsed: string[] = [...new Set(
+        result.steps.flatMap((step: any) =>
+          step.toolCalls?.map((tc: any) => tc.toolName) || []
+        )
+      )];
+
+      const hasNoToolCalls = toolsUsed.length === 0;
+      if (hasNoToolCalls) {
+        memoryExtractor.extractFromConversation(conversationHistory);
+      }
+
       const askUserCall = result.steps
         .flatMap((step: any) => step.toolCalls || [])
         .find((tc: any) => tc.toolName === 'ask_user');
 
       const needsInput = !!askUserCall;
       const pendingQuestion = askUserCall?.args?.question as string | undefined;
-
-      const toolsUsed: string[] = [...new Set(
-        result.steps.flatMap((step: any) =>
-          step.toolCalls?.map((tc: any) => tc.toolName) || []
-        )
-      )];
 
       return {
         text: result.text,
@@ -149,6 +159,7 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
     createSession,
     shutdown: async () => {
       logger.info('🧹 Shutting down agent runtime');
+      await memoryExtractor.waitForPending();
     },
   };
 }

@@ -184,14 +184,13 @@ PORT=8080 WORKSPACE_ROOT=/path/to/project npx ai-agent-server
 
 ## Tools
 
-### Always Available (12 tools)
+### Always Available (11 tools)
 
 | Tool | Description |
 |------|-------------|
 | `shell` | Execute bash commands |
 | `web_search` | Search the internet (Brave/Tavily) |
 | `fetch_page` | Fetch and parse web pages |
-| `memory_add` | Store information with entity extraction |
 | `memory_search` | Semantic search over stored knowledge |
 | `memory_get_episodes` | Get recent conversation episodes |
 | `memory_get_fact` | Retrieve specific fact by ID |
@@ -211,9 +210,10 @@ PORT=8080 WORKSPACE_ROOT=/path/to/project npx ai-agent-server
 
 ## Memory System
 
-The agent includes a persistent knowledge graph that:
+The agent includes a persistent knowledge graph that automatically extracts memories from conversations:
 
-- **Extracts entities** automatically using LLM (people, projects, concepts)
+- **Automatic extraction** - Memories are extracted from user/agent dialogue when tasks complete
+- **Extracts entities** using LLM (people, projects, concepts)
 - **Tracks relationships** between entities
 - **Stores facts** with temporal validity (validFrom/validTo)
 - **Enables semantic search** using embeddings
@@ -224,12 +224,13 @@ The agent includes a persistent knowledge graph that:
 Memory is stored in SQLite by default at `./memory.db`. The database persists across sessions:
 
 ```typescript
-// Session 1
-await session.send('Remember that Randy created this project');
+// Session 1: User discusses their project
+await session.send('Help me set up auth for my Next.js app, I prefer Clerk');
+// Memories automatically extracted: user prefers Clerk, project uses Next.js
 
 // Session 2 (later, even after restart)
-await session.send('Who created this project?');
-// Agent recalls: "Randy created this project"
+await session.send('What auth library should I use?');
+// Agent recalls preferences from memory
 ```
 
 ### Optional: Graphiti Backend

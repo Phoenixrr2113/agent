@@ -1,7 +1,7 @@
 export { shellTool } from './shell.js';
 export { webSearchTool } from './web-search.js';
 export { fetchPageTool } from './fetch-page.js';
-export { memoryTools, memoryAddTool, memorySearchTool, memoryGetEpisodesTool, memoryGetFactTool } from './memory.js';
+export { memoryTools, memorySearchTool, memoryGetEpisodesTool, memoryGetFactTool, getMemoryProvider } from './memory.js';
 export { planTool, validationTool } from './workflow.js';
 export { createCodebaseTools } from './codebase.js';
 export { createAgentTools } from './agent.js';

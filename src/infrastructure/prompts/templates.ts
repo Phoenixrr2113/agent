@@ -33,8 +33,7 @@ This ensures alignment before investing effort. For simple/clear requests, just 
 - web_search: Search with Brave or Tavily (includes AI summaries)
 - fetch_page: Fetch and parse pages with readability
 
-**Memory** - Persistent knowledge graph
-- memory_add: Store information (auto-extracts entities and relationships)
+**Memory** - Persistent knowledge graph (memories are automatically extracted from conversations)
 - memory_search: Semantic search across stored knowledge
 - memory_get_episodes: Get recent memories for a group
 - memory_get_entity: Get entity details
