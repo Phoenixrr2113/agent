@@ -28,12 +28,15 @@ function cleanAIText(text: string): string {
 
 export function createStepFinishHandler() {
   let stepCount = 0;
+  let stepStartTime = 0;
 
   return async (stepResult: StepResult<any>) => {
     stepCount++;
+    const stepEndTime = performance.now();
+    const stepDuration = stepStartTime > 0 ? stepEndTime - stepStartTime : 0;
 
     console.log('\n' + '═'.repeat(80));
-    console.log(`📈 STEP ${stepCount}`);
+    console.log(`📈 STEP ${stepCount} ${stepDuration > 0 ? `(${stepDuration.toFixed(2)}ms)` : ''}`);
     console.log('═'.repeat(80));
 
     if (stepResult.text && stepResult.text.trim()) {
@@ -50,7 +53,9 @@ export function createStepFinishHandler() {
         const tc = stepResult.toolCalls[i];
         const tr = stepResult.toolResults?.find(r => r.toolCallId === tc.toolCallId);
 
-        console.log(`\n🔧 TOOL CALL: ${tc.toolName}`);
+        const timing = (tr as any)?.timing;
+        const timingStr = timing ? ` (${timing.toFixed(2)}ms)` : '';
+        console.log(`\n🔧 TOOL CALL: ${tc.toolName}${timingStr}`);
         console.log('─'.repeat(40));
 
         const input = tc.input;
@@ -85,6 +90,7 @@ export function createStepFinishHandler() {
     }
 
     console.log('\n');
+    stepStartTime = performance.now();
   };
 }
 

@@ -49,6 +49,7 @@ export async function createServer(config: ServerConfig = {}) {
   });
 
   app.post('/sessions/:sessionId/chat', async (c) => {
+    const requestStartTime = performance.now();
     const sessionId = c.req.param('sessionId');
     const session = sessions.get(sessionId);
     if (!session) {
@@ -61,7 +62,19 @@ export async function createServer(config: ServerConfig = {}) {
     }
 
     const result = await session.send(body.message);
-    return c.json(formatResult(result));
+    const requestDuration = performance.now() - requestStartTime;
+
+    logger.info('HTTP request completed', {
+      endpoint: '/sessions/:sessionId/chat',
+      sessionId,
+      durationMs: requestDuration.toFixed(2),
+      durationSec: (requestDuration / 1000).toFixed(3),
+    });
+
+    return c.json({
+      ...formatResult(result),
+      _httpTiming: { totalRequestDurationMs: requestDuration.toFixed(2) },
+    });
   });
 
   app.get('/sessions/:sessionId/chat/stream', async (c) => {
@@ -108,6 +121,7 @@ export async function createServer(config: ServerConfig = {}) {
   });
 
   app.post('/chat', async (c) => {
+    const requestStartTime = performance.now();
     const body = await c.req.json<{ message: string; sessionId?: string }>();
     if (!body.message) {
       return c.json({ error: 'message is required' }, 400);
@@ -115,7 +129,7 @@ export async function createServer(config: ServerConfig = {}) {
 
     let sessionId = body.sessionId;
     let session = sessionId ? sessions.get(sessionId) : undefined;
-    
+
     if (!session) {
       sessionId = crypto.randomUUID();
       session = runtime.createSession();
@@ -123,7 +137,20 @@ export async function createServer(config: ServerConfig = {}) {
     }
 
     const result = await session.send(body.message);
-    return c.json({ sessionId, ...formatResult(result) });
+    const requestDuration = performance.now() - requestStartTime;
+
+    logger.info('HTTP request completed', {
+      endpoint: '/chat',
+      sessionId,
+      durationMs: requestDuration.toFixed(2),
+      durationSec: (requestDuration / 1000).toFixed(3),
+    });
+
+    return c.json({
+      sessionId,
+      ...formatResult(result),
+      _httpTiming: { totalRequestDurationMs: requestDuration.toFixed(2) },
+    });
   });
 
   return { app, runtime, port };
