@@ -125,6 +125,10 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
         logger.warn('⚠️ No tool calls made - model may not be using tools correctly');
       }
 
+      memoryExtractor.extractFromConversation(result.response.messages).catch(error => {
+        logger.error('Background memory extraction failed', { error: String(error) });
+      });
+
       conversationHistory = result.response.messages;
 
       let codebaseIndexingMs: number | undefined;
@@ -150,10 +154,6 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
           step.toolCalls?.map((tc: any) => tc.toolName) || []
         )
       )];
-
-      memoryExtractor.extractFromConversation(conversationHistory).catch(error => {
-        logger.error('Background memory extraction failed', { error: String(error) });
-      });
 
       const askUserCall = result.steps
         .flatMap((step: any) => step.toolCalls || [])
