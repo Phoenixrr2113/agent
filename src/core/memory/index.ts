@@ -29,7 +29,7 @@ export function createMemoryLite(config: Omit<MemoryConfig, 'provider'>): Memory
     : createInMemoryStorage();
 
   const openrouter = createOpenRouter();
-  const embeddingModel = google.textEmbedding(config.embeddingModel || 'text-embedding-004');
+  const embeddingModel = google.embedding(config.embeddingModel || 'text-embedding-004');
   const extractionModel = openrouter(config.extractionModel || DEFAULT_EXTRACTION_MODEL);
 
   async function getEmbedding(text: string): Promise<number[]> {

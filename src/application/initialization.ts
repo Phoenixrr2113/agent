@@ -11,20 +11,34 @@ import { memoryTools, closeMemory } from '../tools/memory.js';
 import { planTool, validationTool } from '../tools/workflow.js';
 import { createCodebaseTools } from '../tools/codebase.js';
 import { createAgentTools } from '../tools/agent.js';
+import {
+  ToolRegistry,
+  createToolRegistry,
+  createToolSearchTool,
+  createActivateToolTool,
+} from '../tools/registry.js';
 
 export interface InitializationConfig {
   workspaceRoot?: string;
   enableReadline?: boolean;
+  registry?: ToolRegistry;
+  enableSemanticSearch?: boolean;
 }
 
 export interface InitializationResult {
   tools: Record<string, any>;
   codebaseRAG: any;
   readline: readline.Interface | null;
+  registry: ToolRegistry;
 }
 
 export async function initializeAgent(config: InitializationConfig = {}): Promise<InitializationResult> {
-  const { workspaceRoot, enableReadline = false } = config;
+  const {
+    workspaceRoot,
+    enableReadline = false,
+    registry: providedRegistry,
+    enableSemanticSearch = true,
+  } = config;
 
   let rl: readline.Interface | null = null;
   if (enableReadline) {
@@ -32,6 +46,9 @@ export async function initializeAgent(config: InitializationConfig = {}): Promis
   }
 
   logger.info(`🤖 Initializing AI Agent`, { workspaceRoot: workspaceRoot || '(none)' });
+
+  const registry = providedRegistry ?? createToolRegistry();
+  const activeTools = new Set<string>();
 
   let codebaseRAG: any = null;
   if (workspaceRoot) {
@@ -52,7 +69,7 @@ export async function initializeAgent(config: InitializationConfig = {}): Promis
     : {};
   const agentTools = createAgentTools(rl);
 
-  const tools = {
+  const coreTools = {
     shell: shellTool,
     web_search: webSearchTool,
     fetch_page: fetchPageTool,
@@ -62,12 +79,34 @@ export async function initializeAgent(config: InitializationConfig = {}): Promis
     ...agentTools,
   };
 
-  logger.info('Total tools', { count: Object.keys(tools).length });
+  registry.registerMany(coreTools, { deferLoading: false });
+
+  if (enableSemanticSearch) {
+    logger.info('Generating tool embeddings for semantic search...');
+    await registry.generateEmbeddings();
+    logger.info('Tool embeddings ready', { tools: registry.size() });
+  }
+
+  const searchTool = createToolSearchTool(registry);
+  const activateTool = createActivateToolTool(registry, activeTools);
+
+  const tools = {
+    ...coreTools,
+    search_tools: searchTool,
+    activate_tool: activateTool,
+  };
+
+  logger.info('Tool registry initialized', {
+    totalTools: registry.size(),
+    activeTools: Object.keys(tools).length,
+    semanticSearch: enableSemanticSearch,
+  });
 
   return {
     tools,
     codebaseRAG,
     readline: rl,
+    registry,
   };
 }
 

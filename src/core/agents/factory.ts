@@ -1,4 +1,4 @@
-import { Experimental_Agent as Agent } from 'ai';
+import { ToolLoopAgent } from 'ai';
 import { models } from './models.js';
 import { systemPrompts, type AgentRole } from './roles.js';
 
@@ -14,9 +14,9 @@ export function createAgentWithRole(
 ) {
   const modelType = options?.modelType || 'standard';
 
-  return new Agent({
+  return new ToolLoopAgent({
     model: models[modelType](),
-    system: systemPrompts[role],
+    instructions: systemPrompts[role],
     tools,
     stopWhen: options?.stopWhen,
     prepareStep: options?.prepareStep,

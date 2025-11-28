@@ -9,7 +9,10 @@ console.log('Type your requests or "exit" to quit\n');
 
 const rl = readline.createInterface({ input, output });
 
+const workspaceRoot = process.env.WORKSPACE_ROOT || process.argv[2];
+
 const runtime = await createAgentRuntime({
+  workspaceRoot,
   askUserHandler: async (question: string) => {
     logger.info('🤔 Agent asks', { question });
     const answer = await rl.question('👤 Your response: ');

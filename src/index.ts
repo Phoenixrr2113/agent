@@ -33,4 +33,14 @@ export {
   type ServerConfig,
 } from './server.js';
 
+export {
+  ToolRegistry,
+  createToolRegistry,
+  createToolSearchTool,
+  createActivateToolTool,
+  type ToolMetadata,
+  type RegisteredTool,
+  type ToolRegistrationOptions,
+} from './tools/registry.js';
+
 export type { ModelMessage } from 'ai';

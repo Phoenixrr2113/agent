@@ -5,6 +5,15 @@ export { memoryTools, memoryAddTool, memorySearchTool, memoryGetEpisodesTool, me
 export { planTool, validationTool } from './workflow.js';
 export { createCodebaseTools } from './codebase.js';
 export { createAgentTools } from './agent.js';
+export {
+  ToolRegistry,
+  createToolRegistry,
+  createToolSearchTool,
+  createActivateToolTool,
+  type ToolMetadata,
+  type RegisteredTool,
+  type ToolRegistrationOptions,
+} from './registry.js';
 
 import { shellTool } from './shell.js';
 import { webSearchTool } from './web-search.js';

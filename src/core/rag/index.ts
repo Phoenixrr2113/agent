@@ -1,37 +1,53 @@
-import { embedMany } from 'ai';
+import { embed, embedMany } from 'ai';
 import { google } from '@ai-sdk/google';
 import fs from 'fs/promises';
 import path from 'path';
-import { chunkCode, ChunkingStrategy } from './chunking.js';
-import { createFileCache, computeHash, Cache } from './cache.js';
+import {
+  chunkFile,
+  chunkDirectory,
+  disposeParserFactory,
+  isASTSupported,
+  type CodeChunk,
+  type ChunkingStrategy,
+} from './chunking.js';
+import { createFileCache, computeHash, type Cache } from './cache.js';
+import {
+  generateContextBatch,
+  createContextualChunkWithoutLLM,
+  type ContextualChunk,
+} from './context.js';
+import { createBM25Index, mergeSearchResults, type BM25Index } from './bm25.js';
+import { rerankWithFallback } from './rerank.js';
 
-interface CodeChunk {
-  content: string;
-  filePath: string;
-  startLine: number;
-  endLine: number;
-}
+export type { CodeChunk, ChunkingStrategy } from './chunking.js';
+export type { ContextualChunk } from './context.js';
 
-interface EmbeddedChunk extends CodeChunk {
+export interface EmbeddedChunk extends ContextualChunk {
+  id: string;
   embedding: number[];
 }
 
-interface FileEmbeddings {
+interface CachedFileData {
   chunks: EmbeddedChunk[];
   hash: string;
 }
 
 export interface CodebaseRAG {
   indexCodebase: () => Promise<void>;
-  searchCodebase: (query: string, topK?: number, similarityThreshold?: number) => Promise<EmbeddedChunk[]>;
+  searchCodebase: (query: string, topK?: number) => Promise<EmbeddedChunk[]>;
   getStats: () => { totalChunks: number; files: number };
   clearCache: () => Promise<void>;
+  dispose: () => void;
 }
 
 export interface RAGOptions {
-  chunkingStrategy?: ChunkingStrategy;
-  chunkSize?: number;
   enableCache?: boolean;
+  enableContextGeneration?: boolean;
+  enableBM25?: boolean;
+  enableReranking?: boolean;
+  rerankTopN?: number;
+  returnTopN?: number;
+  onProgress?: (message: string) => void;
 }
 
 export function createCodebaseRAG(
@@ -39,74 +55,125 @@ export function createCodebaseRAG(
   options: RAGOptions = {}
 ): CodebaseRAG {
   const {
-    chunkingStrategy = 'adaptive',
-    chunkSize = 100,
     enableCache = true,
+    enableContextGeneration = true,
+    enableBM25 = true,
+    enableReranking = true,
+    rerankTopN = 100,
+    returnTopN = 20,
+    onProgress,
   } = options;
 
-  let embeddings: EmbeddedChunk[] = [];
-  const cache: Cache<FileEmbeddings> = createFileCache(
+  let embeddedChunks: EmbeddedChunk[] = [];
+  let bm25Index: BM25Index | null = null;
+  const chunkMap = new Map<string, EmbeddedChunk>();
+
+  const cache: Cache<CachedFileData> = createFileCache(
     path.join(workspaceRoot, '.rag-cache')
   );
 
+  const log = (message: string) => {
+    onProgress?.(message);
+  };
+
   const scanWorkspace = async (): Promise<CodeChunk[]> => {
+    log('Scanning workspace with AST parser...');
+    try {
+      return await chunkDirectory(workspaceRoot);
+    } catch {
+      log('AST chunking failed, falling back to file-by-file...');
+      return await scanWorkspaceFallback();
+    }
+  };
+
+  const scanWorkspaceFallback = async (): Promise<CodeChunk[]> => {
     const chunks: CodeChunk[] = [];
-    const codeExtensions = ['.ts', '.js', '.tsx', '.jsx', '.py', '.java', '.go', '.rs', '.c', '.cpp', '.h'];
+    const codeExtensions = [
+      '.ts',
+      '.js',
+      '.tsx',
+      '.jsx',
+      '.py',
+      '.java',
+      '.go',
+      '.rs',
+      '.c',
+      '.cpp',
+      '.h',
+    ];
 
-    const scanDirectory = async (dir: string): Promise<void> => {
-      try {
-        const entries = await fs.readdir(dir, { withFileTypes: true });
+    const scanDir = async (dir: string): Promise<void> => {
+      const entries = await fs.readdir(dir, { withFileTypes: true });
 
-        for (const entry of entries) {
-          const fullPath = path.join(dir, entry.name);
+      for (const entry of entries) {
+        const fullPath = path.join(dir, entry.name);
 
-          if (entry.name === 'node_modules' || entry.name === 'dist' || entry.name === '.git') {
-            continue;
-          }
+        if (['node_modules', 'dist', '.git', 'build'].includes(entry.name)) {
+          continue;
+        }
 
-          if (entry.isDirectory()) {
-            await scanDirectory(fullPath);
-          } else if (entry.isFile() && codeExtensions.some(ext => entry.name.endsWith(ext))) {
+        if (entry.isDirectory()) {
+          await scanDir(fullPath);
+        } else if (entry.isFile()) {
+          const ext = path.extname(entry.name);
+          if (codeExtensions.includes(ext)) {
             const content = await fs.readFile(fullPath, 'utf-8');
-            const fileChunks = chunkCode(content, chunkSize, chunkingStrategy).map(chunk => ({
-              ...chunk,
-              filePath: fullPath,
-            }));
+            const fileChunks = await chunkFile(content, fullPath, ext);
             chunks.push(...fileChunks);
           }
         }
-      } catch (error) {
-        console.error(`Error scanning directory ${dir}:`, error);
       }
     };
 
-    await scanDirectory(workspaceRoot);
+    await scanDir(workspaceRoot);
     return chunks;
   };
 
-  const groupChunksByFile = (chunks: CodeChunk[]): Map<string, CodeChunk[]> => {
-    const fileMap = new Map<string, CodeChunk[]>();
-    for (const chunk of chunks) {
-      if (!fileMap.has(chunk.filePath)) {
-        fileMap.set(chunk.filePath, []);
-      }
-      fileMap.get(chunk.filePath)!.push(chunk);
+  const processChunks = async (chunks: CodeChunk[]): Promise<EmbeddedChunk[]> => {
+    log(`Processing ${chunks.length} chunks...`);
+
+    let contextualChunks: ContextualChunk[];
+    if (enableContextGeneration) {
+      log('Generating contextual descriptions...');
+      contextualChunks = await generateContextBatch(chunks, {
+        concurrency: 5,
+        delayMs: 200,
+        onProgress: (completed, total) => {
+          log(`Context generation: ${completed}/${total}`);
+        },
+      });
+    } else {
+      contextualChunks = chunks.map(createContextualChunkWithoutLLM);
     }
-    return fileMap;
-  };
 
-  const embedChunks = async (chunks: CodeChunk[]): Promise<EmbeddedChunk[]> => {
-    if (chunks.length === 0) return [];
-
-    const { embeddings: embeddingVectors } = await embedMany({
-      model: google.textEmbedding('text-embedding-004') as any,
-      values: chunks.map(chunk => chunk.content),
+    log('Generating embeddings...');
+    const { embeddings: vectors } = await embedMany({
+      model: google.embedding('text-embedding-004') as any,
+      values: contextualChunks.map((c) => c.contextualContent),
     });
 
-    return chunks.map((chunk, index) => ({
+    return contextualChunks.map((chunk, index) => ({
       ...chunk,
-      embedding: embeddingVectors[index],
+      id: `${chunk.filePath}:${chunk.startLine}-${chunk.endLine}`,
+      embedding: vectors[index],
     }));
+  };
+
+  const buildBM25Index = (chunks: EmbeddedChunk[]): BM25Index => {
+    log('Building BM25 index...');
+    const index = createBM25Index();
+
+    for (const chunk of chunks) {
+      index.addDocument({
+        id: chunk.id,
+        content: chunk.contextualContent,
+        name: chunk.metadata.name,
+        filePath: chunk.filePath,
+      });
+    }
+
+    index.consolidate();
+    return index;
   };
 
   return {
@@ -114,71 +181,126 @@ export function createCodebaseRAG(
       const chunks = await scanWorkspace();
 
       if (chunks.length === 0) {
-        console.log('No code files found to index');
-        embeddings = [];
+        log('No code files found to index');
+        embeddedChunks = [];
+        bm25Index = null;
         return;
       }
 
-      const fileChunksMap = groupChunksByFile(chunks);
-      const allEmbeddedChunks: EmbeddedChunk[] = [];
+      const fileChunksMap = new Map<string, CodeChunk[]>();
+      for (const chunk of chunks) {
+        if (!fileChunksMap.has(chunk.filePath)) {
+          fileChunksMap.set(chunk.filePath, []);
+        }
+        fileChunksMap.get(chunk.filePath)!.push(chunk);
+      }
+
+      const allEmbedded: EmbeddedChunk[] = [];
 
       for (const [filePath, fileChunks] of fileChunksMap.entries()) {
-        const fileContent = fileChunks.map(c => c.content).join('\n');
+        const fileContent = fileChunks.map((c) => c.content).join('\n');
         const fileHash = computeHash(fileContent);
 
-        let embeddedChunks: EmbeddedChunk[];
+        let processed: EmbeddedChunk[];
 
-        if (enableCache && await cache.isValid(filePath, fileHash)) {
+        if (enableCache && (await cache.isValid(filePath, fileHash))) {
           const cached = await cache.get(filePath);
           if (cached) {
-            embeddedChunks = cached.chunks;
+            processed = cached.chunks;
+            log(`Cache hit: ${filePath}`);
           } else {
-            embeddedChunks = await embedChunks(fileChunks);
-            await cache.set(filePath, { chunks: embeddedChunks, hash: fileHash }, fileHash);
+            processed = await processChunks(fileChunks);
+            await cache.set(filePath, { chunks: processed, hash: fileHash }, fileHash);
           }
         } else {
-          embeddedChunks = await embedChunks(fileChunks);
+          processed = await processChunks(fileChunks);
           if (enableCache) {
-            await cache.set(filePath, { chunks: embeddedChunks, hash: fileHash }, fileHash);
+            await cache.set(filePath, { chunks: processed, hash: fileHash }, fileHash);
           }
         }
 
-        allEmbeddedChunks.push(...embeddedChunks);
+        allEmbedded.push(...processed);
       }
 
-      embeddings = allEmbeddedChunks;
-      console.log(`Indexed ${embeddings.length} code chunks from ${fileChunksMap.size} files`);
+      embeddedChunks = allEmbedded;
+      chunkMap.clear();
+      for (const chunk of embeddedChunks) {
+        chunkMap.set(chunk.id, chunk);
+      }
+
+      if (enableBM25) {
+        bm25Index = buildBM25Index(embeddedChunks);
+      }
+
+      log(`Indexed ${embeddedChunks.length} chunks from ${fileChunksMap.size} files`);
     },
 
-    searchCodebase: async (query: string, topK: number = 5, similarityThreshold: number = 0.3) => {
-      if (embeddings.length === 0) {
+    searchCodebase: async (query: string, topK?: number) => {
+      const finalTopK = topK ?? returnTopN;
+
+      if (embeddedChunks.length === 0) {
         return [];
       }
 
-      const { embedding: queryEmbedding } = await embedMany({
-        model: google.textEmbedding('text-embedding-004') as any,
-        values: [query],
-      }).then(result => ({ embedding: result.embeddings[0] }));
+      const { embedding: queryEmbedding } = await embed({
+        model: google.embedding('text-embedding-004') as any,
+        value: query,
+      });
 
-      const similarities = embeddings.map(chunk => ({
-        chunk,
-        similarity: cosineSimilarity(queryEmbedding, chunk.embedding),
-      }));
+      const embeddingResults = embeddedChunks
+        .map((chunk) => ({
+          id: chunk.id,
+          score: cosineSimilarity(queryEmbedding, chunk.embedding),
+        }))
+        .sort((a, b) => b.score - a.score)
+        .slice(0, rerankTopN)
+        .map((r, i) => ({ ...r, rank: i + 1 }));
 
-      return similarities
-        .filter(item => item.similarity >= similarityThreshold)
-        .sort((a, b) => b.similarity - a.similarity)
-        .slice(0, topK)
-        .map(item => item.chunk);
+      let candidateIds: string[];
+
+      if (enableBM25 && bm25Index) {
+        const bm25Results = bm25Index.search(query, rerankTopN);
+        const merged = mergeSearchResults(embeddingResults, bm25Results);
+        candidateIds = merged.slice(0, rerankTopN).map((r) => r.id);
+      } else {
+        candidateIds = embeddingResults.map((r) => r.id);
+      }
+
+      let finalIds: string[];
+
+      if (enableReranking && candidateIds.length > 0) {
+        const docsToRerank = candidateIds
+          .map((id) => chunkMap.get(id))
+          .filter((c): c is EmbeddedChunk => c !== undefined)
+          .map((c) => ({ id: c.id, content: c.contextualContent }));
+
+        const reranked = await rerankWithFallback(query, docsToRerank, {
+          topN: finalTopK,
+        });
+        finalIds = reranked.map((r) => r.id);
+      } else {
+        finalIds = candidateIds.slice(0, finalTopK);
+      }
+
+      return finalIds
+        .map((id) => chunkMap.get(id))
+        .filter((c): c is EmbeddedChunk => c !== undefined);
     },
 
     getStats: () => ({
-      totalChunks: embeddings.length,
-      files: new Set(embeddings.map(e => e.filePath)).size,
+      totalChunks: embeddedChunks.length,
+      files: new Set(embeddedChunks.map((e) => e.filePath)).size,
     }),
 
     clearCache: async () => {
       await cache.clear();
+    },
+
+    dispose: () => {
+      disposeParserFactory();
+      embeddedChunks = [];
+      bm25Index = null;
+      chunkMap.clear();
     },
   };
 }
