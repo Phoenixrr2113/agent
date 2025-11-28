@@ -2,14 +2,6 @@ import { embed, embedMany } from 'ai';
 import { google } from '@ai-sdk/google';
 import fs from 'fs/promises';
 import path from 'path';
-import {
-  chunkFile,
-  chunkDirectory,
-  disposeParserFactory,
-  isASTSupported,
-  type CodeChunk,
-  type ChunkingStrategy,
-} from './chunking.js';
 import { createFileCache, computeHash, type Cache } from './cache.js';
 import {
   generateContextBatch,
@@ -18,9 +10,10 @@ import {
 } from './context.js';
 import { createBM25Index, mergeSearchResults, type BM25Index } from './bm25.js';
 import { rerankWithFallback } from './rerank.js';
+import { createDefaultRegistry, type StrategyRegistry, type Chunk } from './strategies/index.js';
 
-export type { CodeChunk, ChunkingStrategy } from './chunking.js';
 export type { ContextualChunk } from './context.js';
+export type { Chunk, ChunkingStrategy, ChunkMetadata } from './strategies/index.js';
 
 export interface EmbeddedChunk extends ContextualChunk {
   id: string;
@@ -48,6 +41,7 @@ export interface RAGOptions {
   rerankTopN?: number;
   returnTopN?: number;
   onProgress?: (message: string) => void;
+  strategyRegistry?: StrategyRegistry;
 }
 
 export function createCodebaseRAG(
@@ -62,7 +56,10 @@ export function createCodebaseRAG(
     rerankTopN = 100,
     returnTopN = 20,
     onProgress,
+    strategyRegistry,
   } = options;
+
+  const registry = strategyRegistry ?? createDefaultRegistry();
 
   let embeddedChunks: EmbeddedChunk[] = [];
   let bm25Index: BM25Index | null = null;
@@ -76,31 +73,13 @@ export function createCodebaseRAG(
     onProgress?.(message);
   };
 
-  const scanWorkspace = async (): Promise<CodeChunk[]> => {
-    log('Scanning workspace with AST parser...');
-    try {
-      return await chunkDirectory(workspaceRoot);
-    } catch {
-      log('AST chunking failed, falling back to file-by-file...');
-      return await scanWorkspaceFallback();
-    }
+  const scanWorkspace = async (): Promise<Chunk[]> => {
+    log('Scanning workspace...');
+    return await scanWorkspaceFallback();
   };
 
-  const scanWorkspaceFallback = async (): Promise<CodeChunk[]> => {
-    const chunks: CodeChunk[] = [];
-    const codeExtensions = [
-      '.ts',
-      '.js',
-      '.tsx',
-      '.jsx',
-      '.py',
-      '.java',
-      '.go',
-      '.rs',
-      '.c',
-      '.cpp',
-      '.h',
-    ];
+  const scanWorkspaceFallback = async (): Promise<Chunk[]> => {
+    const chunks: Chunk[] = [];
 
     const scanDir = async (dir: string): Promise<void> => {
       const entries = await fs.readdir(dir, { withFileTypes: true });
@@ -108,18 +87,22 @@ export function createCodebaseRAG(
       for (const entry of entries) {
         const fullPath = path.join(dir, entry.name);
 
-        if (['node_modules', 'dist', '.git', 'build'].includes(entry.name)) {
+        if (['node_modules', 'dist', '.git', 'build', '.rag-cache'].includes(entry.name)) {
           continue;
         }
 
         if (entry.isDirectory()) {
           await scanDir(fullPath);
         } else if (entry.isFile()) {
-          const ext = path.extname(entry.name);
-          if (codeExtensions.includes(ext)) {
-            const content = await fs.readFile(fullPath, 'utf-8');
-            const fileChunks = await chunkFile(content, fullPath, ext);
-            chunks.push(...fileChunks);
+          const strategy = registry.getStrategy(fullPath);
+          if (strategy) {
+            try {
+              const content = await fs.readFile(fullPath, 'utf-8');
+              const fileChunks = await registry.chunkFile(content, fullPath);
+              chunks.push(...fileChunks);
+            } catch (error) {
+              log(`Failed to chunk file ${fullPath}: ${error}`);
+            }
           }
         }
       }
@@ -129,7 +112,7 @@ export function createCodebaseRAG(
     return chunks;
   };
 
-  const processChunks = async (chunks: CodeChunk[]): Promise<EmbeddedChunk[]> => {
+  const processChunks = async (chunks: Chunk[]): Promise<EmbeddedChunk[]> => {
     log(`Processing ${chunks.length} chunks...`);
 
     let contextualChunks: ContextualChunk[];
@@ -187,7 +170,7 @@ export function createCodebaseRAG(
         return;
       }
 
-      const fileChunksMap = new Map<string, CodeChunk[]>();
+      const fileChunksMap = new Map<string, Chunk[]>();
       for (const chunk of chunks) {
         if (!fileChunksMap.has(chunk.filePath)) {
           fileChunksMap.set(chunk.filePath, []);
@@ -297,7 +280,7 @@ export function createCodebaseRAG(
     },
 
     dispose: () => {
-      disposeParserFactory();
+      registry.dispose();
       embeddedChunks = [];
       bm25Index = null;
       chunkMap.clear();

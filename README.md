@@ -204,9 +204,17 @@ PORT=8080 WORKSPACE_ROOT=/path/to/project npx ai-agent-server
 
 | Tool | Description |
 |------|-------------|
-| `search_codebase` | Semantic search over indexed code |
+| `search_codebase` | Semantic search over indexed code and documents |
 | `grep_codebase` | Regex pattern matching in files |
 | `validate` | Run TypeScript checks and tests |
+
+**RAG (Retrieval-Augmented Generation)**: The workspace indexing uses a pluggable strategy system that automatically selects the appropriate chunking method based on file type:
+
+- **Code files** (`.ts`, `.js`, `.py`, `.java`, `.go`, `.rs`, `.c`, `.cpp`, `.h`) - AST-based chunking via `code-chopper`
+- **Documents** (`.md`, `.txt`, `.markdown`) - Semantic chunking by headings/paragraphs
+- **Custom strategies** - Easily add support for new file types (PDFs, etc.)
+
+See [RAG Strategies Documentation](src/core/rag/strategies/README.md) for details on creating custom chunking strategies.
 
 ## Memory System
 
