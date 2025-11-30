@@ -1,0 +1,14 @@
+const isBrowser = typeof window !== 'undefined' && typeof window.document !== 'undefined';
+const isNode = typeof process !== 'undefined' && process.versions?.node;
+if (isBrowser) {
+    throw new Error('ai-agent-runtime is server-side only (Node.js). ' +
+        'It uses native modules (better-sqlite3) and Node.js APIs (child_process, fs) ' +
+        'that are not available in browsers. ' +
+        'To use this agent in a frontend, run it as a backend service and connect via HTTP.');
+}
+if (!isNode) {
+    throw new Error('ai-agent-runtime requires Node.js >= 20. ' +
+        'Current environment does not appear to be Node.js.');
+}
+export { createAgentRuntime, } from './runtime/agent-runtime.js';
+export { ToolRegistry, createToolRegistry, createToolSearchTool, createActivateToolTool, } from './tools/registry.js';
