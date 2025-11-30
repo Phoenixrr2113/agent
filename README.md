@@ -13,7 +13,8 @@ agent-platform/
 ├── packages/
 │   ├── shared/         # @agent/shared - Shared utilities & types
 │   ├── core/           # @agent/core - Agent runtime engine
-│   └── server/         # @agent/server - HTTP API server
+│   ├── server/         # @agent/server - HTTP API server
+│   └── device-use/     # @agent/device-use - Cross-platform device control
 ├── apps/
 │   └── cli/            # @agent/cli - CLI applications
 ├── pnpm-workspace.yaml
@@ -26,13 +27,17 @@ agent-platform/
 - **@agent/shared** - Base utilities (logger, performance tracking)
 - **@agent/core** - Core agent runtime with memory, RAG, and tools
 - **@agent/server** - Hono-based HTTP server with REST API and SSE streaming
+- **@agent/device-use** - Cross-platform device control (macOS, Linux, Windows, iOS*, Android*)
 - **@agent/cli** - Command-line interfaces (server launcher & interactive chat)
+
+*iOS and Android implementations require native code/React Native (Phase 3)*
 
 ## Features
 
 - **Persistent Memory**: Knowledge graph with automatic entity extraction (SQLite-based, zero config)
 - **Web Intelligence**: Search (Brave/Tavily) and page parsing (Readability)
 - **Shell Execution**: Full bash access for git, filesystem, and system operations
+- **Device Control**: Cross-platform computer use (screenshot, mouse, keyboard) via Anthropic's tools
 - **Optional Codebase Tools**: RAG-powered semantic search and grep (when workspace provided)
 - **Session Management**: Multiple concurrent conversations with isolated history
 - **HTTP Server**: Built-in Hono server with REST API
@@ -403,7 +408,7 @@ apps/cli/
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the complete architecture evolution plan, including:
 
 - ✅ **Phase 1**: Monorepo structure (Complete)
-- **Phase 2**: Device use package (macOS, Linux, Windows, iOS, Android)
+- ✅ **Phase 2**: Device use package (Complete - macOS, Linux, Windows, iOS/Android placeholders)
 - **Phase 3**: React Native mobile app
 - **Phase 4**: Tauri desktop app
 - **Phase 5**: Next.js web dashboard

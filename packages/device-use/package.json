@@ -1,0 +1,33 @@
+{
+  "name": "@agent/device-use",
+  "version": "0.1.0",
+  "description": "Cross-platform device control for desktop and mobile (macOS, Linux, Windows, iOS, Android)",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@agent/shared": "workspace:*",
+    "@ai-sdk/anthropic": "^1.0.7",
+    "ai": "6.0.0-beta.120",
+    "sharp": "^0.33.5",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "^2.0.0"
+  }
+}
