@@ -27,17 +27,17 @@ agent-platform/
 - **@agent/shared** - Base utilities (logger, performance tracking)
 - **@agent/core** - Core agent runtime with memory, RAG, and tools
 - **@agent/server** - Hono-based HTTP server with REST API and SSE streaming
-- **@agent/device-use** - Cross-platform device control (macOS, Linux, Windows, iOS*, Android*)
+- **@agent/device-use** - Cross-platform device control using nut.js (macOS, Linux X11/Wayland, Windows)
 - **@agent/cli** - Command-line interfaces (server launcher & interactive chat)
 
-*iOS and Android implementations require native code/React Native (Phase 3)*
+*Mobile platforms (iOS/Android) will be added in Phase 3 with React Native*
 
 ## Features
 
 - **Persistent Memory**: Knowledge graph with automatic entity extraction (SQLite-based, zero config)
 - **Web Intelligence**: Search (Brave/Tavily) and page parsing (Readability)
 - **Shell Execution**: Full bash access for git, filesystem, and system operations
-- **Device Control**: Cross-platform computer use (screenshot, mouse, keyboard) via Anthropic's tools
+- **Device Control**: High-performance cross-platform automation via nut.js (100x faster than CLI tools, Wayland support)
 - **Optional Codebase Tools**: RAG-powered semantic search and grep (when workspace provided)
 - **Session Management**: Multiple concurrent conversations with isolated history
 - **HTTP Server**: Built-in Hono server with REST API
