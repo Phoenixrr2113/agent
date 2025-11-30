@@ -33,9 +33,10 @@
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
+    "dotenv": "^17.2.3",
     "tsx": "^4.0.0",
-    "typescript": "^5.0.0",
     "turbo": "^2.0.0",
+    "typescript": "^5.0.0",
     "vitest": "^2.0.0"
   }
 }

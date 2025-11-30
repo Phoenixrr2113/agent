@@ -43,7 +43,7 @@ agent-platform/
 │   │   ├── dist/
 │   │   └── package.json
 │   │
-│   └── (future: computer-use/)   # Phase 2: Native computer control
+│   └── (future: device-use/)     # Phase 2: Native device control
 │
 ├── apps/
 │   ├── cli/                       # @agent/cli - CLI applications
@@ -231,21 +231,21 @@ To fully complete v0.2.0, the following tasks remain:
 
 ---
 
-## Phase 2: Computer Use Package (Next)
+## Phase 2: Device Use Package (Next)
 
-Native computer control for desktop automation:
+Native device control for desktop, mobile, and automation across all platforms:
 
 ```typescript
-// packages/computer-use/src/index.ts
+// packages/device-use/src/index.ts
 import { anthropic } from '@ai-sdk/anthropic';
 
-export interface ComputerUseConfig {
+export interface DeviceUseConfig {
   displayWidth: number;
   displayHeight: number;
   safeMode?: boolean;
 }
 
-export function createComputerTools(config: ComputerUseConfig) {
+export function createDeviceTools(config: DeviceUseConfig) {
   return {
     computer: anthropic.tools.computer_20250124({
       displayWidthPx: config.displayWidth,
@@ -294,8 +294,10 @@ export function createComputerTools(config: ComputerUseConfig) {
 
 ### Platform-Specific Implementations
 
+Supports desktop (macOS, Linux, Windows) and mobile (iOS, Android) platforms.
+
 ```
-packages/computer-use/
+packages/device-use/
 ├── src/
 │   ├── index.ts
 │   ├── tools.ts
@@ -308,10 +310,18 @@ packages/computer-use/
 │   │   │   ├── screenshot.ts    # scrot/gnome-screenshot
 │   │   │   ├── mouse.ts         # xdotool
 │   │   │   └── keyboard.ts
-│   │   └── windows/
-│   │       ├── screenshot.ts    # PowerShell
-│   │       ├── mouse.ts         # PowerShell/AutoHotkey
-│   │       └── keyboard.ts
+│   │   ├── windows/
+│   │   │   ├── screenshot.ts    # PowerShell
+│   │   │   ├── mouse.ts         # PowerShell/AutoHotkey
+│   │   │   └── keyboard.ts
+│   │   ├── ios/
+│   │   │   ├── screenshot.ts    # Native iOS screenshot API
+│   │   │   ├── touch.ts         # Touch/gesture control
+│   │   │   └── keyboard.ts      # iOS keyboard control
+│   │   └── android/
+│   │       ├── screenshot.ts    # Android screenshot API
+│   │       ├── touch.ts         # Touch/gesture control
+│   │       └── keyboard.ts      # Android keyboard control
 │   └── utils/
 │       ├── image.ts             # Base64 encoding
 │       └── safety.ts            # Action validation
@@ -431,7 +441,7 @@ export class VoiceService {
 
 ---
 
-## Phase 4: Desktop App with Computer Use
+## Phase 4: Desktop App with Device Use
 
 Electron or Tauri app for native desktop control:
 
@@ -440,7 +450,7 @@ apps/desktop/
 ├── src/
 │   ├── main/
 │   │   ├── index.ts             # Main process
-│   │   ├── computer-use.ts      # Native bindings
+│   │   ├── device-use.ts        # Native bindings
 │   │   └── tray.ts              # System tray
 │   ├── renderer/
 │   │   ├── App.tsx
@@ -565,8 +575,8 @@ apps/web/
        ┌───────────────────────────┼───────────────────────────┐
        │                           │                           │
 ┌──────▼──────┐            ┌───────▼───────┐          ┌───────▼───────┐
-│   LLM API   │            │  External APIs │          │ Computer Use  │
-│ (OpenRouter)│            │(Brave, Tavily) │          │ (Desktop only)│
+│   LLM API   │            │  External APIs │          │  Device Use   │
+│ (OpenRouter)│            │(Brave, Tavily) │          │(Desktop+Mobile)│
 └─────────────┘            └───────────────┘          └───────────────┘
 ```
 
@@ -574,10 +584,10 @@ apps/web/
 
 ## Security Considerations
 
-### Computer Use Safety
+### Device Use Safety
 
 ```typescript
-// packages/computer-use/src/utils/safety.ts
+// packages/device-use/src/utils/safety.ts
 export interface SafetyConfig {
   allowedApps?: string[];
   blockedApps?: string[];
@@ -624,11 +634,13 @@ export function validateAction(action: ComputerAction, config: SafetyConfig): bo
 - [x] Set up Turborepo
 - [ ] CI/CD for monorepo (pending)
 
-### v0.3.0 - Computer Use
-- [ ] Create computer-use package
+### v0.3.0 - Device Use
+- [ ] Create device-use package
 - [ ] macOS implementation
 - [ ] Linux implementation
 - [ ] Windows implementation
+- [ ] iOS implementation
+- [ ] Android implementation
 - [ ] Safety layer
 
 ### v0.4.0 - Mobile App
@@ -640,7 +652,7 @@ export function validateAction(action: ComputerAction, config: SafetyConfig): bo
 
 ### v0.5.0 - Desktop App
 - [ ] Tauri project setup
-- [ ] Computer use integration
+- [ ] Device use integration
 - [ ] System tray
 - [ ] Global hotkeys
 - [ ] Auto-update
@@ -666,6 +678,6 @@ export function validateAction(action: ComputerAction, config: SafetyConfig): bo
 | Desktop | Tauri (Rust) or Electron |
 | Database | SQLite (memory), PostgreSQL (production) |
 | LLM | OpenRouter (multi-provider) |
-| Computer Use | Platform-specific (Anthropic tools) |
+| Device Use | Cross-platform (desktop + mobile) |
 
 

@@ -1,8 +1,32 @@
-# ai-agent-runtime
+# AI Agent Platform
 
-A **server-side AI agent runtime** for Node.js applications. Provides persistent memory, web search, shell execution, and optional codebase understanding. Designed as a library that can be embedded in backend services or run as a standalone HTTP server.
+A **server-side AI agent runtime** for Node.js applications built as a modern monorepo. Provides persistent memory, web search, shell execution, and codebase understanding through a modular package architecture.
 
-> **⚠️ Server-Side Only**: This package requires Node.js 20+ and uses native modules (SQLite, child_process). It cannot run in browsers. For frontend apps, run as a backend service and connect via HTTP/WebSocket.
+> **⚠️ Server-Side Only**: This platform requires Node.js 20+ and uses native modules (SQLite, child_process). It cannot run in browsers. For frontend apps, run as a backend service and connect via HTTP/WebSocket.
+
+## Monorepo Structure
+
+This project uses pnpm workspaces and Turborepo for efficient package management:
+
+```
+agent-platform/
+├── packages/
+│   ├── shared/         # @agent/shared - Shared utilities & types
+│   ├── core/           # @agent/core - Agent runtime engine
+│   └── server/         # @agent/server - HTTP API server
+├── apps/
+│   └── cli/            # @agent/cli - CLI applications
+├── pnpm-workspace.yaml
+├── turbo.json
+└── package.json
+```
+
+### Packages
+
+- **@agent/shared** - Base utilities (logger, performance tracking)
+- **@agent/core** - Core agent runtime with memory, RAG, and tools
+- **@agent/server** - Hono-based HTTP server with REST API and SSE streaming
+- **@agent/cli** - Command-line interfaces (server launcher & interactive chat)
 
 ## Features
 
@@ -13,23 +37,37 @@ A **server-side AI agent runtime** for Node.js applications. Provides persistent
 - **Session Management**: Multiple concurrent conversations with isolated history
 - **HTTP Server**: Built-in Hono server with REST API
 - **Programmatic API**: Import as a library or run as HTTP server
+- **Turborepo Build System**: Lightning-fast builds with caching (< 1s with cache)
 
 ## Installation
-
-```bash
-npm install ai-agent-runtime
-# or
-pnpm add ai-agent-runtime
-```
 
 ### Prerequisites
 
 - **Node.js 20+** (required)
+- **pnpm 8+** (required for monorepo)
 - **API Keys**:
   - [OpenRouter](https://openrouter.ai/) - LLM provider (required)
   - [Google AI](https://aistudio.google.com/apikey) - Embeddings (required)
   - [Brave Search](https://brave.com/search/api/) - Web search (optional)
   - [Tavily](https://tavily.com/) - Research search (optional)
+
+### Quick Setup
+
+```bash
+# Clone repository
+git clone <repo>
+cd agent-platform
+
+# Install dependencies
+pnpm install
+
+# Configure environment
+cp .env.example .env
+# Edit .env with your API keys
+
+# Build all packages
+pnpm build
+```
 
 ### Environment Variables
 
@@ -52,10 +90,24 @@ MODEL_EXTRACTION=google/gemini-2.0-flash-001
 
 ## Quick Start
 
+### Interactive Chat
+
+```bash
+pnpm chat
+```
+
+### HTTP Server
+
+```bash
+pnpm server
+```
+
+Server starts on `http://localhost:3000` (or PORT env variable).
+
 ### As a Library
 
 ```typescript
-import { createAgentRuntime } from 'ai-agent-runtime';
+import { createAgentRuntime } from '@agent/core';
 
 const runtime = await createAgentRuntime();
 const session = runtime.createSession();
@@ -69,7 +121,7 @@ await runtime.shutdown();
 ### With Codebase Access
 
 ```typescript
-import { createAgentRuntime } from 'ai-agent-runtime';
+import { createAgentRuntime } from '@agent/core';
 
 const runtime = await createAgentRuntime({
   workspaceRoot: '/path/to/project',  // Enables RAG + grep + validate tools
@@ -82,7 +134,7 @@ const result = await session.send('Find all TODO comments in the codebase');
 ### With User Interaction
 
 ```typescript
-import { createAgentRuntime } from 'ai-agent-runtime';
+import { createAgentRuntime } from '@agent/core';
 
 const runtime = await createAgentRuntime({
   askUserHandler: async (question) => {
@@ -92,74 +144,11 @@ const runtime = await createAgentRuntime({
 });
 ```
 
-## API Reference
+## HTTP Server API
 
-### `createAgentRuntime(config?)`
+The `@agent/server` package provides a Hono-based HTTP server.
 
-Creates an agent runtime instance.
-
-```typescript
-interface AgentConfig {
-  workspaceRoot?: string;           // Path to index for codebase tools
-  askUserHandler?: (question: string) => Promise<string>;
-}
-```
-
-**Returns**: `Promise<AgentRuntime>`
-
-### `AgentRuntime`
-
-```typescript
-interface AgentRuntime {
-  createSession(): AgentSession;    // Create a new conversation
-  shutdown(): Promise<void>;        // Cleanup resources
-}
-```
-
-### `AgentSession`
-
-```typescript
-interface AgentSession {
-  send(message: string): Promise<TaskResult>;
-  runTask(input: TaskInput): Promise<TaskResult>;
-  getHistory(): ModelMessage[];
-  clearHistory(): void;
-}
-```
-
-### `TaskResult`
-
-```typescript
-interface TaskResult {
-  text: string;              // Agent's response
-  messages: ModelMessage[];  // Full conversation history
-  completed: boolean;        // true if task_complete was called
-  needsInput: boolean;       // true if ask_user was called
-  pendingQuestion?: string;  // Question for user (if needsInput)
-  stepsUsed: number;         // Number of reasoning steps
-  toolsUsed: string[];       // Tools invoked
-}
-```
-
-### HTTP Server
-
-```typescript
-import { createServer, startServer, type ServerConfig } from 'ai-agent-runtime';
-
-interface ServerConfig {
-  port?: number;              // Default: 3000 or PORT env
-  workspaceRoot?: string;     // Path for codebase tools
-  corsOrigin?: string | string[];  // CORS origins
-}
-
-// Option 1: Start server directly
-await startServer({ port: 3000 });
-
-// Option 2: Get Hono app for custom setup
-const { app, runtime, port } = await createServer();
-```
-
-#### Endpoints
+### Endpoints
 
 | Method | Path | Description |
 |--------|------|-------------|
@@ -172,14 +161,47 @@ const { app, runtime, port } = await createServer();
 | `POST` | `/sessions/:id/clear` | Clear session history |
 | `POST` | `/chat` | Convenience: auto-creates session |
 
-#### CLI
+### Client Example
+
+```typescript
+const API = 'http://localhost:3000';
+
+const { sessionId } = await fetch(`${API}/sessions`, { method: 'POST' }).then(r => r.json());
+
+const response = await fetch(`${API}/sessions/${sessionId}/chat`, {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({ message: 'What is the weather in Tokyo?' }),
+}).then(r => r.json());
+
+console.log(response.text);
+```
+
+## Available Scripts
+
+### Root Scripts
 
 ```bash
-# Run as standalone server
-npx ai-agent-server
+pnpm build          # Build all packages with Turborepo
+pnpm dev           # Run all packages in dev mode
+pnpm test          # Run all tests
+pnpm lint          # Lint all packages
+pnpm clean         # Clean all build artifacts
+pnpm chat          # Start interactive chat CLI
+pnpm server        # Start HTTP server
+```
 
-# With environment variables
-PORT=8080 WORKSPACE_ROOT=/path/to/project npx ai-agent-server
+### Per-Package Scripts
+
+```bash
+# Build specific package
+pnpm --filter @agent/core build
+
+# Test specific package
+pnpm --filter @agent/core test
+
+# Add dependency to specific package
+pnpm --filter @agent/core add <package>
 ```
 
 ## Tools
@@ -214,7 +236,7 @@ PORT=8080 WORKSPACE_ROOT=/path/to/project npx ai-agent-server
 - **Documents** (`.md`, `.txt`, `.markdown`) - Semantic chunking by headings/paragraphs
 - **Custom strategies** - Easily add support for new file types (PDFs, etc.)
 
-See [RAG Strategies Documentation](src/core/rag/strategies/README.md) for details on creating custom chunking strategies.
+See [packages/core/src/core/rag/strategies/README.md](packages/core/src/core/rag/strategies/README.md) for details on creating custom chunking strategies.
 
 ## Memory System
 
@@ -254,148 +276,117 @@ Set `GRAPHITI_URL=http://localhost:8000` and the agent auto-detects it.
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                      Your Application                           │
-│           (Hono, Fastify, or any Node.js backend)              │
-└──────────────────────────────┬──────────────────────────────────┘
-                               │
-┌──────────────────────────────▼──────────────────────────────────┐
-│                       Agent Runtime                             │
-│                   createAgentRuntime()                          │
-├─────────────────────────────────────────────────────────────────┤
-│  Sessions     │  Tools           │  Memory          │  RAG      │
-│  - History    │  - shell         │  - Entities      │  - Index  │
-│  - Context    │  - web_search    │  - Relations     │  - Search │
-│               │  - memory_*      │  - Facts         │  - Chunks │
-└─────────────────────────────────────────────────────────────────┘
-                               │
-┌──────────────────────────────▼──────────────────────────────────┐
-│                      External Services                          │
-│  OpenRouter (LLM)  │  Google (Embeddings)  │  Brave/Tavily     │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-## Examples
-
-### Built-in HTTP Server
-
-```typescript
-import { startServer } from 'ai-agent-runtime';
-
-await startServer({
-  port: 3000,
-  workspaceRoot: '/path/to/project',  // Optional
-  corsOrigin: ['http://localhost:5173'],  // Optional
-});
-```
-
-### Client Usage (fetch)
-
-```typescript
-const API = 'http://localhost:3000';
-
-const { sessionId } = await fetch(`${API}/sessions`, { method: 'POST' }).then(r => r.json());
-
-const response = await fetch(`${API}/sessions/${sessionId}/chat`, {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ message: 'What is the weather in Tokyo?' }),
-}).then(r => r.json());
-
-console.log(response.text);
-```
-
-### Background Worker
-
-```typescript
-import { createAgentRuntime } from 'ai-agent-runtime';
-
-const runtime = await createAgentRuntime({
-  workspaceRoot: process.env.PROJECT_PATH,
-});
-
-async function processTask(task: string) {
-  const session = runtime.createSession();
-  const result = await session.send(task);
-
-  if (result.completed) {
-    return { success: true, output: result.text };
-  }
-
-  return { success: false, output: result.text };
-}
-```
-
-### CLI Tool
-
-```typescript
-import { createAgentRuntime } from 'ai-agent-runtime';
-import * as readline from 'readline/promises';
-
-const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-
-const runtime = await createAgentRuntime({
-  askUserHandler: async (question) => {
-    return await rl.question(`Agent asks: ${question}\n> `);
-  },
-});
-
-const session = runtime.createSession();
-
-while (true) {
-  const input = await rl.question('You: ');
-  if (input === 'exit') break;
-
-  const result = await session.send(input);
-  console.log(`Agent: ${result.text}\n`);
-}
-
-await runtime.shutdown();
+┌─────────────────────────────────────────────────────────────────────┐
+│                           CLIENTS                                    │
+├─────────────┬─────────────┬─────────────┬─────────────┬─────────────┤
+│  Web App    │ Mobile App  │ Desktop App │    CLI      │  Third-party│
+│  (Next.js)  │(React Native)│  (Tauri)   │             │  (via API)  │
+└──────┬──────┴──────┬──────┴──────┬──────┴──────┬──────┴──────┬──────┘
+       │             │             │             │             │
+       └─────────────┴─────────────┼─────────────┴─────────────┘
+                                   │
+                          HTTP/WebSocket
+                                   │
+                    ┌──────────────▼──────────────┐
+                    │    @agent/server (Hono)     │
+                    │   Session Management API    │
+                    └──────────────┬──────────────┘
+                                   │
+                    ┌──────────────▼──────────────┐
+                    │      @agent/core            │
+                    │    Agent Runtime Engine     │
+                    ├──────────────────────────────┤
+                    │  Memory │ Tools │ Orchestrator│
+                    └──────────────┬──────────────┘
+                                   │
+       ┌───────────────────────────┼───────────────────────────┐
+       │                           │                           │
+┌──────▼──────┐            ┌───────▼───────┐          ┌───────▼───────┐
+│   LLM API   │            │  External APIs │          │  @agent/shared│
+│ (OpenRouter)│            │(Brave, Tavily) │          │   (Utils)     │
+└─────────────┘            └───────────────┘          └───────────────┘
 ```
 
 ## Development
 
+### Building
+
 ```bash
-# Clone and install
-git clone <repo>
-pnpm install
-
-# Configure
-cp .env.example .env
-# Edit .env with your API keys
-
-# Test interactively
-pnpm chat
-
-# Build
+# Build all packages (with Turborepo caching)
 pnpm build
 
-# Run tests
+# Build specific package
+pnpm --filter @agent/core build
+
+# Clean and rebuild
+pnpm clean && pnpm build
+```
+
+### Testing
+
+```bash
+# Run all tests
 pnpm test
+
+# Test specific package
+pnpm --filter @agent/core test
+
+# Watch mode
+pnpm --filter @agent/core test --watch
 ```
 
-### Project Structure
+### Development Workflow
+
+1. Make changes to source files in any package
+2. Run `pnpm build` to compile TypeScript
+3. Test with `pnpm chat` or `pnpm server`
+4. Run tests with `pnpm test`
+
+Turborepo automatically handles build dependencies - if you change `@agent/shared`, it will rebuild all dependent packages.
+
+### Package Structure
 
 ```
-src/
-├── index.ts              # Library exports
-├── chat.ts               # Interactive CLI for testing
-├── runtime/
-│   └── agent-runtime.ts  # Main runtime implementation
-├── tools/                # Tool implementations
-│   ├── shell.ts
-│   ├── web-search.ts
-│   ├── fetch-page.ts
-│   ├── memory.ts
-│   ├── codebase.ts
-│   ├── workflow.ts
-│   └── agent.ts
+packages/
+├── shared/
+│   ├── src/
+│   │   ├── logger.ts
+│   │   ├── performance.ts
+│   │   └── index.ts
+│   ├── dist/
+│   ├── package.json
+│   └── tsconfig.json
+│
 ├── core/
-│   ├── memory/           # Knowledge graph (SQLite)
-│   └── rag/              # Codebase indexing
-└── application/
-    ├── initialization.ts
-    └── orchestrator.ts
+│   ├── src/
+│   │   ├── runtime/           # Agent execution engine
+│   │   ├── application/       # Orchestrator & initialization
+│   │   ├── core/
+│   │   │   ├── agents/        # Model configs
+│   │   │   ├── memory/        # Knowledge graph
+│   │   │   ├── rag/           # Semantic search
+│   │   │   └── search/        # Grep utilities
+│   │   ├── tools/             # Tool implementations
+│   │   ├── infrastructure/    # System prompts
+│   │   └── index.ts
+│   ├── dist/
+│   ├── package.json
+│   └── tsconfig.json
+│
+├── server/
+│   ├── src/
+│   │   └── index.ts           # Hono server
+│   ├── dist/
+│   ├── package.json
+│   └── tsconfig.json
+│
+apps/cli/
+├── src/
+│   ├── server.ts              # Server launcher
+│   └── chat.ts                # Interactive chat
+├── dist/
+├── package.json
+└── tsconfig.json
 ```
 
 ## Security
@@ -406,6 +397,20 @@ src/
 - Limit filesystem access via workspace boundaries
 - Never expose directly to untrusted users
 - Consider command allowlists for production
+
+## Roadmap
+
+See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the complete architecture evolution plan, including:
+
+- ✅ **Phase 1**: Monorepo structure (Complete)
+- **Phase 2**: Device use package (macOS, Linux, Windows, iOS, Android)
+- **Phase 3**: React Native mobile app
+- **Phase 4**: Tauri desktop app
+- **Phase 5**: Next.js web dashboard
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for development guidelines.
 
 ## License
 
