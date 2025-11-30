@@ -4,6 +4,7 @@ import { createAgent } from '../application/orchestrator.js';
 import { logger } from '../core/logger.js';
 import { createMemoryExtractor } from '../core/memory/extractor.js';
 import { getMemoryProvider } from '../tools/memory.js';
+import { createPerformanceTimer, type PerformanceTimer } from '../core/performance.js';
 
 export interface AgentConfig {
   workspaceRoot?: string;
@@ -23,6 +24,11 @@ export interface TaskResult {
   pendingQuestion?: string;
   stepsUsed: number;
   toolsUsed: string[];
+  performanceMetrics?: {
+    totalDurationMs: number;
+    agentExecutionMs: number;
+    codebaseIndexingMs?: number;
+  };
 }
 
 export type AskUserHandler = (question: string) => Promise<string>;
@@ -32,6 +38,7 @@ export interface AgentSession {
   runTask(input: TaskInput): Promise<TaskResult>;
   getHistory(): ModelMessage[];
   clearHistory(): void;
+  getPerformanceTimer(): PerformanceTimer;
 }
 
 export interface AgentRuntime {
@@ -74,8 +81,15 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
 
   const createSession = (): AgentSession => {
     let conversationHistory: ModelMessage[] = [];
+    const performanceTimer = createPerformanceTimer();
 
     const runTask = async (input: TaskInput): Promise<TaskResult> => {
+      performanceTimer.reset();
+      performanceTimer.start('runTask', 'agent-runtime', {
+        hasPrompt: !!input.prompt,
+        hasMessages: !!input.messages,
+      });
+
       if (input.prompt) {
         conversationHistory.push({ role: 'user', content: input.prompt });
       } else if (input.messages) {
@@ -84,14 +98,24 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
 
       logger.info('🧠 Sending request to AI model...');
       logger.debug('📤 Messages being sent', { count: conversationHistory.length });
-      const startTime = Date.now();
+
+      performanceTimer.start('agent.generate', 'agent-runtime', {
+        messageCount: conversationHistory.length,
+      });
 
       const result = await agent.generate({
         messages: conversationHistory,
       });
 
-      const elapsed = ((Date.now() - startTime) / 1000).toFixed(2);
-      logger.info('✅ AI model responded', { elapsedSeconds: elapsed, steps: result.steps.length });
+      const agentExecutionMs = performanceTimer.end('agent.generate', 'agent-runtime', {
+        steps: result.steps.length,
+      });
+
+      logger.info('✅ AI model responded', {
+        elapsedMs: agentExecutionMs?.toFixed(2),
+        elapsedSec: agentExecutionMs ? (agentExecutionMs / 1000).toFixed(2) : 'unknown',
+        steps: result.steps.length,
+      });
       logger.debug('📥 Raw response text', { text: result.text?.slice(0, 500) });
 
       const allToolCalls = result.steps.flatMap((step: any) => step.toolCalls || []);
@@ -101,8 +125,13 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
         logger.warn('⚠️ No tool calls made - model may not be using tools correctly');
       }
 
-      conversationHistory = result.response.messages;
+      conversationHistory.push(...result.response.messages);
 
+      memoryExtractor.extractFromConversation(conversationHistory).catch(error => {
+        logger.error('Background memory extraction failed', { error: String(error) });
+      });
+
+      let codebaseIndexingMs: number | undefined;
       if (codebaseRAG) {
         const modifiedFiles = result.steps.some((step: any) =>
           step.toolCalls?.some((tc: any) =>
@@ -110,7 +139,9 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
           )
         );
         if (modifiedFiles) {
+          performanceTimer.start('codebase.reindex', 'agent-runtime');
           await codebaseRAG.indexCodebase();
+          codebaseIndexingMs = performanceTimer.end('codebase.reindex', 'agent-runtime');
         }
       }
 
@@ -124,17 +155,16 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
         )
       )];
 
-      const hasNoToolCalls = toolsUsed.length === 0;
-      if (hasNoToolCalls) {
-        await memoryExtractor.extractFromConversation(conversationHistory);
-      }
-
       const askUserCall = result.steps
         .flatMap((step: any) => step.toolCalls || [])
         .find((tc: any) => tc.toolName === 'ask_user');
 
       const needsInput = !!askUserCall;
       const pendingQuestion = askUserCall?.args?.question as string | undefined;
+
+      const totalDurationMs = performanceTimer.end('runTask', 'agent-runtime');
+
+      performanceTimer.logSummary();
 
       return {
         text: result.text,
@@ -144,6 +174,11 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
         pendingQuestion,
         stepsUsed: result.steps.length,
         toolsUsed,
+        performanceMetrics: {
+          totalDurationMs: totalDurationMs ?? 0,
+          agentExecutionMs: agentExecutionMs ?? 0,
+          codebaseIndexingMs,
+        },
       };
     };
 
@@ -154,6 +189,7 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
       clearHistory: () => {
         conversationHistory = [];
       },
+      getPerformanceTimer: () => performanceTimer,
     };
   };
 

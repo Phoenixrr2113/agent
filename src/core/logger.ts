@@ -1,9 +1,14 @@
+import fs from 'fs';
+import path from 'path';
+
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
 export interface LoggerOptions {
   level?: LogLevel;
   enableColors?: boolean;
   enableTimestamps?: boolean;
+  logFile?: string;
+  logToConsole?: boolean;
 }
 
 export interface Logger {
@@ -12,6 +17,7 @@ export interface Logger {
   warn(message: string, meta?: Record<string, any>): void;
   error(message: string, meta?: Record<string, any>): void;
   setLevel(level: LogLevel): void;
+  close(): void;
 }
 
 const LOG_LEVELS: Record<LogLevel, number> = {
@@ -42,12 +48,24 @@ export function createLogger(options: LoggerOptions = {}): Logger {
   let currentLevel: LogLevel = options.level || getEnvLogLevel();
   const enableColors = options.enableColors ?? true;
   const enableTimestamps = options.enableTimestamps ?? true;
+  const logToConsole = options.logToConsole ?? true;
+  const logFile = options.logFile || process.env.LOG_FILE;
+
+  let fileStream: fs.WriteStream | null = null;
+
+  if (logFile) {
+    const logDir = path.dirname(logFile);
+    if (!fs.existsSync(logDir)) {
+      fs.mkdirSync(logDir, { recursive: true });
+    }
+    fileStream = fs.createWriteStream(logFile, { flags: 'a' });
+  }
 
   function shouldLog(level: LogLevel): boolean {
     return LOG_LEVELS[level] >= LOG_LEVELS[currentLevel];
   }
 
-  function formatMessage(level: LogLevel, message: string, meta?: Record<string, any>): string {
+  function formatMessage(level: LogLevel, message: string, meta?: Record<string, any>, useColors: boolean = enableColors): string {
     const parts: string[] = [];
 
     if (enableTimestamps) {
@@ -56,7 +74,7 @@ export function createLogger(options: LoggerOptions = {}): Logger {
     }
 
     const levelStr = level.toUpperCase().padEnd(5);
-    if (enableColors) {
+    if (useColors) {
       parts.push(`${LOG_COLORS[level]}${levelStr}${RESET_COLOR}`);
     } else {
       parts.push(levelStr);
@@ -76,17 +94,23 @@ export function createLogger(options: LoggerOptions = {}): Logger {
       return;
     }
 
-    const formatted = formatMessage(level, message, meta);
+    if (logToConsole) {
+      const formatted = formatMessage(level, message, meta, true);
+      switch (level) {
+        case 'error':
+          console.error(formatted);
+          break;
+        case 'warn':
+          console.warn(formatted);
+          break;
+        default:
+          console.log(formatted);
+      }
+    }
 
-    switch (level) {
-      case 'error':
-        console.error(formatted);
-        break;
-      case 'warn':
-        console.warn(formatted);
-        break;
-      default:
-        console.log(formatted);
+    if (fileStream) {
+      const formatted = formatMessage(level, message, meta, false);
+      fileStream.write(formatted + '\n');
     }
   }
 
@@ -109,6 +133,13 @@ export function createLogger(options: LoggerOptions = {}): Logger {
 
     setLevel(level: LogLevel): void {
       currentLevel = level;
+    },
+
+    close(): void {
+      if (fileStream) {
+        fileStream.end();
+        fileStream = null;
+      }
     },
   };
 }

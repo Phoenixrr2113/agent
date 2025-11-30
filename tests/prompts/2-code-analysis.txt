@@ -1,0 +1,26 @@
+I need you to analyze the memory system in this codebase and provide insights.
+
+Tasks:
+
+1. Search the codebase for all memory-related files and understand the architecture
+
+2. Identify the main components:
+   - What are the different storage adapters?
+   - How does fact extraction work?
+   - What is the entity resolution mechanism?
+   - How are contradictions detected?
+
+3. Analyze the recent optimizations:
+   - What performance improvements were made?
+   - How does incremental extraction work?
+   - What is the impact of batch processing?
+
+4. Find any potential issues or areas for improvement:
+   - Are there any edge cases not handled?
+   - Could any algorithms be optimized further?
+   - Are there missing error handlers?
+
+5. Suggest 3 concrete improvements with rationale
+
+Please provide code examples where relevant and explain your reasoning clearly.
+

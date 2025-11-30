@@ -11,6 +11,7 @@ import {
 import { createBM25Index, mergeSearchResults, type BM25Index } from './bm25.js';
 import { rerankWithFallback } from './rerank.js';
 import { createDefaultRegistry, type StrategyRegistry, type Chunk } from './strategies/index.js';
+import { logger } from '../logger.js';
 
 export type { ContextualChunk } from './context.js';
 export type { Chunk, ChunkingStrategy, ChunkMetadata } from './strategies/index.js';
@@ -161,12 +162,19 @@ export function createCodebaseRAG(
 
   return {
     indexCodebase: async () => {
+      const startTime = performance.now();
+      logger.info('⏱️  [RAG] Starting codebase indexing');
+
       const chunks = await scanWorkspace();
 
       if (chunks.length === 0) {
         log('No code files found to index');
         embeddedChunks = [];
         bm25Index = null;
+        const duration = performance.now() - startTime;
+        logger.info('⏱️  [RAG] Indexing completed (empty)', {
+          durationMs: duration.toFixed(2),
+        });
         return;
       }
 
@@ -218,19 +226,35 @@ export function createCodebaseRAG(
         bm25Index = buildBM25Index(embeddedChunks);
       }
 
+      const duration = performance.now() - startTime;
       log(`Indexed ${embeddedChunks.length} chunks from ${fileChunksMap.size} files`);
+      logger.info('⏱️  [RAG] Indexing completed', {
+        chunks: embeddedChunks.length,
+        files: fileChunksMap.size,
+        durationMs: duration.toFixed(2),
+        durationSec: (duration / 1000).toFixed(3),
+      });
     },
 
     searchCodebase: async (query: string, topK?: number) => {
+      const startTime = performance.now();
+      logger.debug('⏱️  [RAG] Starting search', { query });
+
       const finalTopK = topK ?? returnTopN;
 
       if (embeddedChunks.length === 0) {
+        logger.debug('⏱️  [RAG] Search completed (no chunks)');
         return [];
       }
 
+      const embeddingStartTime = performance.now();
       const { embedding: queryEmbedding } = await embed({
         model: google.embedding('text-embedding-004') as any,
         value: query,
+      });
+      const embeddingDuration = performance.now() - embeddingStartTime;
+      logger.debug('⏱️  [RAG] Query embedding generated', {
+        durationMs: embeddingDuration.toFixed(2),
       });
 
       const embeddingResults = embeddedChunks
@@ -268,9 +292,19 @@ export function createCodebaseRAG(
         finalIds = candidateIds.slice(0, finalTopK);
       }
 
-      return finalIds
+      const results = finalIds
         .map((id) => chunkMap.get(id))
         .filter((c): c is EmbeddedChunk => c !== undefined);
+
+      const duration = performance.now() - startTime;
+      logger.info('⏱️  [RAG] Search completed', {
+        query,
+        results: results.length,
+        durationMs: duration.toFixed(2),
+        durationSec: (duration / 1000).toFixed(3),
+      });
+
+      return results;
     },
 
     getStats: () => ({

@@ -3,6 +3,7 @@ import { stdin as input, stdout as output } from 'process';
 import { createCodebaseRAG } from '../core/rag/index.js';
 import { grepWorkspace } from '../core/search/grep.js';
 import { logger } from '../core/logger.js';
+import { instrumentTools } from '../core/tool-instrumentation.js';
 
 import { shellTool } from '../tools/shell.js';
 import { webSearchTool } from '../tools/web-search.js';
@@ -96,14 +97,16 @@ export async function initializeAgent(config: InitializationConfig = {}): Promis
     activate_tool: activateTool,
   };
 
+  const instrumentedTools = instrumentTools(tools);
+
   logger.info('Tool registry initialized', {
     totalTools: registry.size(),
-    activeTools: Object.keys(tools).length,
+    activeTools: Object.keys(instrumentedTools).length,
     semanticSearch: enableSemanticSearch,
   });
 
   return {
-    tools,
+    tools: instrumentedTools,
     codebaseRAG,
     readline: rl,
     registry,

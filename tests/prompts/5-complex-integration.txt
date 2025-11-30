@@ -1,0 +1,42 @@
+I need you to help me plan and implement a new feature for the agent.
+
+FEATURE REQUEST: Add a "task planning" capability that allows the agent to break down complex requests into subtasks, execute them in order, and track progress.
+
+YOUR MISSION:
+
+1. RESEARCH PHASE
+   - Search the web for task planning approaches in AI agents
+   - Look for examples of hierarchical task networks or similar
+   - Find best practices for progress tracking in autonomous systems
+
+2. CODEBASE ANALYSIS
+   - Search the codebase for existing task/planning related code
+   - Identify where this feature would fit in the architecture
+   - Find similar patterns we can build upon
+   - Check if there's already a task list or progress tracking mechanism
+
+3. DESIGN PHASE
+   - Propose a high-level architecture for task planning
+   - Define the data structures needed (Task, Plan, Progress, etc.)
+   - Explain how it integrates with the existing agent runtime
+   - Consider edge cases and error handling
+
+4. IMPLEMENTATION PLANNING
+   - Break down the implementation into concrete steps
+   - Identify which files need to be created or modified
+   - Estimate complexity for each component
+   - Suggest a testing strategy
+
+5. PROOF OF CONCEPT
+   - If you find existing task management code, show how to use it
+   - Provide code examples for the core components
+   - Demonstrate how a user would interact with this feature
+
+CONSTRAINTS:
+- Must work with the existing AI SDK agent loop
+- Should not require major refactoring
+- Must be production-ready (no mocks or placeholders)
+- Should integrate with the memory system
+
+This is a comprehensive test of research, analysis, design, and implementation planning.
+

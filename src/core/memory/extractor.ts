@@ -12,32 +12,45 @@ export interface MemoryExtractor {
   waitForPending(): Promise<void>;
 }
 
+function extractTextFromMessage(message: ModelMessage): string | null {
+  if (typeof message.content === 'string') {
+    return message.content;
+  }
+  if (Array.isArray(message.content)) {
+    const textParts = message.content
+      .filter((part): part is { type: 'text'; text: string } => part.type === 'text')
+      .map(part => part.text);
+    if (textParts.length > 0) {
+      return textParts.join(' ');
+    }
+  }
+  return null;
+}
+
 function extractDialogueText(messages: ModelMessage[]): string {
+  const relevantMessages = messages.filter(
+    msg => msg.role === 'user' || msg.role === 'assistant'
+  );
+
+  logger.info('Memory extraction filter results', {
+    totalMessages: messages.length,
+    relevantMessages: relevantMessages.length,
+    userMessages: relevantMessages.filter(m => m.role === 'user').length,
+    assistantMessages: relevantMessages.filter(m => m.role === 'assistant').length,
+  });
+
+  if (relevantMessages.length === 0) {
+    logger.info('No messages to extract from');
+    return '';
+  }
+
   const dialogueParts: string[] = [];
 
-  for (const message of messages) {
-    if (message.role === 'user') {
-      if (typeof message.content === 'string') {
-        dialogueParts.push(`User: ${message.content}`);
-      } else if (Array.isArray(message.content)) {
-        const textParts = message.content
-          .filter((part): part is { type: 'text'; text: string } => part.type === 'text')
-          .map(part => part.text);
-        if (textParts.length > 0) {
-          dialogueParts.push(`User: ${textParts.join(' ')}`);
-        }
-      }
-    } else if (message.role === 'assistant') {
-      if (typeof message.content === 'string') {
-        dialogueParts.push(`Assistant: ${message.content}`);
-      } else if (Array.isArray(message.content)) {
-        const textParts = message.content
-          .filter((part): part is { type: 'text'; text: string } => part.type === 'text')
-          .map(part => part.text);
-        if (textParts.length > 0) {
-          dialogueParts.push(`Assistant: ${textParts.join(' ')}`);
-        }
-      }
+  for (const message of relevantMessages) {
+    const text = extractTextFromMessage(message);
+    if (text) {
+      const prefix = message.role === 'user' ? 'User' : 'Assistant';
+      dialogueParts.push(`${prefix}: ${text}`);
     }
   }
 
@@ -47,8 +60,9 @@ function extractDialogueText(messages: ModelMessage[]): string {
 export function createMemoryExtractor(config: MemoryExtractorConfig): MemoryExtractor {
   const { memoryProvider, groupId = 'default' } = config;
   const pendingExtractions: Promise<void>[] = [];
+  let lastProcessedIndex = -1;
 
-  async function doExtraction(dialogueText: string): Promise<void> {
+  async function doExtraction(dialogueText: string, messageCount: number): Promise<void> {
     if (!dialogueText.trim()) {
       logger.debug('No dialogue text to extract memories from');
       return;
@@ -64,12 +78,15 @@ export function createMemoryExtractor(config: MemoryExtractorConfig): MemoryExtr
         role: 'user',
         groupId,
         source: 'conversation_extraction',
+        lastProcessedMessageIndex: messageCount - 1,
       });
 
       logger.info('Memory extraction complete', {
         factIds: result.factIds.length,
         entityIds: result.entityIds.length,
       });
+
+      lastProcessedIndex = messageCount - 1;
     } catch (error) {
       logger.error('Memory extraction failed', { error: String(error) });
     }
@@ -77,8 +94,24 @@ export function createMemoryExtractor(config: MemoryExtractorConfig): MemoryExtr
 
   return {
     async extractFromConversation(messages: ModelMessage[]): Promise<void> {
-      const dialogueText = extractDialogueText(messages);
-      const extraction = doExtraction(dialogueText);
+      const newMessages = messages.slice(lastProcessedIndex + 1);
+
+      if (newMessages.length === 0) {
+        logger.debug('No new messages to extract from', {
+          totalMessages: messages.length,
+          lastProcessedIndex,
+        });
+        return;
+      }
+
+      logger.info('Processing new messages for extraction', {
+        totalMessages: messages.length,
+        lastProcessedIndex,
+        newMessagesCount: newMessages.length,
+      });
+
+      const dialogueText = extractDialogueText(newMessages);
+      const extraction = doExtraction(dialogueText, messages.length);
       pendingExtractions.push(extraction);
 
       try {

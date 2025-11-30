@@ -58,6 +58,7 @@
     "chat": "tsx src/chat.ts",
     "server": "tsx src/server.ts",
     "start": "node dist/server.js",
+    "test-agent": "tsx scripts/test-agent.ts",
     "lint": "eslint src",
     "lint:fix": "eslint src --fix",
     "test": "vitest run",

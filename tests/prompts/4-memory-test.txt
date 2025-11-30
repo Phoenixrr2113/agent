@@ -1,0 +1,31 @@
+Let's test the memory system's ability to extract and remember information.
+
+Part 1: Tell me about yourself
+First, I want to share some information with you:
+- My name is Randy
+- I'm working on an AI agent project
+- I prefer TypeScript over JavaScript
+- I'm interested in making this agent autonomous
+- I don't like unnecessary documentation files
+- I value production-ready code over prototypes
+
+Part 2: Research Task
+Now, search the web for information about:
+- The latest version of the Vercel AI SDK
+- New features in AI SDK 4.0+
+- Best practices for building agentic systems with AI SDK
+
+Part 3: Memory Verification
+Based on what I told you in Part 1:
+- What programming language do I prefer?
+- What's my stance on documentation?
+- What's important to me in code quality?
+
+Part 4: Application
+Using both the information I shared AND your research findings, recommend:
+- Which AI SDK features would be most useful for MY preferences
+- How to structure the agent to align with MY values
+- What to prioritize in development based on MY goals
+
+This tests both memory extraction and retrieval in a practical context.
+
