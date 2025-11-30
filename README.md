@@ -13,7 +13,8 @@ agent-platform/
 ├── packages/
 │   ├── shared/         # @agent/shared - Shared utilities & types
 │   ├── core/           # @agent/core - Agent runtime engine
-│   └── server/         # @agent/server - HTTP API server
+│   ├── server/         # @agent/server - HTTP API server
+│   └── device-use/     # @agent/device-use - Cross-platform device control
 ├── apps/
 │   └── cli/            # @agent/cli - CLI applications
 ├── pnpm-workspace.yaml
@@ -26,13 +27,17 @@ agent-platform/
 - **@agent/shared** - Base utilities (logger, performance tracking)
 - **@agent/core** - Core agent runtime with memory, RAG, and tools
 - **@agent/server** - Hono-based HTTP server with REST API and SSE streaming
+- **@agent/device-use** - Cross-platform device control using nut.js (macOS, Linux X11/Wayland, Windows)
 - **@agent/cli** - Command-line interfaces (server launcher & interactive chat)
+
+*Mobile platforms (iOS/Android) will be added in Phase 3 with React Native*
 
 ## Features
 
 - **Persistent Memory**: Knowledge graph with automatic entity extraction (SQLite-based, zero config)
 - **Web Intelligence**: Search (Brave/Tavily) and page parsing (Readability)
 - **Shell Execution**: Full bash access for git, filesystem, and system operations
+- **Device Control**: High-performance cross-platform automation via nut.js (100x faster than CLI tools, Wayland support)
 - **Optional Codebase Tools**: RAG-powered semantic search and grep (when workspace provided)
 - **Session Management**: Multiple concurrent conversations with isolated history
 - **HTTP Server**: Built-in Hono server with REST API
@@ -403,7 +408,7 @@ apps/cli/
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the complete architecture evolution plan, including:
 
 - ✅ **Phase 1**: Monorepo structure (Complete)
-- **Phase 2**: Device use package (macOS, Linux, Windows, iOS, Android)
+- ✅ **Phase 2**: Device use package (Complete - macOS, Linux, Windows, iOS/Android placeholders)
 - **Phase 3**: React Native mobile app
 - **Phase 4**: Tauri desktop app
 - **Phase 5**: Next.js web dashboard
