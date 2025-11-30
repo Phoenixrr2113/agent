@@ -10,6 +10,7 @@ memory.db
 memory.db-shm
 memory.db-wal
 *.log
+.turbo/
 
 # Prevent compiled JS in source directories
 packages/**/*.js
@@ -17,4 +18,4 @@ packages/**/*.tsbuildinfo
 apps/**/*.js
 apps/**/*.tsbuildinfo
 !packages/**/dist/**
-!apps/**/dist/**.turbo/
+!apps/**/dist/**
