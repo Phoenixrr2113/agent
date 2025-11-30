@@ -14,8 +14,20 @@ import type {
 } from './types.js';
 import { createInMemoryStorage, type StorageAdapter } from './storage.js';
 import { createSQLiteStorage } from './storage-sqlite.js';
-import { extractFromText, detectContradictions, resolveEntityConflicts } from './extraction.js';
+import { extractFromText, detectContradictionsBatch, resolveEntityConflicts } from './extraction.js';
 import { logger } from '../logger.js';
+
+/**
+ * Normalizes fact content for comparison to handle LLM extraction variations.
+ * Removes trailing punctuation and normalizes case to prevent duplicates like:
+ * "User's favorite language is Python" vs "User's favorite language is Python."
+ */
+function normalizeFactContent(content: string): string {
+  return content
+    .trim()
+    .replace(/[.!?]+$/, '')
+    .toLowerCase();
+}
 
 export * from './types.js';
 export { createInMemoryStorage } from './storage.js';
@@ -155,23 +167,19 @@ export function createMemoryLite(config: Omit<MemoryConfig, 'provider'>): Memory
         const existingFacts = await storage.facts.findValid();
 
         const contradictionCheckStartTime = performance.now();
-        logger.info('⏱️  [memory] Starting parallel contradiction detection', {
+        logger.info('⏱️  [memory] Starting batch contradiction detection', {
           factCount: extracted.facts.length,
           existingFactCount: existingFacts.length,
         });
 
-        const contradictionResults = await Promise.all(
-          extracted.facts.map(f =>
-            detectContradictions(
-              f.content,
-              existingFacts.map(ef => ef.content),
-              extractionModel
-            )
-          )
+        const contradictionResults = await detectContradictionsBatch(
+          extracted.facts.map(f => f.content),
+          existingFacts.map(ef => ef.content),
+          extractionModel
         );
 
         const contradictionCheckDuration = performance.now() - contradictionCheckStartTime;
-        logger.info('⏱️  [memory] All contradiction detection completed (parallel)', {
+        logger.info('⏱️  [memory] Batch contradiction detection completed', {
           durationMs: contradictionCheckDuration.toFixed(2),
           durationSec: (contradictionCheckDuration / 1000).toFixed(3),
           factCount: extracted.facts.length,
@@ -206,9 +214,22 @@ export function createMemoryLite(config: Omit<MemoryConfig, 'provider'>): Memory
             .filter((id): id is string => !!id);
 
           for (const supersededContent of contradictions.supersedes) {
-            const superseded = existingFacts.find(ef => ef.content === supersededContent);
+            const normalizedSuperseded = normalizeFactContent(supersededContent);
+            const superseded = existingFacts.find(
+              ef => normalizeFactContent(ef.content) === normalizedSuperseded
+            );
             if (superseded) {
+              logger.debug('⏱️  [memory] Invalidating superseded fact', {
+                supersededId: superseded.id,
+                supersededContent: superseded.content,
+                newContent: f.content,
+              });
               await storage.facts.invalidate(superseded.id, new Date());
+            } else {
+              logger.warn('⚠️  [memory] Could not find superseded fact to invalidate', {
+                supersededContent,
+                normalizedContent: normalizedSuperseded,
+              });
             }
           }
 
@@ -244,6 +265,7 @@ export function createMemoryLite(config: Omit<MemoryConfig, 'provider'>): Memory
         factIds,
         entityIds: Array.from(entityMap.values()).map(e => e.id),
         timestamp: new Date(),
+        lastProcessedMessageIndex: input.lastProcessedMessageIndex || 0,
       };
       await storage.episodes.create(episode);
 

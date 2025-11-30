@@ -1,0 +1,95 @@
+ULTIMATE AGENT CAPABILITY TEST
+
+This is a comprehensive test of all agent capabilities. Complete all phases systematically.
+
+═══════════════════════════════════════════════════════════════════════════════
+
+PHASE 1: CONTEXT GATHERING & MEMORY
+First, let me tell you about myself and this project:
+- I'm Randy, a backend developer with 8 years of Python experience
+- I'm building a universal AI agent that can be distributed as an npm package
+- I value production-ready code over prototypes
+- I prefer TypeScript and avoid unnecessary documentation
+- The agent should be autonomous and intelligent
+- I want it to work with the AI SDK's native agent behavior
+
+Now, search the codebase to understand:
+- What is the current architecture?
+- What are the main components?
+- What recent optimizations were made?
+
+═══════════════════════════════════════════════════════════════════════════════
+
+PHASE 2: EXTERNAL RESEARCH
+Search the web for:
+1. Latest best practices for building autonomous AI agents (2025)
+2. Current state of the Vercel AI SDK (version 4.0+)
+3. How top AI coding assistants handle multi-step tasks
+4. Common patterns for agent memory systems
+
+Synthesize findings into key insights relevant to THIS project.
+
+═══════════════════════════════════════════════════════════════════════════════
+
+PHASE 3: ANALYSIS & COMPARISON
+Compare what you learned from the codebase (Phase 1) with industry best practices (Phase 2):
+
+1. What is this agent doing well?
+2. What gaps exist compared to best practices?
+3. What features from top AI assistants are missing?
+4. How does the memory system compare to industry standards?
+
+═══════════════════════════════════════════════════════════════════════════════
+
+PHASE 4: MEMORY VERIFICATION
+Based on what I told you in Phase 1:
+- What's my name?
+- How many years of Python experience do I have?
+- What's my stance on documentation?
+- What's the goal for this agent project?
+
+This verifies memory extraction and retrieval.
+
+═══════════════════════════════════════════════════════════════════════════════
+
+PHASE 5: STRATEGIC RECOMMENDATIONS
+Using ALL information gathered (my preferences, codebase analysis, industry research):
+
+Recommend the top 3 improvements for this agent, where each recommendation includes:
+1. What to build/improve
+2. Why it matters (aligned with MY goals and industry trends)
+3. How it would work (technical approach)
+4. Implementation complexity (Low/Medium/High)
+5. Expected impact (on autonomy, usability, performance)
+
+Prioritize based on:
+- Alignment with my stated goals
+- Impact on agent autonomy
+- Feasibility given current architecture
+- Industry relevance
+
+═══════════════════════════════════════════════════════════════════════════════
+
+PHASE 6: PROOF OF CONCEPT
+For your #1 recommendation:
+- Search the codebase for where it would be implemented
+- Provide a concrete code example or pseudocode
+- Explain integration points with existing code
+- Identify potential challenges
+
+═══════════════════════════════════════════════════════════════════════════════
+
+SUCCESS CRITERIA:
+✓ Uses web search for external research
+✓ Uses codebase search for internal analysis
+✓ Extracts and stores facts about me in memory
+✓ Retrieves stored facts accurately
+✓ Synthesizes information from multiple sources
+✓ Provides personalized recommendations
+✓ Shows technical depth with code examples
+✓ Demonstrates multi-step reasoning
+✓ Completes all 6 phases systematically
+
+This tests: web search, codebase search, memory extraction, memory retrieval, 
+multi-step execution, information synthesis, technical analysis, and personalized output.
+

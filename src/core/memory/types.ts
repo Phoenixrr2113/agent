@@ -39,6 +39,7 @@ export interface Episode {
   factIds: string[];
   entityIds: string[];
   timestamp: Date;
+  lastProcessedMessageIndex: number;
 }
 
 export interface SearchResult {
@@ -53,6 +54,7 @@ export interface MemoryAddInput {
   role?: 'user' | 'assistant' | 'system';
   groupId?: string;
   source?: string;
+  lastProcessedMessageIndex?: number;
 }
 
 export interface MemorySearchInput {

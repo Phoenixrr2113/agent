@@ -1,0 +1,26 @@
+I need you to research the current state of AI coding assistants and provide a comprehensive analysis.
+
+Please do the following:
+
+1. Search the web for information about the top 5 AI coding assistants currently available (like GitHub Copilot, Cursor, Windsurf, etc.)
+
+2. For each assistant, gather:
+   - Key features and capabilities
+   - Pricing model
+   - Supported IDEs/editors
+   - Unique selling points
+   - Any recent updates or announcements
+
+3. Create a comparison focusing on:
+   - Code completion quality
+   - Multi-file editing capabilities
+   - Context awareness
+   - Tool/function calling abilities
+   - Cost-effectiveness
+
+4. Based on your research, identify the top 3 trends in AI coding assistants for 2025
+
+5. Remember that I'm a backend developer with 8 years of Python experience, so tailor your analysis to backend development use cases
+
+Please be thorough and cite your sources where possible.
+

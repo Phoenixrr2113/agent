@@ -1,0 +1,28 @@
+I want to understand how the agent execution loop works and test its multi-step capabilities.
+
+Please complete this multi-phase task:
+
+PHASE 1: Discovery
+- Search the codebase for the agent runtime implementation
+- Identify where the execution loop is defined
+- Find how tools are registered and called
+- Locate the stop conditions
+
+PHASE 2: Analysis
+- Explain how the agent decides when to stop
+- Describe the flow from user input to agent response
+- Identify how context is maintained across turns
+- Explain the role of the AI SDK in the execution
+
+PHASE 3: Testing
+- Search the web for best practices in agentic AI systems
+- Compare our implementation to industry standards
+- Identify what makes a good autonomous agent
+
+PHASE 4: Recommendations
+- Suggest 3 improvements to make the agent more autonomous
+- Explain how each improvement would work
+- Estimate the complexity of each change
+
+Please work through each phase systematically and show your reasoning at each step.
+

@@ -1,0 +1,9 @@
+Please tell me what you know about this codebase.
+
+Search the codebase and provide:
+1. What is this project about?
+2. What are the main components?
+3. What programming language is it written in?
+
+Keep it brief - just 3-4 sentences total.
+

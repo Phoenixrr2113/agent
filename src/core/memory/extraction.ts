@@ -84,13 +84,43 @@ export async function extractFromText(
   };
 }
 
+function mergeAttributes(
+  existing: Record<string, unknown>,
+  incoming: Record<string, unknown>
+): Record<string, unknown> {
+  const merged = { ...existing };
+  for (const [key, value] of Object.entries(incoming)) {
+    if (value !== undefined && value !== null && value !== '') {
+      merged[key] = value;
+    }
+  }
+  return merged;
+}
+
 export async function resolveEntityConflicts(
   newEntity: { name: string; type: string; attributes: Record<string, unknown> },
   existingEntity: { name: string; type: string; attributes: Record<string, unknown> },
   model: Parameters<typeof generateObject>[0]['model']
 ): Promise<{ shouldMerge: boolean; mergedAttributes?: Record<string, unknown> }> {
   const startTime = performance.now();
-  logger.debug('⏱️  [memory-extraction] Starting entity conflict resolution', {
+
+  const namesMatch = newEntity.name.toLowerCase() === existingEntity.name.toLowerCase();
+  const typesMatch = newEntity.type.toLowerCase() === existingEntity.type.toLowerCase();
+  const newHasAttrs = Object.keys(newEntity.attributes).length > 0;
+  const existingHasAttrs = Object.keys(existingEntity.attributes).length > 0;
+
+  if (namesMatch && (typesMatch || !newHasAttrs || !existingHasAttrs)) {
+    const mergedAttributes = mergeAttributes(existingEntity.attributes, newEntity.attributes);
+    const duration = performance.now() - startTime;
+    logger.info('⏱️  [memory-extraction] Entity conflict resolved (fast path)', {
+      durationMs: duration.toFixed(2),
+      entity: newEntity.name,
+      reason: 'name_match',
+    });
+    return { shouldMerge: true, mergedAttributes };
+  }
+
+  logger.debug('⏱️  [memory-extraction] Starting entity conflict resolution (LLM)', {
     newEntity: newEntity.name,
     existingEntity: existingEntity.name,
   });
@@ -111,7 +141,7 @@ If they are the same entity, merge their attributes (prefer newer/more specific 
   });
 
   const duration = performance.now() - startTime;
-  logger.info('⏱️  [memory-extraction] Entity conflict resolution completed', {
+  logger.info('⏱️  [memory-extraction] Entity conflict resolution completed (LLM)', {
     durationMs: duration.toFixed(2),
     durationSec: (duration / 1000).toFixed(3),
     shouldMerge: object.shouldMerge,
@@ -168,5 +198,73 @@ ${existingFacts.map((f, i) => `${i}: "${f}"`).join('\n')}
     contradicts: object.contradicts.map(i => existingFacts[i]).filter(Boolean),
     supersedes: object.supersedes.map(i => existingFacts[i]).filter(Boolean),
   };
+}
+
+export interface BatchContradictionResult {
+  factIndex: number;
+  contradicts: string[];
+  supersedes: string[];
+}
+
+export async function detectContradictionsBatch(
+  newFacts: string[],
+  existingFacts: string[],
+  model: Parameters<typeof generateObject>[0]['model']
+): Promise<BatchContradictionResult[]> {
+  if (existingFacts.length === 0 || newFacts.length === 0) {
+    logger.debug('⏱️  [memory-extraction] Skipping batch contradiction detection (no facts)');
+    return newFacts.map((_, i) => ({ factIndex: i, contradicts: [], supersedes: [] }));
+  }
+
+  const startTime = performance.now();
+  logger.info('⏱️  [memory-extraction] Starting batch contradiction detection', {
+    newFactsCount: newFacts.length,
+    existingFactsCount: existingFacts.length,
+  });
+
+  const { object } = await generateObject({
+    model,
+    schema: z.object({
+      results: z.array(z.object({
+        newFactIndex: z.number().describe('Index of the new fact being analyzed'),
+        contradicts: z.array(z.number()).describe('Indices of existing facts that directly contradict this new fact'),
+        supersedes: z.array(z.number()).describe('Indices of existing facts that this new fact updates/replaces'),
+      })),
+    }),
+    prompt: `Analyze if any of the new facts contradict or supersede any existing facts.
+
+NEW FACTS:
+${newFacts.map((f, i) => `[${i}]: "${f}"`).join('\n')}
+
+EXISTING FACTS:
+${existingFacts.map((f, i) => `[${i}]: "${f}"`).join('\n')}
+
+For each new fact, determine:
+- contradicts: Indices of existing facts that cannot both be true (logical contradiction)
+- supersedes: Indices of existing facts that the new fact updates (same topic, newer information)
+
+Provide results for all ${newFacts.length} new facts.`,
+  });
+
+  const duration = performance.now() - startTime;
+  logger.info('⏱️  [memory-extraction] Batch contradiction detection completed', {
+    durationMs: duration.toFixed(2),
+    durationSec: (duration / 1000).toFixed(3),
+    newFactsAnalyzed: newFacts.length,
+  });
+
+  const resultMap = new Map<number, { contradicts: number[]; supersedes: number[] }>();
+  for (const r of object.results) {
+    resultMap.set(r.newFactIndex, { contradicts: r.contradicts, supersedes: r.supersedes });
+  }
+
+  return newFacts.map((_, i) => {
+    const result = resultMap.get(i) || { contradicts: [], supersedes: [] };
+    return {
+      factIndex: i,
+      contradicts: result.contradicts.map(idx => existingFacts[idx]).filter(Boolean),
+      supersedes: result.supersedes.map(idx => existingFacts[idx]).filter(Boolean),
+    };
+  });
 }
 

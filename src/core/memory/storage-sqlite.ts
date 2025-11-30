@@ -70,7 +70,8 @@ const SCHEMA = `
     role TEXT NOT NULL,
     fact_ids TEXT NOT NULL,
     entity_ids TEXT NOT NULL,
-    timestamp TEXT NOT NULL
+    timestamp TEXT NOT NULL,
+    last_processed_message_index INTEGER NOT NULL DEFAULT 0
   );
   CREATE INDEX IF NOT EXISTS idx_episodes_group ON episodes(group_id, timestamp);
 `;
@@ -222,21 +223,32 @@ export function createSQLiteStorage(dbPath: string): StorageAdapter {
 
     episodes: {
       async create(e) {
-        db.prepare('INSERT INTO episodes VALUES (?, ?, ?, ?, ?, ?, ?)').run(
+        db.prepare('INSERT INTO episodes VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run(
           e.id, e.groupId, e.content, e.role,
-          JSON.stringify(e.factIds), JSON.stringify(e.entityIds), e.timestamp.toISOString()
+          JSON.stringify(e.factIds), JSON.stringify(e.entityIds), e.timestamp.toISOString(),
+          e.lastProcessedMessageIndex
         );
       },
       async get(id) {
         const row = db.prepare('SELECT * FROM episodes WHERE id = ?').get(id) as any;
-        return row ? { ...row, groupId: row.group_id, factIds: JSON.parse(row.fact_ids),
-          entityIds: JSON.parse(row.entity_ids), timestamp: new Date(row.timestamp) } : null;
+        return row ? {
+          ...row,
+          groupId: row.group_id,
+          factIds: JSON.parse(row.fact_ids),
+          entityIds: JSON.parse(row.entity_ids),
+          timestamp: new Date(row.timestamp),
+          lastProcessedMessageIndex: row.last_processed_message_index
+        } : null;
       },
       async findByGroup(groupId, limit = 10) {
         return db.prepare('SELECT * FROM episodes WHERE group_id = ? ORDER BY timestamp DESC LIMIT ?')
           .all(groupId, limit).map((r: any) => ({
-            ...r, groupId: r.group_id, factIds: JSON.parse(r.fact_ids),
-            entityIds: JSON.parse(r.entity_ids), timestamp: new Date(r.timestamp)
+            ...r,
+            groupId: r.group_id,
+            factIds: JSON.parse(r.fact_ids),
+            entityIds: JSON.parse(r.entity_ids),
+            timestamp: new Date(r.timestamp),
+            lastProcessedMessageIndex: r.last_processed_message_index
           }));
       },
     },
