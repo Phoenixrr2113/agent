@@ -1,52 +1,19 @@
 import { anthropic } from '@ai-sdk/anthropic';
 import { logger } from '@agent/shared';
 import {
-  ComputerActionParams,
   ComputerActionResult,
   DeviceUseConfig,
-  PlatformImplementation,
   BashCommand,
   TextEditorCommand,
 } from './types.js';
 import { SafetyValidator } from './utils/safety.js';
-import { MacOSPlatform } from './platforms/macos/index.js';
-import { LinuxPlatform } from './platforms/linux/index.js';
-import { WindowsPlatform } from './platforms/windows/index.js';
-import { IOSPlatform } from './platforms/ios/index.js';
-import { AndroidPlatform } from './platforms/android/index.js';
+import { NutJSPlatform } from './platforms/nutjs.js';
 import { execSync } from 'child_process';
-import { readFile, writeFile, unlink as unlinkFile } from 'fs/promises';
+import { readFile, writeFile } from 'fs/promises';
 import { existsSync } from 'fs';
 
-function getPlatformImplementation(config: DeviceUseConfig): PlatformImplementation {
-  const platform = config.platform || detectPlatform();
-
-  switch (platform) {
-    case 'macos':
-      return new MacOSPlatform();
-    case 'linux':
-      return new LinuxPlatform();
-    case 'windows':
-      return new WindowsPlatform();
-    case 'ios':
-      return new IOSPlatform();
-    case 'android':
-      return new AndroidPlatform();
-    default:
-      throw new Error(`Unsupported platform: ${platform}`);
-  }
-}
-
-function detectPlatform(): 'macos' | 'linux' | 'windows' {
-  const platform = process.platform;
-  if (platform === 'darwin') return 'macos';
-  if (platform === 'linux') return 'linux';
-  if (platform === 'win32') return 'windows';
-  throw new Error(`Unsupported platform: ${platform}`);
-}
-
 export function createDeviceTools(config: DeviceUseConfig) {
-  const platformImpl = getPlatformImplementation(config);
+  const platformImpl = new NutJSPlatform();
   const safetyValidator = new SafetyValidator(config);
 
   const computerTool = anthropic.tools.computer_20250124({
@@ -86,13 +53,25 @@ export function createDeviceTools(config: DeviceUseConfig) {
           case 'right_click':
           case 'middle_click':
           case 'double_click':
+          case 'triple_click':
             return await platformImpl.click(action, coordinate);
 
           case 'left_click_drag':
-            if (!coordinate || coordinate.length !== 2) {
-              return 'Error: left_click_drag requires [fromX, fromY, toX, toY] coordinate';
+            if (!coordinate || coordinate.length < 2) {
+              return 'Error: left_click_drag requires start and end coordinates';
             }
-            return await platformImpl.drag(coordinate[0], coordinate[1], coordinate[0], coordinate[1]);
+            const currentPos = await platformImpl.getCursorPosition();
+            const match = currentPos.match(/\((\d+),\s*(\d+)\)/);
+            if (!match) {
+              return 'Error: Could not get current cursor position';
+            }
+            const fromX = parseInt(match[1]);
+            const fromY = parseInt(match[2]);
+            return await platformImpl.drag(fromX, fromY, coordinate[0], coordinate[1]);
+
+          case 'left_mouse_down':
+          case 'left_mouse_up':
+            return await platformImpl.pressButton(action);
 
           case 'type':
             if (!text) {
@@ -106,21 +85,14 @@ export function createDeviceTools(config: DeviceUseConfig) {
             }
             return await platformImpl.pressKey(text);
 
-          case 'cursor_position':
-            return await platformImpl.getCursorPosition();
-
-          case 'triple_click':
-            return await platformImpl.click('double_click', coordinate);
-
-          case 'left_mouse_down':
-          case 'left_mouse_up':
-            return `${action} not fully implemented yet`;
-
           case 'hold_key':
             if (!text) {
               return 'Error: hold_key action requires text (key name)';
             }
-            return await platformImpl.pressKey(text);
+            return await platformImpl.holdKey(text);
+
+          case 'cursor_position':
+            return await platformImpl.getCursorPosition();
 
           case 'scroll':
             if (!coordinate) {
