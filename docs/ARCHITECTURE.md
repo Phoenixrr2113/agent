@@ -8,25 +8,68 @@ This document outlines the evolution from the current single-package architectur
 ai-agent-runtime/
 ├── src/
 │   ├── index.ts           # Library exports
-│   ├── server.ts          # Hono HTTP server
+│   ├── server.ts          # Hono HTTP server (REST + SSE streaming)
 │   ├── cli.ts             # CLI entry point
 │   ├── chat.ts            # Interactive testing
-│   ├── runtime/           # Agent runtime
-│   ├── tools/             # 12 core + 3 workspace tools
+│   ├── runtime/
+│   │   └── agent-runtime.ts    # Session management & execution
+│   ├── application/
+│   │   ├── initialization.ts   # System initialization
+│   │   └── orchestrator.ts     # Agent orchestration
 │   ├── core/
-│   │   ├── memory/        # SQLite knowledge graph
-│   │   └── rag/           # Codebase indexing
-│   └── application/
-├── dist/                  # Compiled output
+│   │   ├── agents/            # Agent factory & model configs
+│   │   ├── memory/            # Knowledge graph (SQLite + Graphiti)
+│   │   │   ├── extraction.ts  # LLM entity/fact extraction
+│   │   │   ├── storage-sqlite.ts
+│   │   │   └── provider-graphiti.ts
+│   │   ├── rag/               # Semantic code search
+│   │   │   ├── index.ts       # BM25 + embeddings + reranking
+│   │   │   └── strategies/    # AST-based chunking
+│   │   ├── logger.ts
+│   │   ├── performance.ts
+│   │   └── search/grep.ts
+│   ├── tools/                 # 10 tool implementations
+│   │   ├── shell.ts
+│   │   ├── web-search.ts      # Tavily integration
+│   │   ├── fetch-page.ts      # Web scraping
+│   │   ├── memory.ts          # Memory CRUD tools
+│   │   ├── codebase.ts        # Code search tools
+│   │   ├── agent.ts           # Meta-agent tools
+│   │   ├── workflow.ts        # Planning & validation
+│   │   └── registry.ts        # Semantic tool discovery
+│   ├── types/                 # Type definitions
+│   └── infrastructure/        # System prompts
+├── tests/                     # Unit + integration tests
+├── dist/                      # Compiled output
 └── package.json
 ```
 
 **Capabilities:**
-- Library API: `createAgentRuntime()`
-- HTTP Server: Hono-based REST API
-- Memory: SQLite + LLM entity extraction
-- Tools: shell, web_search, fetch_page, memory_*, plan, ask_user, task_complete
-- Workspace: search_codebase, grep_codebase, validate
+- **Library API**: `createAgentRuntime()` with session management
+- **HTTP Server**: Hono-based REST API + SSE streaming
+  - Session management (create, chat, stream, history, delete)
+  - Stateless chat endpoint
+  - Health check
+- **Memory**: SQLite knowledge graph with entity/fact/episode extraction
+  - Conflict resolution & merging
+  - Semantic search with embeddings
+  - Dual provider support (native + Graphiti API)
+- **RAG**: Hybrid semantic code search
+  - AST-based chunking (code-aware)
+  - BM25 + text-embedding-004
+  - Reranking with Google's reranker
+  - File caching
+- **Tools** (10 implementations):
+  - Core: shell, web_search, fetch_page
+  - Memory: memory_search, memory_save, memory_find_entities, memory_find_facts
+  - Workspace: search_codebase (semantic), grep_codebase (text)
+  - Meta: task_complete, ask_user, plan, validate
+  - Tool registry with semantic tool discovery
+- **Models**: Multi-tier via OpenRouter
+  - Fast: DeepSeek Chat
+  - Standard: Google Gemini 2.0 Flash
+  - Reasoning: DeepSeek R1
+  - Powerful: Claude Sonnet 4
 
 ---
 
@@ -37,23 +80,41 @@ Convert to pnpm workspaces monorepo:
 ```
 agent-platform/
 ├── packages/
-│   ├── core/                    # ai-agent-runtime (current)
+│   ├── core/                    # @agent/core - Core agent runtime
 │   │   ├── src/
+│   │   │   ├── runtime/         # Agent execution engine
+│   │   │   ├── application/     # Orchestrator & initialization
+│   │   │   ├── core/            # Memory, RAG, Agents
+│   │   │   ├── tools/           # Tool implementations
+│   │   │   ├── infrastructure/  # System prompts
+│   │   │   └── index.ts
+│   │   ├── tests/
 │   │   └── package.json
 │   │
-│   ├── server/                  # Standalone server package
+│   ├── server/                  # @agent/server - HTTP API
 │   │   ├── src/
-│   │   │   ├── index.ts
-│   │   │   └── routes/
+│   │   │   ├── index.ts         # Server factory & startup
+│   │   │   ├── routes/          # Route handlers
+│   │   │   │   ├── chat.ts
+│   │   │   │   ├── sessions.ts
+│   │   │   │   └── health.ts
+│   │   │   └── middleware/      # CORS, logging, etc.
+│   │   ├── tests/
 │   │   └── package.json
 │   │
-│   ├── shared/                  # Shared types & utilities
+│   ├── shared/                  # @agent/shared - Shared types & utils
 │   │   ├── src/
-│   │   │   ├── types.ts         # API types, tool schemas
-│   │   │   └── utils.ts
+│   │   │   ├── types/           # API types, tool schemas
+│   │   │   │   ├── agent.ts
+│   │   │   │   ├── api.ts
+│   │   │   │   ├── memory.ts
+│   │   │   │   └── tools.ts
+│   │   │   └── utils/           # Common utilities
+│   │   │       ├── logger.ts
+│   │   │       └── performance.ts
 │   │   └── package.json
 │   │
-│   └── computer-use/            # Native computer control
+│   └── computer-use/            # @agent/computer-use - Native computer control (Phase 2)
 │       ├── src/
 │       │   ├── index.ts
 │       │   ├── screenshot.ts
@@ -63,23 +124,80 @@ agent-platform/
 │       └── package.json
 │
 ├── apps/
-│   ├── web/                     # Next.js dashboard
-│   ├── mobile/                  # React Native app
-│   ├── desktop/                 # Electron/Tauri app
-│   └── cli/                     # CLI tool
+│   ├── cli/                     # CLI tool (extracted from current cli.ts/chat.ts)
+│   │   ├── src/
+│   │   │   ├── cli.ts
+│   │   │   └── chat.ts
+│   │   └── package.json
+│   │
+│   ├── web/                     # Next.js dashboard (Phase 5)
+│   ├── mobile/                  # React Native app (Phase 3)
+│   └── desktop/                 # Electron/Tauri app (Phase 4)
 │
 ├── pnpm-workspace.yaml
 ├── turbo.json
-└── package.json
+├── package.json                 # Root package with dev dependencies
+├── tsconfig.base.json          # Base TypeScript config
+└── .env.example
 ```
 
-### Migration Steps
+### Migration Steps (Phase 1)
 
-1. Initialize monorepo structure
-2. Move current code to `packages/core`
-3. Extract server to `packages/server`
-4. Create `packages/shared` for types
-5. Set up Turborepo for builds
+1. **Create monorepo structure**
+   - Create `packages/` and `apps/` directories
+   - Update `pnpm-workspace.yaml` to include workspaces
+   - Create root `package.json` with workspace scripts
+
+2. **Extract `packages/shared`**
+   - Move `src/types/` to `packages/shared/src/types/`
+   - Move `src/core/logger.ts` and `src/core/performance.ts` to `packages/shared/src/utils/`
+   - Create package.json with exports
+
+3. **Create `packages/core`**
+   - Move `src/runtime/`, `src/application/`, `src/core/`, `src/tools/`, `src/infrastructure/` to `packages/core/src/`
+   - Move core tests to `packages/core/tests/`
+   - Update imports to use `@agent/shared`
+   - Create package.json with dependencies
+
+4. **Extract `packages/server`**
+   - Move `src/server.ts` to `packages/server/src/`
+   - Split into routes and middleware
+   - Move server tests to `packages/server/tests/`
+   - Update imports to use `@agent/core` and `@agent/shared`
+   - Create package.json with dependencies
+
+5. **Extract `apps/cli`**
+   - Move `src/cli.ts` and `src/chat.ts` to `apps/cli/src/`
+   - Update imports to use workspace packages
+   - Create package.json with dependencies
+   - Configure as executable
+
+6. **Set up Turborepo**
+   - Create `turbo.json` with build pipeline
+   - Configure build order: shared → core → server → cli
+   - Set up caching for builds and tests
+
+7. **Update TypeScript configuration**
+   - Create `tsconfig.base.json` for shared config
+   - Create per-package `tsconfig.json` with references
+   - Configure path aliases for workspace packages
+
+8. **Update scripts and CI**
+   - Root scripts: `build`, `test`, `lint`, `dev`
+   - Individual package scripts
+   - Update CI to use Turborepo
+
+### Package Dependencies
+
+```
+@agent/shared (base package)
+    ↓
+@agent/core (depends on: @agent/shared)
+    ↓
+@agent/server (depends on: @agent/core, @agent/shared)
+    ↓
+apps/cli (depends on: @agent/core, @agent/server, @agent/shared)
+```
 
 ---
 
