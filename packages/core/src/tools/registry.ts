@@ -23,6 +23,33 @@ export interface ToolRegistrationOptions {
   examples?: Array<Record<string, unknown>>;
 }
 
+function extractSchemaDescription(toolDef: Tool): string {
+  try {
+    const inputSchema = (toolDef as any).inputSchema;
+    if (!inputSchema) return '';
+
+    const shape = inputSchema._def?.shape?.();
+    if (!shape) return '';
+
+    const params: string[] = [];
+    for (const [key, value] of Object.entries(shape)) {
+      const zodField = value as any;
+      const desc = zodField._def?.description || '';
+      const typeName = zodField._def?.typeName || 'unknown';
+
+      if (desc) {
+        params.push(`${key} (${typeName}): ${desc}`);
+      } else {
+        params.push(`${key} (${typeName})`);
+      }
+    }
+
+    return params.length > 0 ? `Parameters: ${params.join(', ')}` : '';
+  } catch {
+    return '';
+  }
+}
+
 export class ToolRegistry {
   private tools: Map<string, RegisteredTool> = new Map();
 
@@ -158,7 +185,28 @@ export class ToolRegistry {
     for (const [name, registered] of this.tools) {
       if (registered.embedding) continue;
 
-      const text = `${name}: ${registered.metadata.description} ${(registered.metadata.tags || []).join(' ')}`;
+      const parts: string[] = [
+        `${name}: ${registered.metadata.description}`,
+      ];
+
+      if (registered.metadata.tags && registered.metadata.tags.length > 0) {
+        parts.push(`Tags: ${registered.metadata.tags.join(', ')}`);
+      }
+
+      const paramDesc = extractSchemaDescription(registered.tool);
+      if (paramDesc) {
+        parts.push(paramDesc);
+      }
+
+      if (registered.metadata.examples && registered.metadata.examples.length > 0) {
+        const exampleTexts = registered.metadata.examples
+          .map(ex => JSON.stringify(ex))
+          .join('; ');
+        parts.push(`Examples: ${exampleTexts}`);
+      }
+
+      const text = parts.join('. ');
+
       const { embedding } = await embed({
         model: embeddingModel as any,
         value: text,

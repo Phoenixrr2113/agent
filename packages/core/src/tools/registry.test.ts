@@ -280,5 +280,51 @@ describe('ToolRegistry embedding methods', () => {
   it('should report hasEmbeddings false for empty registry', () => {
     expect(registry.hasEmbeddings()).toBe(false);
   });
+
+  it('should include parameter descriptions in embeddings', () => {
+    const toolWithParams = tool({
+      description: 'Get user by ID',
+      inputSchema: z.object({
+        userId: z.string().describe('The unique identifier of the user'),
+        includeDetails: z.boolean().describe('Whether to include full user details'),
+      }),
+      execute: async () => 'result',
+    });
+
+    registry.register('get_user', toolWithParams, {
+      tags: ['user', 'fetch'],
+    });
+
+    expect(registry.size()).toBe(1);
+    const metadata = registry.getMetadata('get_user');
+    expect(metadata).toBeDefined();
+  });
+
+  it('should include examples when provided', () => {
+    const toolWithExamples = createMockTool('Search users by criteria');
+
+    registry.register('search_users', toolWithExamples, {
+      tags: ['user', 'search'],
+      examples: [
+        { query: 'john', limit: 10 },
+        { query: 'admin', role: 'admin' },
+      ],
+    });
+
+    expect(registry.size()).toBe(1);
+    const metadata = registry.getMetadata('search_users');
+    expect(metadata?.examples).toHaveLength(2);
+    expect(metadata?.examples?.[0]).toEqual({ query: 'john', limit: 10 });
+  });
+
+  it('should handle tools without tags or examples', () => {
+    const simpleTool = createMockTool('Simple tool with minimal metadata');
+    registry.register('simple_tool', simpleTool);
+
+    expect(registry.size()).toBe(1);
+    const metadata = registry.getMetadata('simple_tool');
+    expect(metadata?.tags).toBeUndefined();
+    expect(metadata?.examples).toBeUndefined();
+  });
 });
 
