@@ -18,6 +18,9 @@ import {
   createToolSearchTool,
   createActivateToolTool,
 } from '../tools/registry.js';
+import {
+  createToolActivationManager,
+} from '../tools/tool-wrapper.js';
 
 export interface InitializationConfig {
   workspaceRoot?: string;
@@ -31,6 +34,7 @@ export interface InitializationResult {
   codebaseRAG: any;
   readline: readline.Interface | null;
   registry: ToolRegistry;
+  activationManager: any;
 }
 
 export async function initializeAgent(config: InitializationConfig = {}): Promise<InitializationResult> {
@@ -49,7 +53,7 @@ export async function initializeAgent(config: InitializationConfig = {}): Promis
   logger.info(`🤖 Initializing AI Agent`, { workspaceRoot: workspaceRoot || '(none)' });
 
   const registry = providedRegistry ?? createToolRegistry();
-  const activeTools = new Set<string>();
+  const activationManager = createToolActivationManager();
 
   let codebaseRAG: any = null;
   if (workspaceRoot) {
@@ -63,24 +67,26 @@ export async function initializeAgent(config: InitializationConfig = {}): Promis
   }
 
   const workspaceTools = codebaseRAG && workspaceRoot
-    ? {
-        ...createCodebaseTools(codebaseRAG, grepWorkspace, workspaceRoot),
-        validate: validationTool,
-      }
+    ? createCodebaseTools(codebaseRAG, grepWorkspace, workspaceRoot)
     : {};
   const agentTools = createAgentTools(rl);
 
-  const coreTools = {
+  const activeTools = {
     shell: shellTool,
-    web_search: webSearchTool,
-    fetch_page: fetchPageTool,
-    ...memoryTools,
     plan: planTool,
-    ...workspaceTools,
     ...agentTools,
   };
 
-  registry.registerMany(coreTools, { deferLoading: false });
+  const deferredTools = {
+    web_search: webSearchTool,
+    fetch_page: fetchPageTool,
+    ...memoryTools,
+    validate: validationTool,
+    ...workspaceTools,
+  };
+
+  registry.registerMany(activeTools, { deferLoading: false });
+  registry.registerMany(deferredTools, { deferLoading: true });
 
   if (enableSemanticSearch) {
     logger.info('Generating tool embeddings for semantic search...');
@@ -88,11 +94,24 @@ export async function initializeAgent(config: InitializationConfig = {}): Promis
     logger.info('Tool embeddings ready', { tools: registry.size() });
   }
 
-  const searchTool = createToolSearchTool(registry);
-  const activateTool = createActivateToolTool(registry, activeTools);
+  const searchTool = createToolSearchTool(registry, activationManager);
+  const activateTool = createActivateToolTool(registry, activationManager);
+
+  const wrappedDeferredTools: Record<string, any> = {};
+  for (const [name, tool] of Object.entries(deferredTools)) {
+    const metadata = registry.getMetadata(name);
+    if (metadata) {
+      wrappedDeferredTools[name] = activationManager.createDeferredWrapper(
+        name,
+        tool,
+        metadata.description
+      );
+    }
+  }
 
   const tools = {
-    ...coreTools,
+    ...activeTools,
+    ...wrappedDeferredTools,
     search_tools: searchTool,
     activate_tool: activateTool,
   };
@@ -101,7 +120,8 @@ export async function initializeAgent(config: InitializationConfig = {}): Promis
 
   logger.info('Tool registry initialized', {
     totalTools: registry.size(),
-    activeTools: Object.keys(instrumentedTools).length,
+    activeTools: Object.keys(activeTools).length,
+    deferredTools: Object.keys(deferredTools).length,
     semanticSearch: enableSemanticSearch,
   });
 
@@ -110,6 +130,7 @@ export async function initializeAgent(config: InitializationConfig = {}): Promis
     codebaseRAG,
     readline: rl,
     registry,
+    activationManager,
   };
 }
 

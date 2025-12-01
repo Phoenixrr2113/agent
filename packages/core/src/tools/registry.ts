@@ -202,9 +202,9 @@ export function createToolRegistry(): ToolRegistry {
   return new ToolRegistry();
 }
 
-export function createToolSearchTool(registry: ToolRegistry) {
+export function createToolSearchTool(registry: ToolRegistry, activationManager?: any) {
   return tool({
-    description: `Search for available tools by name, description, or functionality. Use this when you need to find a tool to accomplish a specific task. Returns matching tool names and descriptions. Supports both keyword and semantic search.`,
+    description: `Search for available tools by name, description, or functionality. Use this when you need to find a tool to accomplish a specific task. Returns matching tool names and descriptions, and indicates which tools require activation. Supports both keyword and semantic search.`,
     inputSchema: z.object({
       query: z.string().describe('Search query describing the capability you need (e.g., "github", "file operations", "database")'),
       limit: z.number().optional().describe('Maximum number of results to return (default: 5)'),
@@ -229,6 +229,9 @@ export function createToolSearchTool(registry: ToolRegistry) {
         });
       }
 
+      const activeTools = results.filter(m => !m.deferLoading);
+      const deferredTools = results.filter(m => m.deferLoading);
+
       return JSON.stringify({
         found: true,
         count: results.length,
@@ -237,7 +240,16 @@ export function createToolSearchTool(registry: ToolRegistry) {
           name: m.name,
           description: m.description,
           tags: m.tags,
+          requiresActivation: m.deferLoading,
+          isActivated: activationManager ? activationManager.isActive(m.name) : false,
         })),
+        summary: {
+          activeTools: activeTools.length,
+          deferredTools: deferredTools.length,
+          message: deferredTools.length > 0
+            ? `Found ${deferredTools.length} specialized tool(s) that require activation using 'activate_tool'.`
+            : 'All found tools are immediately available.',
+        },
       });
     },
   });
@@ -245,10 +257,10 @@ export function createToolSearchTool(registry: ToolRegistry) {
 
 export function createActivateToolTool(
   registry: ToolRegistry,
-  activeTools: Set<string>
+  activationManager: any
 ) {
   return tool({
-    description: `Activate a deferred tool so you can use it. Call this after using search_tools to find a tool you need.`,
+    description: `Activate a deferred tool so you can use it. Call this after using search_tools to find a tool you need. Only deferred tools require activation - active tools are always available.`,
     inputSchema: z.object({
       toolName: z.string().describe('Name of the tool to activate'),
     }),
@@ -259,19 +271,33 @@ export function createActivateToolTool(
         return JSON.stringify({
           success: false,
           error: `Tool "${toolName}" not found in registry`,
+          availableTools: registry.list().map(t => t.name),
         });
       }
 
-      activeTools.add(toolName);
       const metadata = registry.getMetadata(toolName);
+
+      if (!metadata?.deferLoading) {
+        return JSON.stringify({
+          success: false,
+          error: `Tool "${toolName}" is already active and does not require activation`,
+          message: 'This tool is always available. You can use it directly without activation.',
+        });
+      }
+
+      const wasActivated = activationManager.activate(toolName);
 
       return JSON.stringify({
         success: true,
-        message: `Tool "${toolName}" is now available for use`,
+        message: wasActivated
+          ? `Tool "${toolName}" is now activated and ready to use`
+          : `Tool "${toolName}" was already activated`,
         tool: {
           name: toolName,
           description: metadata?.description,
+          tags: metadata?.tags,
         },
+        activeToolsCount: activationManager.size(),
       });
     },
   });

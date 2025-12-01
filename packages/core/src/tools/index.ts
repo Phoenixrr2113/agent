@@ -14,6 +14,10 @@ export {
   type RegisteredTool,
   type ToolRegistrationOptions,
 } from './registry.js';
+export {
+  ToolActivationManager,
+  createToolActivationManager,
+} from './tool-wrapper.js';
 
 import { shellTool } from './shell.js';
 import { webSearchTool } from './web-search.js';
