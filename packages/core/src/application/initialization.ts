@@ -12,6 +12,7 @@ import { memoryTools, closeMemory } from '../tools/memory.js';
 import { planTool, validationTool } from '../tools/workflow.js';
 import { createCodebaseTools } from '../tools/codebase.js';
 import { createAgentTools } from '../tools/agent.js';
+import { sequentialThinkingTool } from '../tools/sequential-thinking.js';
 import {
   ToolRegistry,
   createToolRegistry,
@@ -75,6 +76,7 @@ export async function initializeAgent(config: InitializationConfig = {}): Promis
   const activeTools = {
     shell: shellTool,
     plan: planTool,
+    think: sequentialThinkingTool,
     ...agentTools,
   };
 
