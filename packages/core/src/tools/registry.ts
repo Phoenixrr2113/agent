@@ -351,3 +351,54 @@ export function createActivateToolTool(
   });
 }
 
+export function createDeactivateToolTool(
+  registry: ToolRegistry,
+  activationManager: any
+) {
+  return tool({
+    description: `Deactivate a specialized tool to free up context space. Use this when you're done with a tool and want to make room for others. Only deferred tools can be deactivated.`,
+    inputSchema: z.object({
+      toolName: z.string().describe('Name of the tool to deactivate'),
+    }),
+    // eslint-disable-next-line @typescript-eslint/require-await
+    execute: async ({ toolName }: { toolName: string }) => {
+      const toolDef = registry.get(toolName);
+      if (!toolDef) {
+        return JSON.stringify({
+          success: false,
+          error: `Tool "${toolName}" not found in registry`,
+        });
+      }
+
+      const metadata = registry.getMetadata(toolName);
+
+      if (!metadata?.deferLoading) {
+        return JSON.stringify({
+          success: false,
+          error: `Tool "${toolName}" is always active and cannot be deactivated`,
+          message: 'Core tools like shell, plan, etc. are always available.',
+        });
+      }
+
+      if (!activationManager.isActive(toolName)) {
+        return JSON.stringify({
+          success: false,
+          error: `Tool "${toolName}" is not currently activated`,
+          message: 'Tool was never activated or already deactivated.',
+        });
+      }
+
+      const wasDeactivated = activationManager.deactivate(toolName);
+
+      return JSON.stringify({
+        success: true,
+        message: wasDeactivated
+          ? `Tool "${toolName}" has been deactivated`
+          : `Tool "${toolName}" was already deactivated`,
+        activeToolsCount: activationManager.size(),
+        activeTools: activationManager.getActiveToolNames(),
+      });
+    },
+  });
+}
+

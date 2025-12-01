@@ -10,6 +10,7 @@ export {
   createToolRegistry,
   createToolSearchTool,
   createActivateToolTool,
+  createDeactivateToolTool,
   type ToolMetadata,
   type RegisteredTool,
   type ToolRegistrationOptions,

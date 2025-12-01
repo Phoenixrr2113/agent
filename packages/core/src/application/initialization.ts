@@ -96,6 +96,7 @@ export async function initializeAgent(config: InitializationConfig = {}): Promis
 
   const searchTool = createToolSearchTool(registry, activationManager);
   const activateTool = createActivateToolTool(registry, activationManager);
+  const deactivateTool = createDeactivateToolTool(registry, activationManager);
 
   const wrappedDeferredTools: Record<string, any> = {};
   for (const [name, tool] of Object.entries(deferredTools)) {
@@ -114,6 +115,7 @@ export async function initializeAgent(config: InitializationConfig = {}): Promis
     ...wrappedDeferredTools,
     search_tools: searchTool,
     activate_tool: activateTool,
+    deactivate_tool: deactivateTool,
   };
 
   const instrumentedTools = instrumentTools(tools);

@@ -35,6 +35,7 @@ You have access to various tools. Work naturally - when you need to do something
 - task_complete - Signal when done
 - search_tools - Find tools by describing what you need
 - activate_tool - Enable specialized tools before use
+- deactivate_tool - Free up context by deactivating tools you're done with
 
 **Discovery Process:**
 

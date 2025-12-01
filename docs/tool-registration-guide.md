@@ -1,6 +1,6 @@
-# Tool Registration Guide
+# Tool Registration & Management Guide
 
-This guide explains how to register tools with rich metadata to enable effective semantic search and discovery.
+This guide explains how to register tools with rich metadata to enable effective semantic search and discovery, as well as how the agent manages tool activation throughout its lifecycle.
 
 ## Basic Registration
 
@@ -190,6 +190,164 @@ search_tools({ query: "permanently remove account" })
 // ✅ Finds: delete_user_account (tags: account, delete, destructive)
 ```
 
+## Tool Lifecycle & Management
+
+### How the Agent Sees Tools
+
+The agent receives tools in the `tools` parameter of `generateText`/`streamText`:
+
+```typescript
+const agent = new ToolLoopAgent({
+  model: models.standard(),
+  instructions: systemPrompt,
+  tools: {
+    // Active tools (always available)
+    shell: shellTool,
+    plan: planTool,
+    search_tools: searchToolTool,
+    activate_tool: activateToolTool,
+    // Wrapped deferred tools (require activation)
+    web_search: wrappedWebSearchTool,
+    memory_search: wrappedMemorySearchTool,
+    // ... etc
+  },
+});
+```
+
+The model sees ALL tools in the schema from the start, but deferred tools are wrapped to check activation status before execution.
+
+### Tool Discovery Strategy
+
+**Question: Does the agent search for tools one-at-a-time or in parallel?**
+
+It depends on how the agent decides to plan:
+
+**Sequential Discovery (Common):**
+```typescript
+// Agent realizes it needs something
+1. Call search_tools({ query: "web search" })
+2. See result, decide to activate
+3. Call activate_tool({ toolName: "web_search" })
+4. Use web_search({ query: "..." })
+```
+
+**Parallel Discovery (Possible):**
+```typescript
+// Agent can make multiple search calls in one step
+1. Call search_tools({ query: "web search" })
+   Call search_tools({ query: "code analysis" })
+   Call search_tools({ query: "database query" })
+2. Review all results
+3. Activate needed tools in parallel
+4. Use tools
+```
+
+The AI SDK Core supports multiple tool calls in a single step, so the agent CAN search and activate multiple tools at once if it plans that way.
+
+### Tool Deactivation
+
+**Problem:** With 40+ activated tools, the context window fills up with tool schemas.
+
+**Solution:** Implement deactivation:
+
+```typescript
+// In ToolActivationManager
+deactivate(toolName: string): boolean {
+  return this.activeTools.delete(toolName);
+}
+
+// Create deactivate_tool
+const deactivateTool = tool({
+  description: 'Deactivate a specialized tool to free up context space',
+  inputSchema: z.object({
+    toolName: z.string().describe('Name of tool to deactivate'),
+  }),
+  execute: async ({ toolName }) => {
+    const wasDeactivated = activationManager.deactivate(toolName);
+    return JSON.stringify({
+      success: wasDeactivated,
+      message: wasDeactivated
+        ? `Tool "${toolName}" deactivated`
+        : `Tool "${toolName}" was not active`,
+    });
+  },
+});
+```
+
+**Automatic Deactivation Strategies:**
+
+1. **LRU (Least Recently Used)**: Deactivate tools not used in last N steps
+2. **Time-based**: Auto-deactivate after X minutes of inactivity
+3. **Count-based**: Keep only N most recent tools active
+4. **Manual**: Let agent decide when to deactivate
+
+```typescript
+// Example: Auto-deactivate after 10 steps of no use
+class ToolActivationManager {
+  private lastUsed: Map<string, number> = new Map();
+  private currentStep = 0;
+
+  onStepFinish(toolsUsed: string[]) {
+    this.currentStep++;
+    toolsUsed.forEach(tool => this.lastUsed.set(tool, this.currentStep));
+
+    // Auto-deactivate tools unused for 10 steps
+    for (const [tool, lastStep] of this.lastUsed) {
+      if (this.currentStep - lastStep > 10) {
+        this.deactivate(tool);
+        this.lastUsed.delete(tool);
+      }
+    }
+  }
+}
+```
+
+### Context Window Management
+
+**Tool schemas consume tokens.** With many tools:
+
+```
+40 tools × ~100 tokens/schema = 4,000 tokens just for tool definitions
+```
+
+**Strategies:**
+
+1. **Lazy Activation**: Only activate tools when needed (current system)
+2. **Deactivation**: Remove unused tools from context
+3. **Tool Grouping**: Group related tools, activate groups
+4. **Short Descriptions**: Keep tool descriptions concise
+5. **Parameter Simplification**: Use minimal parameter descriptions in schema, more detail in examples
+
+### Where Active Tools Are Stored
+
+**In Memory:**
+```typescript
+// ToolActivationManager tracks activation state
+private activeTools: Set<string> = new Set();
+
+// Tools are passed to agent at creation
+const agent = new ToolLoopAgent({
+  tools: { ...activeTools, ...wrappedDeferredTools }
+});
+```
+
+**Important:** The agent's tool set is **fixed at creation**. We can't dynamically add/remove tools from a running agent. Instead, we:
+
+1. Pass ALL tools (active + wrapped deferred) at creation
+2. Deferred tools check `activationManager.isActive()` before executing
+3. Activation/deactivation just updates the Set
+4. Next tool call checks the Set
+
+**The model always sees all tool schemas**, but wrapped tools fail with helpful errors if not activated.
+
+### Best Practices
+
+1. **Register sparingly**: Only register tools you'll actually use
+2. **Use examples**: Help semantic search find the right tool faster
+3. **Deactivate when done**: Free up context for other tools
+4. **Group related operations**: If you need 5 database tools, maybe create 1 database tool with actions
+5. **Monitor context**: Log token usage to catch context bloat
+
 ## Summary
 
 **Always provide when registering tools:**
@@ -198,4 +356,10 @@ search_tools({ query: "permanently remove account" })
 3. ✅ Representative examples showing typical usage
 4. ✅ Clear, comprehensive description
 
-This enables accurate semantic search even with hundreds of similar tools.
+**Manage tool lifecycle:**
+- Search for tools when needed (parallel or sequential)
+- Activate before use
+- Deactivate when done to free context
+- Consider auto-deactivation strategies for long-running agents
+
+This enables accurate semantic search even with hundreds of similar tools while managing context window efficiently.
