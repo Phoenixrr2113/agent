@@ -23,6 +23,33 @@ export interface ToolRegistrationOptions {
   examples?: Array<Record<string, unknown>>;
 }
 
+function extractSchemaDescription(toolDef: Tool): string {
+  try {
+    const inputSchema = (toolDef as any).inputSchema;
+    if (!inputSchema) return '';
+
+    const shape = inputSchema._def?.shape?.();
+    if (!shape) return '';
+
+    const params: string[] = [];
+    for (const [key, value] of Object.entries(shape)) {
+      const zodField = value as any;
+      const desc = zodField._def?.description || '';
+      const typeName = zodField._def?.typeName || 'unknown';
+
+      if (desc) {
+        params.push(`${key} (${typeName}): ${desc}`);
+      } else {
+        params.push(`${key} (${typeName})`);
+      }
+    }
+
+    return params.length > 0 ? `Parameters: ${params.join(', ')}` : '';
+  } catch {
+    return '';
+  }
+}
+
 export class ToolRegistry {
   private tools: Map<string, RegisteredTool> = new Map();
 
@@ -158,7 +185,28 @@ export class ToolRegistry {
     for (const [name, registered] of this.tools) {
       if (registered.embedding) continue;
 
-      const text = `${name}: ${registered.metadata.description} ${(registered.metadata.tags || []).join(' ')}`;
+      const parts: string[] = [
+        `${name}: ${registered.metadata.description}`,
+      ];
+
+      if (registered.metadata.tags && registered.metadata.tags.length > 0) {
+        parts.push(`Tags: ${registered.metadata.tags.join(', ')}`);
+      }
+
+      const paramDesc = extractSchemaDescription(registered.tool);
+      if (paramDesc) {
+        parts.push(paramDesc);
+      }
+
+      if (registered.metadata.examples && registered.metadata.examples.length > 0) {
+        const exampleTexts = registered.metadata.examples
+          .map(ex => JSON.stringify(ex))
+          .join('; ');
+        parts.push(`Examples: ${exampleTexts}`);
+      }
+
+      const text = parts.join('. ');
+
       const { embedding } = await embed({
         model: embeddingModel as any,
         value: text,
@@ -202,9 +250,9 @@ export function createToolRegistry(): ToolRegistry {
   return new ToolRegistry();
 }
 
-export function createToolSearchTool(registry: ToolRegistry) {
+export function createToolSearchTool(registry: ToolRegistry, activationManager?: any) {
   return tool({
-    description: `Search for available tools by name, description, or functionality. Use this when you need to find a tool to accomplish a specific task. Returns matching tool names and descriptions. Supports both keyword and semantic search.`,
+    description: `Search for available tools by name, description, or functionality. Use this when you need to find a tool to accomplish a specific task. Returns matching tool names and descriptions, and indicates which tools require activation. Supports both keyword and semantic search.`,
     inputSchema: z.object({
       query: z.string().describe('Search query describing the capability you need (e.g., "github", "file operations", "database")'),
       limit: z.number().optional().describe('Maximum number of results to return (default: 5)'),
@@ -229,6 +277,9 @@ export function createToolSearchTool(registry: ToolRegistry) {
         });
       }
 
+      const activeTools = results.filter(m => !m.deferLoading);
+      const deferredTools = results.filter(m => m.deferLoading);
+
       return JSON.stringify({
         found: true,
         count: results.length,
@@ -237,7 +288,16 @@ export function createToolSearchTool(registry: ToolRegistry) {
           name: m.name,
           description: m.description,
           tags: m.tags,
+          requiresActivation: m.deferLoading,
+          isActivated: activationManager ? activationManager.isActive(m.name) : false,
         })),
+        summary: {
+          activeTools: activeTools.length,
+          deferredTools: deferredTools.length,
+          message: deferredTools.length > 0
+            ? `Found ${deferredTools.length} specialized tool(s) that require activation using 'activate_tool'.`
+            : 'All found tools are immediately available.',
+        },
       });
     },
   });
@@ -245,12 +305,60 @@ export function createToolSearchTool(registry: ToolRegistry) {
 
 export function createActivateToolTool(
   registry: ToolRegistry,
-  activeTools: Set<string>
+  activationManager: any
 ) {
   return tool({
-    description: `Activate a deferred tool so you can use it. Call this after using search_tools to find a tool you need.`,
+    description: `Activate a deferred tool so you can use it. Call this after using search_tools to find a tool you need. Only deferred tools require activation - active tools are always available.`,
     inputSchema: z.object({
       toolName: z.string().describe('Name of the tool to activate'),
+    }),
+    // eslint-disable-next-line @typescript-eslint/require-await
+    execute: async ({ toolName }: { toolName: string }) => {
+      const toolDef = registry.get(toolName);
+      if (!toolDef) {
+        return JSON.stringify({
+          success: false,
+          error: `Tool "${toolName}" not found in registry`,
+          availableTools: registry.list().map(t => t.name),
+        });
+      }
+
+      const metadata = registry.getMetadata(toolName);
+
+      if (!metadata?.deferLoading) {
+        return JSON.stringify({
+          success: false,
+          error: `Tool "${toolName}" is already active and does not require activation`,
+          message: 'This tool is always available. You can use it directly without activation.',
+        });
+      }
+
+      const wasActivated = activationManager.activate(toolName);
+
+      return JSON.stringify({
+        success: true,
+        message: wasActivated
+          ? `Tool "${toolName}" is now activated and ready to use`
+          : `Tool "${toolName}" was already activated`,
+        tool: {
+          name: toolName,
+          description: metadata?.description,
+          tags: metadata?.tags,
+        },
+        activeToolsCount: activationManager.size(),
+      });
+    },
+  });
+}
+
+export function createDeactivateToolTool(
+  registry: ToolRegistry,
+  activationManager: any
+) {
+  return tool({
+    description: `Deactivate a specialized tool to free up context space. Use this when you're done with a tool and want to make room for others. Only deferred tools can be deactivated.`,
+    inputSchema: z.object({
+      toolName: z.string().describe('Name of the tool to deactivate'),
     }),
     // eslint-disable-next-line @typescript-eslint/require-await
     execute: async ({ toolName }: { toolName: string }) => {
@@ -262,16 +370,33 @@ export function createActivateToolTool(
         });
       }
 
-      activeTools.add(toolName);
       const metadata = registry.getMetadata(toolName);
+
+      if (!metadata?.deferLoading) {
+        return JSON.stringify({
+          success: false,
+          error: `Tool "${toolName}" is always active and cannot be deactivated`,
+          message: 'Core tools like shell, plan, etc. are always available.',
+        });
+      }
+
+      if (!activationManager.isActive(toolName)) {
+        return JSON.stringify({
+          success: false,
+          error: `Tool "${toolName}" is not currently activated`,
+          message: 'Tool was never activated or already deactivated.',
+        });
+      }
+
+      const wasDeactivated = activationManager.deactivate(toolName);
 
       return JSON.stringify({
         success: true,
-        message: `Tool "${toolName}" is now available for use`,
-        tool: {
-          name: toolName,
-          description: metadata?.description,
-        },
+        message: wasDeactivated
+          ? `Tool "${toolName}" has been deactivated`
+          : `Tool "${toolName}" was already deactivated`,
+        activeToolsCount: activationManager.size(),
+        activeTools: activationManager.getActiveToolNames(),
       });
     },
   });

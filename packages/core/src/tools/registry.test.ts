@@ -179,21 +179,37 @@ describe('ToolRegistry', () => {
 
 describe('createToolSearchTool', () => {
   let registry: ToolRegistry;
+  let activationManager: any;
 
   beforeEach(() => {
     registry = createToolRegistry();
-    registry.register('github_pr', createMockTool('Create GitHub PR'), { tags: ['github'] });
-    registry.register('slack_msg', createMockTool('Send Slack message'), { tags: ['slack'] });
+    activationManager = {
+      isActive: (name: string) => name === 'github_pr',
+    };
+    registry.register('github_pr', createMockTool('Create GitHub PR'), { tags: ['github'], deferLoading: true });
+    registry.register('slack_msg', createMockTool('Send Slack message'), { tags: ['slack'], deferLoading: false });
   });
 
-  it('should return search results as JSON', async () => {
-    const searchTool = createToolSearchTool(registry);
+  it('should return search results as JSON with activation status', async () => {
+    const searchTool = createToolSearchTool(registry, activationManager);
     const result = await (searchTool as any).execute({ query: 'github', limit: 5 });
 
     const parsed = JSON.parse(result);
     expect(parsed.found).toBe(true);
     expect(parsed.count).toBe(1);
     expect(parsed.tools[0].name).toBe('github_pr');
+    expect(parsed.tools[0].requiresActivation).toBe(true);
+    expect(parsed.tools[0].isActivated).toBe(true);
+  });
+
+  it('should indicate deferred tools in summary', async () => {
+    const searchTool = createToolSearchTool(registry, activationManager);
+    const result = await (searchTool as any).execute({ query: 'github', limit: 5 });
+
+    const parsed = JSON.parse(result);
+    expect(parsed.summary).toBeDefined();
+    expect(parsed.summary.deferredTools).toBe(1);
+    expect(parsed.summary.message).toContain('activation');
   });
 
   it('should return not found message for no matches', async () => {
@@ -208,30 +224,44 @@ describe('createToolSearchTool', () => {
 
 describe('createActivateToolTool', () => {
   let registry: ToolRegistry;
-  let activeTools: Set<string>;
+  let activationManager: any;
 
   beforeEach(() => {
     registry = createToolRegistry();
-    activeTools = new Set();
+    activationManager = {
+      activate: (name: string) => true,
+      isActive: (name: string) => false,
+      size: () => 1,
+    };
     registry.register('deferred_tool', createMockTool('Deferred tool'), { deferLoading: true });
+    registry.register('active_tool', createMockTool('Active tool'), { deferLoading: false });
   });
 
-  it('should activate a tool', async () => {
-    const activateTool = createActivateToolTool(registry, activeTools);
+  it('should activate a deferred tool', async () => {
+    const activateTool = createActivateToolTool(registry, activationManager);
     const result = await (activateTool as any).execute({ toolName: 'deferred_tool' });
 
     const parsed = JSON.parse(result);
     expect(parsed.success).toBe(true);
-    expect(activeTools.has('deferred_tool')).toBe(true);
+    expect(parsed.message).toContain('activated');
   });
 
   it('should return error for non-existent tool', async () => {
-    const activateTool = createActivateToolTool(registry, activeTools);
+    const activateTool = createActivateToolTool(registry, activationManager);
     const result = await (activateTool as any).execute({ toolName: 'nonexistent' });
 
     const parsed = JSON.parse(result);
     expect(parsed.success).toBe(false);
     expect(parsed.error).toContain('not found');
+  });
+
+  it('should return error when trying to activate already-active tool', async () => {
+    const activateTool = createActivateToolTool(registry, activationManager);
+    const result = await (activateTool as any).execute({ toolName: 'active_tool' });
+
+    const parsed = JSON.parse(result);
+    expect(parsed.success).toBe(false);
+    expect(parsed.error).toContain('already active');
   });
 });
 
@@ -249,6 +279,52 @@ describe('ToolRegistry embedding methods', () => {
 
   it('should report hasEmbeddings false for empty registry', () => {
     expect(registry.hasEmbeddings()).toBe(false);
+  });
+
+  it('should include parameter descriptions in embeddings', () => {
+    const toolWithParams = tool({
+      description: 'Get user by ID',
+      inputSchema: z.object({
+        userId: z.string().describe('The unique identifier of the user'),
+        includeDetails: z.boolean().describe('Whether to include full user details'),
+      }),
+      execute: async () => 'result',
+    });
+
+    registry.register('get_user', toolWithParams, {
+      tags: ['user', 'fetch'],
+    });
+
+    expect(registry.size()).toBe(1);
+    const metadata = registry.getMetadata('get_user');
+    expect(metadata).toBeDefined();
+  });
+
+  it('should include examples when provided', () => {
+    const toolWithExamples = createMockTool('Search users by criteria');
+
+    registry.register('search_users', toolWithExamples, {
+      tags: ['user', 'search'],
+      examples: [
+        { query: 'john', limit: 10 },
+        { query: 'admin', role: 'admin' },
+      ],
+    });
+
+    expect(registry.size()).toBe(1);
+    const metadata = registry.getMetadata('search_users');
+    expect(metadata?.examples).toHaveLength(2);
+    expect(metadata?.examples?.[0]).toEqual({ query: 'john', limit: 10 });
+  });
+
+  it('should handle tools without tags or examples', () => {
+    const simpleTool = createMockTool('Simple tool with minimal metadata');
+    registry.register('simple_tool', simpleTool);
+
+    expect(registry.size()).toBe(1);
+    const metadata = registry.getMetadata('simple_tool');
+    expect(metadata?.tags).toBeUndefined();
+    expect(metadata?.examples).toBeUndefined();
   });
 });
 
