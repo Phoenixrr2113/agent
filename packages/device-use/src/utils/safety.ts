@@ -7,7 +7,7 @@ interface ActionRecord {
 
 export class SafetyValidator {
   private actionHistory: ActionRecord[] = [];
-  private config: Required<DeviceUseConfig>;
+  private config: Required<Omit<DeviceUseConfig, 'driver'>>;
 
   constructor(config: DeviceUseConfig) {
     this.config = {
@@ -76,7 +76,7 @@ export class SafetyValidator {
     return { valid: true };
   }
 
-  getConfig(): Required<DeviceUseConfig> {
+  getConfig(): Required<Omit<DeviceUseConfig, 'driver'>> {
     return this.config;
   }
 }

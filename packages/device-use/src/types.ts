@@ -42,10 +42,13 @@ export interface PlatformImplementation {
   getCursorPosition(): Promise<string>;
 }
 
+import { DeviceDriver } from './driver.js';
+
 export interface DeviceUseConfig {
   displayWidth: number;
   displayHeight: number;
   platform?: Platform;
+  driver?: DeviceDriver;
   safeMode?: boolean;
   maxActionsPerMinute?: number;
   allowedApps?: string[];
