@@ -52,7 +52,7 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
     workspaceRoot: config.workspaceRoot,
     enableReadline: false,
   });
-  const { tools, codebaseRAG } = initResult;
+  const { tools, codebaseRAG, activationManager } = initResult;
 
   const memoryProvider = await getMemoryProvider();
   const memoryExtractor = createMemoryExtractor({ memoryProvider });
@@ -76,7 +76,7 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
     };
   }
 
-  const agent = createAgent(tools);
+  const agent = createAgent(tools, { activationManager });
 
   const createSession = (): AgentSession => {
     let conversationHistory: ModelMessage[] = [];

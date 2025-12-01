@@ -17,6 +17,7 @@ import {
   createToolRegistry,
   createToolSearchTool,
   createActivateToolTool,
+  createDeactivateToolTool,
 } from '../tools/registry.js';
 import {
   createToolActivationManager,

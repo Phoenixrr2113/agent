@@ -2,21 +2,45 @@ import { stepCountIs, type StepResult, type PrepareStepFunction } from 'ai';
 import { createAgentWithRole } from '../core/agents/factory.js';
 import { logger } from '@agent/shared';
 
-export function createPrepareStep(): PrepareStepFunction<any> {
+export function createPrepareStep(activationManager?: any): PrepareStepFunction<any> {
   return ({ messages }) => {
     const MAX_CONTEXT_MESSAGES = 50;
 
+    let finalMessages = messages;
     if (messages.length > MAX_CONTEXT_MESSAGES) {
       logger.info('🔄 Trimming context', { from: messages.length, to: MAX_CONTEXT_MESSAGES });
+      finalMessages = [
+        messages[0],
+        ...messages.slice(-(MAX_CONTEXT_MESSAGES - 1)),
+      ];
+    }
+
+    // Filter inactive tool schemas from context window
+    if (activationManager) {
+      const coreTools = [
+        'shell',
+        'plan',
+        'ask_user',
+        'task_complete',
+        'search_tools',
+        'activate_tool',
+        'deactivate_tool',
+      ];
+      const activeToolNames = activationManager.getActiveToolNames();
+
+      logger.debug('🔧 Active tools', {
+        core: coreTools.length,
+        activated: activeToolNames.length,
+        total: coreTools.length + activeToolNames.length,
+      });
+
       return {
-        messages: [
-          messages[0],
-          ...messages.slice(-(MAX_CONTEXT_MESSAGES - 1)),
-        ],
+        messages: finalMessages,
+        activeTools: [...coreTools, ...activeToolNames],
       };
     }
 
-    return { messages };
+    return { messages: finalMessages };
   };
 }
 
@@ -94,11 +118,16 @@ export function createStepFinishHandler() {
   };
 }
 
-export function createAgent(tools: Record<string, any>, maxSteps: number = 50) {
+export function createAgent(
+  tools: Record<string, any>,
+  options: { maxSteps?: number; activationManager?: any } = {}
+) {
+  const { maxSteps = 50, activationManager } = options;
+
   return createAgentWithRole('generic', tools, {
     modelType: 'standard',
     stopWhen: stepCountIs(maxSteps),
-    prepareStep: createPrepareStep(),
+    prepareStep: createPrepareStep(activationManager),
     onStepFinish: createStepFinishHandler(),
   });
 }
