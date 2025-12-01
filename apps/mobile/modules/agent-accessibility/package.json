@@ -1,0 +1,11 @@
+{
+  "name": "agent-accessibility",
+  "version": "1.0.0",
+  "main": "index.ts",
+  "devDependencies": {
+    "expo-modules-core": "~2.0.0"
+  },
+  "peerDependencies": {
+    "expo-modules-core": "*"
+  }
+}

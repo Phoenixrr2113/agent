@@ -19,3 +19,4 @@ apps/**/*.js
 apps/**/*.tsbuildinfo
 !packages/**/dist/**
 !apps/**/dist/**
+!apps/**/plugins/**
