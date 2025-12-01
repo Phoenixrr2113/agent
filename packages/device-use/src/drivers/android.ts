@@ -1,5 +1,5 @@
-import { DeviceDriver } from '@agent/device-use/dist/driver';
-import * as AgentAccessibility from 'agent-accessibility';
+import { DeviceDriver } from '../driver.js';
+import * as AgentAccessibility from '@agent/mobile-accessibility';
 
 export class AndroidDriver implements DeviceDriver {
   async click(x: number, y: number): Promise<void> {
@@ -38,12 +38,12 @@ export class AndroidDriver implements DeviceDriver {
     const { width, height } = await this.getScreenSize();
     const cx = width / 2;
     const cy = height / 2;
-    
+
     // Scroll down = swipe up
     // Scroll up = swipe down
     const startY = cy;
-    const endY = cy - dy; 
-    
+    const endY = cy - dy;
+
     // @ts-ignore
     await AgentAccessibility.swipe(cx, startY, cx, endY, 300);
   }

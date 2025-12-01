@@ -40,7 +40,7 @@
           }
         }
       ],
-      "./plugins/withAccessibilityService.cjs"
+      "@agent/mobile-accessibility/plugin/withAccessibilityService.cjs"
     ],
     "experiments": {
       "typedRoutes": true,

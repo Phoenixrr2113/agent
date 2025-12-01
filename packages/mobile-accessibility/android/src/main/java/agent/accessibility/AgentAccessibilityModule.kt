@@ -45,5 +45,23 @@ class AgentAccessibilityModule : Module() {
         Log.d("AgentAccessibility", "Swipe from $x1,$y1 to $x2,$y2: $result")
         return@AsyncFunction result
     }
+
+    Function("showOverlay") {
+      val service = AgentAccessibilityService.instance
+      if (service != null) {
+        service.showOverlay()
+        return@Function true
+      }
+      return@Function false
+    }
+
+    Function("hideOverlay") {
+      val service = AgentAccessibilityService.instance
+      if (service != null) {
+        service.hideOverlay()
+        return@Function true
+      }
+      return@Function false
+    }
   }
 }

@@ -1,7 +1,7 @@
 import { StyleSheet, Button, Alert } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
-import * as AgentAccessibility from 'agent-accessibility';
+import * as AgentAccessibility from '@agent/mobile-accessibility';
 import { useState, useEffect } from 'react';
 
 export default function HomeScreen() {
@@ -34,6 +34,18 @@ export default function HomeScreen() {
       <Button title="Refresh Status" onPress={checkStatus} />
 
       <Button title="Click (500, 500)" onPress={handleClick} disabled={!enabled} />
+
+      <Button title="Show Overlay" onPress={() => {
+        // @ts-ignore
+        const res = AgentAccessibility.showOverlay();
+        Alert.alert('Show Overlay', String(res));
+      }} disabled={!enabled} />
+
+      <Button title="Hide Overlay" onPress={() => {
+        // @ts-ignore
+        const res = AgentAccessibility.hideOverlay();
+        Alert.alert('Hide Overlay', String(res));
+      }} disabled={!enabled} />
     </ThemedView>
   );
 }
