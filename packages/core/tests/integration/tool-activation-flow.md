@@ -211,22 +211,34 @@ An agent needs to:
 
 ## Benefits of This Design
 
-1. **Zero Breaking Changes:** Agent sees all tools from the start
-2. **Clear Feedback:** Deferred tools provide helpful error messages
+1. **Proper Tool Management:** Clear separation between always-available and specialized tools
+2. **Clear Feedback:** Deferred tools provide helpful error messages with activation instructions
 3. **Lazy Loading:** Heavy tools only fully activate when needed
 4. **Discoverable:** Search tool helps agent find what it needs
-5. **Trackable:** Activation manager maintains state
+5. **Trackable:** Activation manager maintains state throughout session
 6. **Testable:** Each component can be tested in isolation
 
-## Migration from Old System
+## ⚠️ BREAKING CHANGE
+
+This is a **breaking change** from the previous (broken) implementation:
 
 **Before (Broken):**
-- All tools registered as active
-- `activate_tool` updated a Set that was never read
-- No actual activation occurred
+- All tools were active by default
+- Agents could use any tool immediately without activation
+- `activate_tool` did nothing (updated an unused Set)
+- No actual deferred loading mechanism
 
-**After (Working):**
-- Tools split into active vs deferred
-- Deferred tools wrapped with activation check
-- `activate_tool` updates manager that controls execution
-- Clear workflow: search → activate → use
+**After (Fixed - BREAKING):**
+- Tools split into active vs deferred categories
+- Deferred tools **REQUIRE activation** before use
+- Attempting to use deferred tools without activation **WILL FAIL**
+- `activate_tool` now properly enables tool execution
+- Clear workflow enforced: search → activate → use
+
+**Migration Path:**
+Agents that previously called deferred tools directly (web_search, memory_*, etc.) will now receive errors until they:
+1. Learn to search for tools using `search_tools`
+2. Activate deferred tools using `activate_tool` before first use
+3. Follow the proper activation workflow
+
+This breaking change is intentional to implement the tool activation system correctly.
