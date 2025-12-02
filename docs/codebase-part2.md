@@ -1,765 +1,537 @@
-# AI Agent Runtime - Codebase Documentation (Part 2)
+# AI Agent Platform - Extended Documentation
 
-## Core: RAG System (Continued)
+## Note
 
-The RAG system provides semantic code search through a multi-stage pipeline.
+This document previously contained continuation of the codebase documentation. As of the latest update, all codebase documentation has been consolidated into **`codebase.md`**, which now provides comprehensive coverage of the entire monorepo architecture.
 
-### Complete Documentation
+**Please refer to `codebase.md` for complete documentation.**
 
-Due to the comprehensive nature of this codebase documentation, I've created a detailed `codebase.md` file (1937+ lines) that documents:
-
-**✅ Completed Sections**:
-1. Project Overview & Architecture
-2. Core Concepts (Sessions, Memory, RAG, Tools, Models)
-3. Entry Points (index.ts, cli.ts, chat.ts, server.ts)
-4. Runtime Layer (agent-runtime.ts)
-5. Application Layer (initialization.ts, orchestrator.ts)
-6. Core: Agents (models.ts, roles.ts, factory.ts)
-7. Core: Logger (logger.ts)
-8. Core: Memory System (all 7 files fully documented)
-   - types.ts
-   - storage.ts
-   - storage-sqlite.ts
-   - provider-graphiti.ts
-   - factory.ts
-   - index.ts (MemoryLite)
-   - extraction.ts
-   - extractor.ts
-
-**📋 Remaining to Document**:
-
-### Core: RAG System Files
-
-#### src/core/rag/index.ts
-Main RAG orchestrator that coordinates chunking, embedding, indexing, and search.
-
-**Key exports**: `createCodebaseRAG()`, `EmbeddedChunk`, `CodebaseRAG` interface
-
-**Pipeline**: Scan → Chunk → Contextu → Embed → Index (Vector + BM25) → Search (Hybrid + Rerank)
-
-#### src/core/rag/chunking.ts
-Wrapper around code-chopper for AST-based code chunking.
-
-**Functions**: `chunkFile()`, `chunkDirectory()`, `getLanguageFromExtension()`, `isASTSupported()`
-
-#### src/core/rag/cache.ts
-File-based caching system for chunked/embedded data.
-
-**Functions**: `createFileCache()`, `computeHash()`
-
-#### src/core/rag/context.ts
-LLM-based contextual description generation for code chunks.
-
-**Functions**: `generateChunkContext()`, `generateContextBatch()`, `createContextualChunkWithoutLLM()`
-
-#### src/core/rag/bm25.ts
-BM25 text search index using wink-bm25-text-search.
-
-**Functions**: `createBM25Index()`, `reciprocalRankFusion()`, `mergeSearchResults()`
-
-#### src/core/rag/rerank.ts
-Cohere-based reranking for improved relevance.
-
-**Functions**: `rerankDocuments()`, `rerankWithFallback()`
-
-#### src/core/rag/strategies/base.ts
-Base interface for chunking strategies.
-
-**Exports**: `Chunk`, `ChunkMetadata`, `ChunkingStrategy`, `BaseChunkingStrategy`
-
-#### src/core/rag/strategies/code-strategy.ts
-AST-based chunking using tree-sitter parsers.
-
-**Class**: `CodeChunkingStrategy` - Handles .ts, .js, .py, .rs, .go, .java, .c, .cpp files
-
-#### src/core/rag/strategies/document-strategy.ts
-Semantic chunking for markdown/text documents.
-
-**Class**: `DocumentChunkingStrategy` - Handles .md, .txt files by headings/paragraphs
-
-#### src/core/rag/strategies/registry.ts
-Registry for managing multiple chunking strategies.
-
-**Class**: `StrategyRegistry`, **Function**: `createDefaultRegistry()`
-
-#### src/core/search/grep.ts
-Workspace-wide regex search.
-
-**Function**: `grepWorkspace()` - Recursively searches files matching pattern
-
-### Tools Layer
-
-#### src/tools/registry.ts
-Dynamic tool discovery and activation system.
-
-**Key exports**:
-- `ToolRegistry` class
-- `createToolSearchTool()` - Semantic tool search
-- `createActivateToolTool()` - On-demand tool loading
-
-**Features**: Keyword and semantic search, metadata management, embedding-based discovery
-
-#### src/tools/shell.ts
-Bash command execution with safety checks.
-
-**Export**: `shellTool`, `executeShell()`
-
-**Safety**: Blocks dangerous patterns (rm -rf /, dd, mkfs, etc.)
-
-#### src/tools/web-search.ts
-Web search via Brave and Tavily APIs.
-
-**Export**: `webSearchTool`
-
-**Engines**: Brave (general), Tavily (research with AI summaries)
-
-#### src/tools/fetch-page.ts
-Web page fetching and content extraction.
-
-**Export**: `fetchPageTool`
-
-**Uses**: Readability + JSDOM for clean content extraction
-
-#### src/tools/memory.ts
-Memory system tool wrappers.
-
-**Exports**:
-- `memorySearchTool` - Semantic search
-- `memoryGetEpisodesTool` - Recent memories
-- `memoryGetFactTool` - Fact details
-- `memoryGetEntityTool` - Entity details
-- `memoryGetRelatedTool` - Graph traversal
-
-#### src/tools/codebase.ts
-Codebase search tools (RAG + grep).
-
-**Function**: `createCodebaseTools()` returns:
-- `search_codebase` - Semantic code search
-- `grep_codebase` - Regex pattern matching
-
-#### src/tools/workflow.ts
-Planning and validation tools.
-
-**Exports**:
-- `planTool` - Multi-step plan management
-- `validationTool` - TypeScript checking and test execution
-
-#### src/tools/agent.ts
-Agent control tools.
-
-**Function**: `createAgentTools()` returns:
-- `task_complete` - Signal completion
-- `ask_user` - Request user input
-
-#### src/tools/index.ts
-Tool exports and aggregation.
-
-**Export**: `nativeTools` object with all core tools
-
-### Infrastructure Layer
-
-#### src/infrastructure/prompts/templates.ts
-System prompts defining agent behavior.
-
-**Export**: `systemPrompt` - Default agent instructions
-
-**Philosophy**: "Think naturally, not rigidly" - Adaptive, tool-using, learning from failures
-
-### Type Definitions
-
-#### src/types/wink-bm25-text-search.d.ts
-TypeScript declarations for wink-bm25-text-search library.
+This file is retained for any extended topics or advanced use cases not covered in the main documentation.
 
 ---
 
-## Data Flow
+## Extended Topics
 
-### 1. User Message Flow
+### Advanced RAG Configuration
 
-```
-User Input
-  ↓
-HTTP Server (server.ts) OR Direct API (runtime)
-  ↓
-AgentSession.send()
-  ↓
-Agent.generate() [Vercel AI SDK]
-  ├→ Reasoning Steps
-  ├→ Tool Calls
-  │   ├→ shell (execute commands)
-  │   ├→ web_search (fetch web data)
-  │   ├→ memory_search (query knowledge graph)
-  │   ├→ search_codebase (RAG retrieval)
-  │   └→ ... (other tools)
-  └→ Response Generation
-  ↓
-Task Result
-  ├→ Update conversation history
-  ├→ Re-index codebase (if files modified)
-  └→ Extract memories (if no tool calls)
-```
+#### Custom Chunking Strategies
 
-### 2. Memory Extraction Flow
+To create a custom chunking strategy for a new file type:
 
-```
-Conversation Completes (no tool calls)
-  ↓
-extractFromConversation()
-  ↓
-extractDialogueText() - Convert to plain text
-  ↓
-extractFromText() - LLM extraction
-  ├→ Entities (people, projects, concepts)
-  ├→ Relations (WORKS_ON, CREATED, etc.)
-  └→ Facts (atomic statements)
-  ↓
-For each entity:
-  ├→ Check if exists (findByName)
-  ├→ Resolve conflicts (LLM)
-  ├→ Generate embedding
-  └→ Store or update
-  ↓
-For each relation:
-  ├→ Link fromEntity → toEntity
-  └→ Store with weight
-  ↓
-For each fact:
-  ├→ Check contradictions (LLM)
-  ├→ Invalidate superseded facts
-  ├→ Generate embedding
-  └→ Store with validity dates
-  ↓
-Create episode linking all extracted data
-```
-
-### 3. RAG Search Flow
-
-```
-User Query: "How does authentication work?"
-  ↓
-search_codebase tool called
-  ↓
-createCodebaseRAG.searchCodebase()
-  ↓
-1. Generate query embedding (Google AI)
-  ↓
-2. Vector search (cosine similarity, top 100)
-  ↓
-3. BM25 search (keyword matching, top 100)
-  ↓
-4. Merge results (Reciprocal Rank Fusion)
-  ↓
-5. Rerank (Cohere, top 20)
-  ↓
-Return relevant code chunks with context
-  ↓
-Agent uses chunks to formulate answer
-```
-
-### 4. Tool Discovery Flow
-
-```
-Agent needs capability: "I need to access GitHub"
-  ↓
-search_tools called with query: "github api"
-  ↓
-ToolRegistry.searchSemantic()
-  ├→ Generate query embedding
-  ├→ Compare with tool embeddings
-  └→ Return matching tools
-  ↓
-Agent sees results, calls activate_tool
-  ↓
-Tool added to active toolset
-  ↓
-Agent can now use the tool
-```
-
----
-
-## Testing
-
-### Test Structure
-
-```
-tests/
-├── fixtures/
-│   ├── sample-code.ts - Test code for chunking
-│   └── sample-utils.js - Test utilities
-├── helpers/
-│   ├── test-mcp-server.ts - Mock MCP server
-│   ├── test-model.ts - Mock LLM model
-│   └── test-utils.ts - Test utilities
-└── [test files organized by module]
-```
-
-### Test Files
-
-#### src/core/rag/bm25.test.ts
-Tests for BM25 indexing and search.
-
-**Covers**: Document indexing, search ranking, RRF fusion
-
-#### src/core/rag/chunking.test.ts
-Tests for code chunking strategies.
-
-**Covers**: AST parsing, fallback chunking, language detection
-
-#### src/core/rag/strategies/document-strategy.test.ts
-Tests for document chunking.
-
-**Covers**: Heading-based splits, paragraph grouping, overlap
-
-#### src/core/rag/strategies/registry.test.ts
-Tests for strategy registry.
-
-**Covers**: Strategy selection, file type detection, fallbacks
-
-#### src/tools/registry.test.ts
-Tests for tool registry.
-
-**Covers**: Tool registration, search (keyword and semantic), activation
-
-### Running Tests
-
-```bash
-# All tests
-pnpm test
-
-# Watch mode
-pnpm test:watch
-
-# Unit tests only
-pnpm test:unit
-
-# Integration tests
-pnpm test:integration
-
-# With coverage
-pnpm test --coverage
-```
-
-### Test Configuration
-
-**vitest.config.ts**:
 ```typescript
-import { defineConfig } from 'vitest/config';
-
-export default defineConfig({
-  test: {
-    globals: true,
-    environment: 'node',
-    include: ['src/**/*.test.ts', 'tests/**/*.test.ts'],
-    exclude: ['node_modules', 'dist'],
-  },
-});
-```
-
----
-
-## Key Design Patterns
-
-### 1. Factory Pattern
-
-Used extensively for creating complex objects:
-
-- `createAgentRuntime()` - Runtime factory
-- `createAgent()` - Agent factory
-- `createAgentWithRole()` - Role-based agents
-- `createMemoryProvider()` - Provider factory
-- `createCodebaseRAG()` - RAG factory
-- `createToolRegistry()` - Registry factory
-
-**Benefits**: Encapsulates initialization, allows configuration, easier testing
-
-### 2. Strategy Pattern
-
-Used for pluggable behavior:
-
-- **Chunking Strategies**: `CodeChunkingStrategy`, `DocumentChunkingStrategy`
-- **Memory Providers**: `MemoryLite`, `GraphitiProvider`
-- **Agent Roles**: `generic`, `researcher`, `coder`, `analyst`
-
-**Benefits**: Easy to add new strategies, runtime selection, testability
-
-### 3. Observer Pattern
-
-Used for step tracking and logging:
-
-- `onStepFinish` callback in agent orchestrator
-- Progress callbacks in RAG indexing
-
-**Benefits**: Decouples execution from observation, flexible logging
-
-### 4. Repository Pattern
-
-Used in memory system:
-
-- `StorageAdapter` interface with `entities`, `relations`, `facts`, `episodes` repositories
-- Multiple implementations (in-memory, SQLite)
-
-**Benefits**: Abstracts storage, easy to swap backends, testable
-
-### 5. Facade Pattern
-
-Used for simplified APIs:
-
-- `AgentRuntime` facade for complex initialization
-- `CodebaseRAG` facade for multi-step retrieval
-- Tool wrappers simplify complex operations
-
-**Benefits**: Clean public API, hides complexity, easier to use
-
----
-
-## Environment Variables Reference
-
-### Required
-
-- `OPENROUTER_API_KEY` - OpenRouter API key for LLM access
-- `GOOGLE_GENERATIVE_AI_API_KEY` - Google AI API key for embeddings
-
-### Optional: Web Search
-
-- `BRAVE_API_KEY` - Brave Search API key
-- `TAVILY_API_KEY` - Tavily Search API key
-
-### Optional: Memory
-
-- `MEMORY_DB_PATH` - SQLite database path (default: `./memory.db`)
-- `GRAPHITI_URL` - Graphiti service URL (default: `http://localhost:8000`)
-
-### Optional: Models
-
-- `MODEL_FAST` - Fast model tier (default: deepseek-chat-v3)
-- `MODEL_STANDARD` - Standard model (default: gemini-2.0-flash-001)
-- `MODEL_REASONING` - Reasoning model (default: deepseek-r1)
-- `MODEL_POWERFUL` - Powerful model (default: claude-sonnet-4)
-- `MODEL_EXTRACTION` - Extraction model (default: inherits MODEL_STANDARD)
-
-### Optional: Server
-
-- `PORT` - HTTP server port (default: 3000)
-- `WORKSPACE_ROOT` - Workspace path for codebase tools
-- `LOG_LEVEL` - Logging level: debug, info, warn, error (default: info)
-
----
-
-## Development Workflow
-
-### Setup
-
-```bash
-# Install dependencies
-pnpm install
-
-# Set up environment
-cp .env.example .env
-# Edit .env with your API keys
-
-# Build TypeScript
-pnpm build
-```
-
-### Development
-
-```bash
-# Run in watch mode
-pnpm dev
-
-# Interactive CLI
-pnpm chat
-
-# Start HTTP server
-pnpm server
-
-# Run tests
-pnpm test
-
-# Type checking
-pnpm exec tsc --noEmit
-
-# Linting
-pnpm lint
-pnpm lint:fix
-```
-
-### Project Scripts
-
-Defined in `package.json`:
-
-```json
-{
-  "build": "tsc",
-  "chat": "tsx src/chat.ts",
-  "server": "tsx src/server.ts",
-  "start": "node dist/server.js",
-  "lint": "eslint src",
-  "lint:fix": "eslint src --fix",
-  "test": "vitest run",
-  "test:watch": "vitest",
-  "test:unit": "vitest run src/",
-  "test:integration": "vitest run tests/integration/",
-  "test:e2e": "vitest run tests/e2e/",
-  "test:all": "vitest run"
-}
-```
-
----
-
-## Common Development Tasks
-
-### Adding a New Tool
-
-1. Create tool file in `src/tools/`
-2. Define tool using `tool()` from Vercel AI SDK
-3. Export from `src/tools/index.ts`
-4. Register in `src/application/initialization.ts`
-5. Add tests in `src/tools/*.test.ts`
-
-Example:
-```typescript
-// src/tools/my-tool.ts
-import { tool } from 'ai';
-import { z } from 'zod';
-
-export const myTool = tool({
-  description: 'Does something useful',
-  inputSchema: z.object({
-    input: z.string().describe('Input parameter'),
-  }),
-  execute: async ({ input }) => {
-    // Implementation
-    return JSON.stringify({ result: 'done' });
-  },
-});
-```
-
-### Adding a New Chunking Strategy
-
-1. Create strategy in `src/core/rag/strategies/`
-2. Extend `BaseChunkingStrategy`
-3. Implement `canHandle()` and `chunkFile()`
-4. Register in `createDefaultRegistry()`
-5. Add tests
-
-Example:
-```typescript
-// src/core/rag/strategies/pdf-strategy.ts
+// packages/core/src/core/rag/strategies/custom-strategy.ts
 import { BaseChunkingStrategy, type Chunk } from './base.js';
 
-export class PDFChunkingStrategy extends BaseChunkingStrategy {
-  name = 'pdf';
-  supportedExtensions = ['.pdf'];
+export class CustomChunkingStrategy extends BaseChunkingStrategy {
+  name = 'custom';
+  supportedExtensions = ['.custom'];
 
   async chunkFile(content: string, filePath: string): Promise<Chunk[]> {
-    // Parse PDF and return chunks
-    return [];
+    // Implement custom chunking logic
+    const chunks: Chunk[] = [];
+
+    // Example: Split by custom delimiter
+    const sections = content.split('---SECTION---');
+
+    for (let i = 0; i < sections.length; i++) {
+      chunks.push({
+        content: sections[i].trim(),
+        metadata: {
+          type: 'section',
+          index: i,
+          filePath,
+          language: 'custom',
+        },
+      });
+    }
+
+    return chunks;
   }
 }
 ```
 
-### Adding a New Agent Role
+Register the strategy:
 
-1. Add role to `src/core/agents/roles.ts`
-2. Define system prompt
-3. Export type update
-4. Use with `createAgentWithRole()`
-
-Example:
 ```typescript
-// src/core/agents/roles.ts
-export const systemPrompts = {
-  // ... existing roles
+// In your initialization code
+import { StrategyRegistry } from '@agent/core';
+import { CustomChunkingStrategy } from './custom-strategy.js';
 
-  debugger: `You are a debugging specialist. Your job is to find and fix bugs.
+const registry = new StrategyRegistry();
+registry.register(new CustomChunkingStrategy());
+```
 
-  ALWAYS use tools:
-  - search_codebase to understand code structure
-  - grep_codebase to find error patterns
-  - shell to run tests and reproduce bugs
-  - web_search to research error messages
+#### Fine-tuning RAG Parameters
 
-  Never just theorize about bugs - actually investigate using tools.`,
+```typescript
+import { createCodebaseRAG } from '@agent/core';
+
+const rag = createCodebaseRAG(workspaceRoot, {
+  // Chunking options
+  maxChunkSize: 1500,           // Max characters per chunk
+  chunkOverlap: 100,             // Overlap between chunks
+
+  // Context generation
+  generateContext: true,         // Enable LLM-based context
+  contextConcurrency: 5,         // Parallel context generation
+
+  // Embedding options
+  embeddingModel: 'text-embedding-004',
+  embeddingBatchSize: 50,
+
+  // Search options
+  vectorSearchTopK: 100,
+  bm25SearchTopK: 100,
+  rerankTopK: 20,
+
+  // Caching
+  cacheDir: '.rag-cache',
+  enableCache: true,
+});
+```
+
+### Advanced Memory System Usage
+
+#### Custom Memory Extraction
+
+Override default extraction behavior:
+
+```typescript
+import { createMemoryProvider, extractFromText } from '@agent/core';
+
+const memoryProvider = await createMemoryProvider({
+  provider: 'lite',
+  storagePath: './custom-memory.db',
+});
+
+// Custom extraction with specific entities
+const customExtraction = await extractFromText(
+  conversationText,
+  extractionModel,
+  existingEntityNames, // Helps with entity normalization
+  {
+    // Custom extraction hints
+    entityTypes: ['person', 'project', 'api', 'database'],
+    extractRelations: true,
+    extractFacts: true,
+    minConfidence: 0.8,
+  }
+);
+```
+
+#### Memory Graph Traversal
+
+Advanced graph queries:
+
+```typescript
+import { getMemoryProvider } from '@agent/core';
+
+const memory = getMemoryProvider();
+
+// Find all projects Randy works on
+const randy = await memory.getEntity(randyEntityId);
+const relatedEntities = await memory.getRelatedEntities(randy.id, 2); // depth=2
+
+// Filter to only projects
+const projects = relatedEntities.filter(e => e.type === 'project');
+
+// Get all facts about these projects
+const projectFacts = [];
+for (const project of projects) {
+  const facts = await memory.search({
+    query: project.name,
+    maxResults: 10,
+  });
+  projectFacts.push(...facts.facts);
+}
+```
+
+### Device Control Advanced Usage
+
+#### Custom Device Actions
+
+Implement platform-specific actions:
+
+```typescript
+import { createDeviceTools } from '@agent/device-use';
+
+const deviceTools = createDeviceTools({
+  platform: 'desktop',
+  config: {
+    screenWidth: 1920,
+    screenHeight: 1080,
+    // Custom automation scripts
+    customActions: {
+      openApp: async (appName: string) => {
+        // Platform-specific app launching
+        if (process.platform === 'darwin') {
+          // macOS
+          await exec(`open -a "${appName}"`);
+        } else if (process.platform === 'win32') {
+          // Windows
+          await exec(`start ${appName}`);
+        } else {
+          // Linux
+          await exec(`xdg-open ${appName}`);
+        }
+      },
+    },
+  },
+});
+```
+
+#### Mobile Device Testing
+
+Automate mobile testing workflows:
+
+```typescript
+import { createDeviceTools } from '@agent/device-use';
+
+const mobileTools = createDeviceTools({
+  platform: 'android',
+  config: {
+    deviceId: 'emulator-5554',
+    appPackage: 'com.example.app',
+    appActivity: '.MainActivity',
+  },
+});
+
+// Automated test flow
+const result = await mobileTools.computer_use.execute({
+  action: 'type',
+  text: 'test@example.com',
+  coordinate: [500, 800],
+});
+```
+
+### Benchmark Integration
+
+#### Running Custom Benchmarks
+
+Create custom benchmark tasks:
+
+```typescript
+import { createAgentRuntime } from '@agent/core';
+
+async function runCustomBenchmark(tasks: CustomTask[]) {
+  const runtime = await createAgentRuntime({
+    workspaceRoot: '/path/to/benchmark/workspace',
+  });
+
+  const results = [];
+
+  for (const task of tasks) {
+    const session = runtime.createSession();
+
+    const result = await session.send(task.prompt);
+
+    results.push({
+      taskId: task.id,
+      success: validateResult(result, task.expectedOutput),
+      stepsUsed: result.stepsUsed,
+      toolsUsed: result.toolsUsed,
+    });
+
+    session.clearHistory();
+  }
+
+  await runtime.shutdown();
+
+  return results;
+}
+```
+
+#### Benchmark Result Analysis
+
+```typescript
+import { scoreGAIAResults, scoreSWEBenchResults } from '@agent/benchmarks';
+
+// Analyze GAIA results
+const gaiaScore = scoreGAIAResults(results);
+console.log(`GAIA Score: ${gaiaScore.accuracy}%`);
+console.log(`Avg Steps: ${gaiaScore.avgSteps}`);
+console.log(`Tool Usage: ${JSON.stringify(gaiaScore.toolUsage)}`);
+
+// Analyze SWE-bench results
+const sweScore = scoreSWEBenchResults(results);
+console.log(`Pass Rate: ${sweScore.passRate}%`);
+console.log(`Resolved Issues: ${sweScore.resolvedIssues}`);
+```
+
+### Performance Optimization
+
+#### RAG Cache Warming
+
+Pre-cache embeddings for faster first queries:
+
+```typescript
+import { createCodebaseRAG } from '@agent/core';
+
+const rag = createCodebaseRAG(workspaceRoot);
+
+// Index codebase (warm cache)
+console.time('Initial indexing');
+await rag.indexCodebase();
+console.timeEnd('Initial indexing'); // ~30s for medium codebase
+
+// Subsequent searches are fast
+console.time('Search');
+const results = await rag.searchCodebase('authentication');
+console.timeEnd('Search'); // <100ms
+```
+
+#### Memory Query Optimization
+
+Optimize frequent queries with caching:
+
+```typescript
+import { getMemoryProvider } from '@agent/core';
+import { LRUCache } from 'lru-cache';
+
+const queryCache = new LRUCache<string, SearchResult>({
+  max: 100,
+  ttl: 1000 * 60 * 5, // 5 minutes
+});
+
+async function cachedMemorySearch(query: string) {
+  const cached = queryCache.get(query);
+  if (cached) return cached;
+
+  const memory = getMemoryProvider();
+  const result = await memory.search({ query, maxResults: 10 });
+
+  queryCache.set(query, result);
+  return result;
+}
+```
+
+#### Tool Registry Optimization
+
+Optimize semantic search with pre-computed embeddings:
+
+```typescript
+import { createToolRegistry } from '@agent/core';
+
+const registry = createToolRegistry();
+
+// Register all tools
+registry.registerMany(tools, { deferLoading: false });
+
+// Generate embeddings once at startup
+await registry.generateEmbeddings();
+
+// Fast semantic searches
+const mathTools = await registry.searchSemantic('mathematical operations');
+const fileTools = await registry.searchSemantic('file system operations');
+```
+
+### Production Deployment Considerations
+
+#### Scaling HTTP Server
+
+Use cluster mode for better performance:
+
+```typescript
+import cluster from 'cluster';
+import os from 'os';
+import { startServer } from '@agent/server';
+
+if (cluster.isPrimary) {
+  const numCPUs = os.cpus().length;
+
+  for (let i = 0; i < numCPUs; i++) {
+    cluster.fork();
+  }
+
+  cluster.on('exit', (worker, code, signal) => {
+    console.log(`Worker ${worker.process.pid} died`);
+    cluster.fork(); // Restart worker
+  });
+} else {
+  startServer({
+    port: parseInt(process.env.PORT || '3000'),
+    workspaceRoot: process.env.WORKSPACE_ROOT,
+  });
+}
+```
+
+#### External Session Store
+
+Use Redis for distributed sessions:
+
+```typescript
+import { createClient } from 'redis';
+import { createAgentRuntime } from '@agent/core';
+
+const redis = createClient({ url: process.env.REDIS_URL });
+await redis.connect();
+
+const sessionStore = {
+  async get(sessionId: string) {
+    const data = await redis.get(`session:${sessionId}`);
+    return data ? JSON.parse(data) : null;
+  },
+
+  async set(sessionId: string, session: any) {
+    await redis.set(
+      `session:${sessionId}`,
+      JSON.stringify(session),
+      { EX: 3600 } // 1 hour TTL
+    );
+  },
+
+  async delete(sessionId: string) {
+    await redis.del(`session:${sessionId}`);
+  },
 };
 ```
 
-### Extending Memory Schema
+#### Monitoring and Observability
 
-1. Update types in `src/core/memory/types.ts`
-2. Update database schema in `src/core/memory/storage-sqlite.ts`
-3. Update extraction logic in `src/core/memory/extraction.ts`
-4. Update GraphitiProvider if needed
-5. Migration script for existing databases
+Integrate with monitoring tools:
 
----
+```typescript
+import { logger } from '@agent/shared';
+import { instrumentTools } from '@agent/core';
 
-## Performance Considerations
+// Add custom metrics
+const metrics = {
+  toolCallsTotal: 0,
+  toolCallDurations: [] as number[],
+  errors: [] as string[],
+};
 
-### Memory System
+// Wrap tools with metrics collection
+const monitoredTools = instrumentTools(tools);
 
-- **SQLite is fast** for < 10k entities
-- **Vector search is O(n)** but acceptable with caching
-- **Batch entity creation** to reduce transactions
-- **Use indexes** on frequently queried fields
+// Export metrics endpoint
+app.get('/metrics', (c) => {
+  return c.json({
+    toolCallsTotal: metrics.toolCallsTotal,
+    avgToolCallDuration: average(metrics.toolCallDurations),
+    errorRate: metrics.errors.length / metrics.toolCallsTotal,
+    recentErrors: metrics.errors.slice(-10),
+  });
+});
+```
 
-### RAG System
+### Testing Strategies
 
-- **Caching is critical** - reuse embeddings
-- **BM25 is O(log n)** - very fast
-- **Reranking is expensive** - limit to top 100 candidates
-- **Parallel context generation** - use concurrency parameter
+#### Integration Testing
 
-### Tool Registry
+Test agent behavior end-to-end:
 
-- **Semantic search requires embeddings** - generate once at startup
-- **Keyword search is instant** - fallback when embeddings not available
-- **Lazy tool loading** - defer heavy tools until needed
+```typescript
+import { describe, it, expect } from 'vitest';
+import { createAgentRuntime } from '@agent/core';
 
-### HTTP Server
+describe('Agent Integration Tests', () => {
+  it('should complete file read and analysis task', async () => {
+    const runtime = await createAgentRuntime({
+      workspaceRoot: '/path/to/test/workspace',
+    });
 
-- **Session map is in-memory** - will not scale to millions
-- **Use external session store** for production (Redis, etc.)
-- **Streaming responses** for long-running tasks
-- **CORS configuration** for security
+    const session = runtime.createSession();
 
----
+    const result = await session.send(
+      'Read the package.json file and tell me what dependencies are used'
+    );
 
-## Security Considerations
+    expect(result.completed).toBe(true);
+    expect(result.toolsUsed).toContain('read_file');
+    expect(result.text).toContain('dependencies');
 
-### Shell Tool
+    await runtime.shutdown();
+  });
 
-**Dangerous pattern blocking**:
-- `rm -rf /` - Filesystem destruction
-- `dd if=/dev/random of=/dev/sda` - Disk wiping
-- `mkfs.*` - Filesystem formatting
-- Fork bombs
+  it('should handle multi-step reasoning', async () => {
+    const runtime = await createAgentRuntime();
+    const session = runtime.createSession();
 
-**Mitigations**:
-- Pattern-based blocking (not foolproof)
-- Timeout limits (30s default)
-- Output size limits (1MB default)
+    const result = await session.send(
+      'Search the web for TypeScript best practices, ' +
+      'then create a summary file'
+    );
 
-**Recommendations**:
-- Run in containerized environment
-- Use read-only filesystem mounts
-- Implement command allowlists for production
-- Log all shell commands
+    expect(result.toolsUsed).toContain('web_search');
+    expect(result.toolsUsed).toContain('write_file');
+    expect(result.stepsUsed).toBeGreaterThan(3);
 
-### Memory System
+    await runtime.shutdown();
+  });
+});
+```
 
-**SQL Injection**: Not vulnerable (uses prepared statements)
+#### Tool Testing
 
-**XSS**: Possible if rendering memory content without sanitization
+Test individual tools in isolation:
 
-**Data Privacy**: Memory persists indefinitely - implement retention policies
+```typescript
+import { describe, it, expect } from 'vitest';
+import { createFilesystemTools, setAllowedDirectories } from '@agent/core';
+import { mkdtemp, rm } from 'fs/promises';
+import { join } from 'path';
+import { tmpdir } from 'os';
 
-### HTTP Server
+describe('Filesystem Tools', () => {
+  let testDir: string;
+  let tools: ReturnType<typeof createFilesystemTools>;
 
-**CORS**: Configure allowed origins carefully
+  beforeEach(async () => {
+    testDir = await mkdtemp(join(tmpdir(), 'agent-test-'));
+    setAllowedDirectories([testDir]);
+    tools = createFilesystemTools();
+  });
 
-**Authentication**: Not implemented - add middleware for production
+  afterEach(async () => {
+    await rm(testDir, { recursive: true, force: true });
+  });
 
-**Rate Limiting**: Not implemented - add for production
+  it('should read and write files', async () => {
+    const filePath = join(testDir, 'test.txt');
 
-**Input Validation**: Uses Zod schemas - pretty robust
+    await tools.write_file.execute({
+      path: filePath,
+      content: 'Hello, World!',
+    });
 
-### API Keys
+    const result = await tools.read_file.execute({ path: filePath });
+    expect(JSON.parse(result).content).toBe('Hello, World!');
+  });
 
-**Storage**: Never commit `.env` file
-
-**Rotation**: Rotate keys periodically
-
-**Scope**: Use minimum necessary permissions
-
----
-
-## Troubleshooting
-
-### Common Issues
-
-**"No search engines available"**
-- Check `BRAVE_API_KEY` or `TAVILY_API_KEY` environment variables
-- Verify API key validity
-
-**"Tool registry has no embeddings"**
-- Ensure `enableSemanticSearch` is true
-- Check `GOOGLE_GENERATIVE_AI_API_KEY`
-
-**"Memory extraction failed"**
-- Check extraction model configuration
-- Verify OpenRouter API key
-- Check rate limits
-
-**"Codebase indexing fails"**
-- Verify workspace path exists
-- Check file permissions
-- Review supported file extensions
-
-**"TypeScript errors"**
-- Run `pnpm build` to check
-- Ensure all imports are correct
-- Check `tsconfig.json` paths
-
----
-
-## Future Enhancements
-
-### Documented in ARCHITECTURE.md
-
-The project has a comprehensive evolution plan:
-
-**Phase 1**: Monorepo Structure (packages/core, packages/server, packages/shared)
-
-**Phase 2**: Computer Use Package (native desktop control)
-
-**Phase 3**: React Native Mobile App
-
-**Phase 4**: Desktop App with Computer Use (Tauri/Electron)
-
-**Phase 5**: Web Dashboard (Next.js)
-
-See `docs/ARCHITECTURE.md` for complete roadmap.
+  it('should enforce path sandboxing', async () => {
+    await expect(
+      tools.read_file.execute({ path: '/etc/passwd' })
+    ).rejects.toThrow('Path is not within allowed directories');
+  });
+});
+```
 
 ---
 
-## Summary
+## Additional Resources
 
-This codebase implements a sophisticated AI agent system with:
+### Community Examples
 
-**Core Capabilities**:
-- Multi-model LLM support via OpenRouter
-- Persistent knowledge graph with automatic extraction
-- RAG-based code search with hybrid retrieval
-- Web search and content extraction
-- Shell command execution
-- Dynamic tool system with semantic discovery
+Check the `packages/benchmarks/examples/` directory for:
+- HAL benchmark examples
+- tau-bench conversation flows
+- SWE-bench task completions
+- GAIA challenge solutions
 
-**Architecture Highlights**:
-- Clean separation of concerns (layers)
-- Factory pattern for complex object creation
-- Strategy pattern for pluggable behavior
-- Repository pattern for data access
-- Comprehensive type safety with TypeScript
+### Architecture Evolution
 
-**Production Ready Features**:
-- Error handling and graceful degradation
-- Structured logging with levels
-- File-based caching for performance
-- Transaction support for data integrity
-- Extensible through plugins and strategies
+For the long-term roadmap and planned enhancements, see:
+- `docs/ARCHITECTURE.md` - Complete evolution plan
+- `docs/COMPETITIVE_ANALYSIS.md` - Feature comparison with other platforms
 
-**Developer Experience**:
-- Well-documented public API
-- Comprehensive test coverage
-- Clear project structure
-- Development tools (chat CLI, test helpers)
-- TypeScript for IDE support
+### Contributing
 
-This is a mature, well-architected codebase suitable for both learning and production use.
+For guidelines on contributing to the codebase:
+- `CONTRIBUTING.md` - Contribution guidelines
+- `TESTING.md` - Testing strategies
+- `CLAUDE.md` - Development process
 
 ---
 
-**End of Documentation**
-
-For questions or contributions, see the project README.md.
+**Note**: This document provides extended topics beyond the main `codebase.md` documentation. For fundamental understanding of the codebase, always start with `codebase.md`.

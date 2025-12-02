@@ -1,40 +1,51 @@
-# AI Agent Runtime - Complete Codebase Documentation
+# AI Agent Platform - Complete Codebase Documentation
 
 ## Table of Contents
 
 1. [Project Overview](#project-overview)
-2. [Architecture](#architecture)
-3. [Core Concepts](#core-concepts)
-4. [Module Documentation](#module-documentation)
-   - [Entry Points](#entry-points)
-   - [Runtime Layer](#runtime-layer)
-   - [Application Layer](#application-layer)
-   - [Core Layer](#core-layer)
-   - [Tools Layer](#tools-layer)
-   - [Infrastructure Layer](#infrastructure-layer)
-5. [Data Flow](#data-flow)
-6. [Testing](#testing)
+2. [Monorepo Architecture](#monorepo-architecture)
+3. [Package Documentation](#package-documentation)
+   - [@agent/shared](#agentshared)
+   - [@agent/core](#agentcore)
+   - [@agent/server](#agentserver)
+   - [@agent/device-use](#agentdevice-use)
+   - [@agent/benchmarks](#agentbenchmarks)
+   - [@agent/mobile-accessibility](#agentmobile-accessibility)
+4. [Applications](#applications)
+   - [CLI App](#cli-app)
+   - [Mobile App](#mobile-app)
+5. [Core Package Deep Dive](#core-package-deep-dive)
+6. [Development Workflow](#development-workflow)
+7. [Testing](#testing)
+8. [Data Flow](#data-flow)
 
 ---
 
 ## Project Overview
 
-**ai-agent-runtime** is a server-side AI agent framework for Node.js that provides persistent memory, web search capabilities, shell execution, and optional codebase understanding through RAG (Retrieval-Augmented Generation). The project is designed to be used either as a library embedded in other applications or as a standalone HTTP server.
+**AI Agent Platform** is a server-side AI agent runtime for Node.js applications built as a modern monorepo. It provides persistent memory, web search capabilities, shell execution, cross-platform device control, and optional codebase understanding through RAG (Retrieval-Augmented Generation).
 
 ### Key Features
 
 - **Persistent Memory**: SQLite-based knowledge graph with automatic entity extraction
 - **Web Intelligence**: Search (Brave/Tavily) and page parsing (Readability)
-- **Shell Execution**: Full bash command access
+- **Shell Execution**: Full bash command access with safety checks
+- **Device Control**: Cross-platform automation (macOS, Linux, Windows, iOS, Android) using nut.js
+- **Filesystem Tools**: 12 comprehensive file operations (read, write, edit, search, move, copy, etc.)
+- **Smart Tool Management**: Deferred loading with semantic search and dynamic activation
+- **Sequential Thinking**: Multi-step reasoning with branching and revision support
 - **Codebase Tools**: RAG-powered semantic search and grep functionality
 - **Session Management**: Multiple concurrent conversations with isolated history
-- **HTTP Server**: Built-in Hono server with REST API
+- **HTTP Server**: Built-in Hono server with REST API and SSE streaming
+- **Benchmark Support**: Adapters for HAL, tau-bench, SWE-bench, and GAIA evaluations
 - **Programmatic API**: Import as a library or run standalone
+- **Turborepo Build System**: Lightning-fast builds with caching
 
 ### Technology Stack
 
 - **Language**: TypeScript (ES2022)
 - **Runtime**: Node.js 20+
+- **Build System**: Turborepo + pnpm workspaces
 - **AI SDK**: Vercel AI SDK 6.0 (beta)
 - **LLM Provider**: OpenRouter (multi-provider access)
 - **Embeddings**: Google AI (text-embedding-004)
@@ -43,268 +54,520 @@
 - **Code Parsing**: code-chopper (AST-based chunking)
 - **Search**: wink-bm25-text-search (BM25 indexing)
 - **Web Parsing**: Mozilla Readability + JSDOM
+- **Device Control**: nut.js (cross-platform automation)
+- **Mobile**: React Native + Expo
 
 ---
 
-## Architecture
+## Monorepo Architecture
 
-### High-Level Architecture
+### Structure
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                     Application Layer                        │
-│  ┌──────────────────┐           ┌──────────────────┐        │
-│  │  Initialization  │           │   Orchestrator   │        │
-│  │  - Tool Setup    │           │  - Agent Factory │        │
-│  │  - RAG Index     │           │  - Step Handling │        │
-│  └──────────────────┘           └──────────────────┘        │
-└───────────────┬─────────────────────────┬───────────────────┘
-                │                         │
-┌───────────────▼─────────────────────────▼───────────────────┐
-│                      Runtime Layer                           │
-│  ┌──────────────────────────────────────────────────┐       │
-│  │              Agent Runtime                        │       │
-│  │  - Session Management                            │       │
-│  │  - Conversation History                          │       │
-│  │  - Memory Extraction Orchestration               │       │
-│  └──────────────────────────────────────────────────┘       │
-└───────────────┬──────────────────────┬──────────────────────┘
-                │                      │
-    ┌───────────▼──────────┐   ┌──────▼────────────┐
-    │     Core Layer       │   │   Tools Layer     │
-    │  - Memory            │   │  - Shell          │
-    │  - RAG               │   │  - Web Search     │
-    │  - Agents            │   │  - Fetch Page     │
-    │  - Logger            │   │  - Memory Tools   │
-    │  - Search            │   │  - Codebase       │
-    └──────────────────────┘   │  - Workflow       │
-                               │  - Agent Control  │
-                               └───────────────────┘
+agent-platform/
+├── packages/
+│   ├── shared/           # @agent/shared - Shared utilities & types
+│   ├── core/             # @agent/core - Agent runtime engine
+│   ├── server/           # @agent/server - HTTP API server
+│   ├── device-use/       # @agent/device-use - Cross-platform device control
+│   ├── benchmarks/       # @agent/benchmarks - Evaluation adapters
+│   └── mobile-accessibility/  # @agent/mobile-accessibility - Native mobile module
+├── apps/
+│   ├── cli/              # @agent/cli - CLI applications
+│   └── mobile/           # Mobile app - React Native/Expo app
+├── docs/                 # Documentation
+├── scripts/              # Build and utility scripts
+├── docker/               # Docker configurations
+├── pnpm-workspace.yaml   # pnpm workspace configuration
+├── turbo.json            # Turborepo configuration
+├── package.json          # Root package configuration
+└── tsconfig.base.json    # Shared TypeScript configuration
 ```
 
-### Layered Architecture
+### Build System
 
-#### 1. Entry Points Layer
-- **cli.ts**: CLI entry point for running standalone server
-- **server.ts**: HTTP server with REST API endpoints
-- **chat.ts**: Interactive CLI for testing
-- **index.ts**: Library exports for programmatic use
+The project uses **Turborepo** for efficient monorepo builds:
 
-#### 2. Runtime Layer
-- **agent-runtime.ts**: Core runtime managing sessions, history, and task execution
+- **Caching**: Build outputs are cached locally and can be shared remotely
+- **Parallel Execution**: Independent packages build in parallel
+- **Dependency Graph**: Turborepo understands package dependencies
+- **Incremental Builds**: Only changed packages rebuild
 
-#### 3. Application Layer
-- **initialization.ts**: Sets up tools, RAG indexing, and agent configuration
-- **orchestrator.ts**: Creates agents, manages step callbacks, and context trimming
+**Key Commands**:
+```bash
+pnpm build          # Build all packages (with caching)
+pnpm test           # Run all tests
+pnpm dev            # Development mode with watch
+pnpm clean          # Clean all build outputs
+```
 
-#### 4. Core Layer
-- **Memory System**: Entity extraction, knowledge graph, and persistence
-- **RAG System**: Codebase indexing, chunking strategies, and semantic search
-- **Agent System**: Model configuration, role-based prompts, and agent factory
-- **Logger**: Structured logging with levels and colors
-- **Search**: Grep-based workspace search
+### Workspace Dependencies
 
-#### 5. Tools Layer
-- **shell**: Execute bash commands with safety checks
-- **web-search**: Brave and Tavily search integration
-- **fetch-page**: Web page fetching and parsing
-- **memory**: Knowledge graph operations
-- **codebase**: Semantic search and grep for code
-- **workflow**: Plan management and validation
-- **agent**: Task completion and user interaction
-- **registry**: Tool discovery and dynamic loading
+Packages reference each other using `workspace:*` protocol:
 
-#### 6. Infrastructure Layer
-- **prompts/templates.ts**: System prompts for agent behavior
+```json
+{
+  "dependencies": {
+    "@agent/shared": "workspace:*",
+    "@agent/core": "workspace:*"
+  }
+}
+```
 
 ---
 
-## Core Concepts
+## Package Documentation
 
-### 1. Agent Sessions
+### @agent/shared
 
-Each conversation is isolated in a session. Sessions maintain their own:
-- Message history
-- Context window (auto-trimmed to 50 messages)
-- Memory extraction state
+**Location**: `packages/shared/`
+**Purpose**: Shared utilities and types used across all packages
 
-Sessions are stateless between invocations - all state lives in memory or persistent storage.
+#### Key Exports
 
-### 2. Memory System
+##### `packages/shared/src/utils/logger.ts`
 
-The memory system implements a knowledge graph with automatic extraction:
+Structured logging system with levels, colors, and metadata.
 
-**Components**:
-- **Entities**: Named things (people, projects, concepts)
-- **Relations**: Connections between entities
-- **Facts**: Atomic pieces of information with temporal validity
-- **Episodes**: Conversation turns linked to extracted knowledge
+**Log Levels**:
+```typescript
+const LOG_LEVELS = {
+  debug: 0,  // Verbose debugging
+  info: 1,   // General information
+  warn: 2,   // Warnings
+  error: 3,  // Errors
+};
+```
 
-**Storage Options**:
-- **SQLite (default)**: Local file-based storage at `./memory.db`
-- **Graphiti**: Optional external graph memory service
+**Usage**:
+```typescript
+import { logger } from '@agent/shared';
 
-**Extraction Process**:
-1. Agent completes a response with no tool calls
-2. Memory extractor analyzes conversation
-3. LLM extracts entities, relations, and facts
-4. Embeddings generated for semantic search
-5. Stored in SQLite with conflict resolution
+logger.info('Starting task', { taskId: '123' });
+logger.debug('Tool called', { tool: 'shell', args: { command: 'ls' } });
+logger.error('Operation failed', { error: 'Connection timeout' });
+```
 
-### 3. RAG (Retrieval-Augmented Generation)
+**Features**:
+- ANSI color codes for terminal output
+- ISO timestamps
+- Structured metadata (JSON-like objects)
+- Environment-based log level (`LOG_LEVEL` env var)
 
-The RAG system enables semantic code search:
+##### `packages/shared/src/utils/performance.ts`
+
+Performance tracking utilities for monitoring execution times.
+
+**Key Functions**:
+```typescript
+export function measureTime<T>(fn: () => T): { result: T; durationMs: number };
+export function formatDuration(ms: number): string;
+```
+
+**Usage**:
+```typescript
+import { measureTime, formatDuration } from '@agent/shared';
+
+const { result, durationMs } = measureTime(() => {
+  // Expensive operation
+  return processData();
+});
+
+logger.info(`Processed in ${formatDuration(durationMs)}`);
+```
+
+---
+
+### @agent/core
+
+**Location**: `packages/core/`
+**Purpose**: Core agent runtime engine with memory, RAG, and tool orchestration
+
+#### Directory Structure
+
+```
+packages/core/src/
+├── index.ts                    # Main exports
+├── runtime/
+│   └── agent-runtime.ts        # Session management and task execution
+├── application/
+│   ├── initialization.ts       # Tool and RAG setup
+│   └── orchestrator.ts         # Agent creation and step handling
+├── core/
+│   ├── agents/                 # Agent configuration
+│   │   ├── models.ts           # Model tier management
+│   │   ├── roles.ts            # Role-based prompts
+│   │   └── factory.ts          # Agent factory
+│   ├── memory/                 # Knowledge graph system
+│   │   ├── types.ts            # Core types
+│   │   ├── storage.ts          # Storage interface
+│   │   ├── storage-sqlite.ts   # SQLite implementation
+│   │   ├── provider-graphiti.ts # External Graphiti provider
+│   │   ├── factory.ts          # Provider factory
+│   │   ├── index.ts            # MemoryLite implementation
+│   │   ├── extraction.ts       # LLM-based extraction
+│   │   └── extractor.ts        # Extraction orchestration
+│   ├── rag/                    # RAG system
+│   │   ├── index.ts            # Main RAG orchestrator
+│   │   ├── chunking.ts         # Code chunking
+│   │   ├── context.ts          # Contextual descriptions
+│   │   ├── cache.ts            # File-based caching
+│   │   ├── bm25.ts             # BM25 text search
+│   │   ├── rerank.ts           # Cohere reranking
+│   │   └── strategies/         # Chunking strategies
+│   │       ├── base.ts         # Base interface
+│   │       ├── code-strategy.ts    # AST-based chunking
+│   │       ├── document-strategy.ts # Markdown/text chunking
+│   │       └── registry.ts     # Strategy registry
+│   ├── search/
+│   │   └── grep.ts             # Workspace grep
+│   └── tool-instrumentation.ts # Tool performance tracking
+├── tools/
+│   ├── index.ts                # Tool exports
+│   ├── shell.ts                # Bash execution
+│   ├── web-search.ts           # Brave/Tavily search
+│   ├── fetch-page.ts           # Web page fetching
+│   ├── memory.ts               # Memory operations
+│   ├── workflow.ts             # Planning and validation
+│   ├── codebase.ts             # Code search tools
+│   ├── agent.ts                # Agent control tools
+│   ├── filesystem.ts           # File operations (NEW)
+│   ├── registry.ts             # Tool discovery
+│   └── tool-wrapper.ts         # Tool activation manager (NEW)
+├── infrastructure/
+│   └── prompts/
+│       └── templates.ts        # System prompts
+└── types/
+    └── wink-bm25-text-search.d.ts # Type definitions
+```
+
+#### Key Components
+
+##### Runtime Layer
+
+**`packages/core/src/runtime/agent-runtime.ts`**
+
+Core runtime managing agent lifecycle, sessions, and memory extraction.
+
+**Key Types**:
+```typescript
+interface AgentConfig {
+  workspaceRoot?: string;
+  askUserHandler?: (question: string) => Promise<string>;
+}
+
+interface TaskResult {
+  text: string;
+  messages: ModelMessage[];
+  completed: boolean;
+  needsInput: boolean;
+  pendingQuestion?: string;
+  stepsUsed: number;
+  toolsUsed: string[];
+}
+
+interface AgentSession {
+  send(message: string): Promise<TaskResult>;
+  runTask(input: TaskInput): Promise<TaskResult>;
+  getHistory(): ModelMessage[];
+  clearHistory(): void;
+}
+
+interface AgentRuntime {
+  createSession(): AgentSession;
+  shutdown(): Promise<void>;
+}
+```
+
+**Session Lifecycle**:
+1. User submits task
+2. Agent generates response with tool calls
+3. Tools execute and return results
+4. Agent processes results and continues reasoning
+5. Memory extraction occurs when agent finishes (no tool calls)
+6. Codebase re-indexes if files were modified
+
+##### Application Layer
+
+**`packages/core/src/application/initialization.ts`**
+
+Initializes all agent components including tools, RAG, and registry.
+
+**Process**:
+1. Create tool registry
+2. Index codebase (if workspace provided)
+3. Assemble core tools
+4. Register tools with metadata
+5. Generate embeddings for semantic search
+6. Set up dynamic tool loading
+
+**`packages/core/src/application/orchestrator.ts`**
+
+Creates and configures agent with step handlers and context management.
+
+**Key Functions**:
+- `createPrepareStep()`: Trims conversation history to fit context window (max 50 messages)
+- `cleanAIText()`: Removes XML thinking tags from responses
+- `createStepFinishHandler()`: Displays step-by-step reasoning
+- `createAgent()`: Creates main agent with all configuration
+
+##### Agent System
+
+**`packages/core/src/core/agents/models.ts`**
+
+Model configuration and tier management.
+
+**Model Tiers**:
+```typescript
+const MODEL_TIERS = {
+  fast: 'deepseek/deepseek-chat-v3-0324:free',
+  standard: 'google/gemini-2.0-flash-001',
+  reasoning: 'deepseek/deepseek-r1:free',
+  powerful: 'anthropic/claude-sonnet-4',
+};
+```
+
+**`packages/core/src/core/agents/roles.ts`**
+
+Role-based system prompts for specialized agents.
+
+**Available Roles**:
+- `generic`: Default role with balanced capabilities
+- `researcher`: Information gathering specialist
+- `coder`: Code modification specialist
+- `analyst`: Data analysis specialist
+
+**`packages/core/src/core/agents/factory.ts`**
+
+Factory for creating agents with specific roles and configuration.
+
+```typescript
+export function createAgentWithRole(
+  role: AgentRole,
+  tools: Record<string, any>,
+  options?: {
+    modelType?: 'fast' | 'standard' | 'reasoning' | 'powerful';
+    stopWhen?: any;
+    prepareStep?: any;
+    onStepFinish?: any;
+  }
+): ToolLoopAgent;
+```
+
+##### Memory System
+
+The memory system implements a persistent knowledge graph with automatic extraction.
+
+**Core Types** (`packages/core/src/core/memory/types.ts`):
+
+```typescript
+interface Entity {
+  id: string;
+  name: string;
+  type: string;
+  attributes: Record<string, unknown>;
+  embedding?: number[];
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+interface Relation {
+  id: string;
+  fromEntityId: string;
+  toEntityId: string;
+  type: string;
+  weight: number;
+  attributes: Record<string, unknown>;
+  createdAt: Date;
+}
+
+interface Fact {
+  id: string;
+  content: string;
+  embedding: number[];
+  entityIds: string[];
+  relationIds: string[];
+  validFrom: Date;
+  validTo: Date | null;
+  createdAt: Date;
+  source: string;
+  confidence: number;
+}
+
+interface Episode {
+  id: string;
+  groupId: string;
+  content: string;
+  role: 'user' | 'assistant' | 'system';
+  factIds: string[];
+  entityIds: string[];
+  timestamp: Date;
+}
+```
+
+**Storage Implementations**:
+
+1. **SQLite** (`packages/core/src/core/memory/storage-sqlite.ts`): Default, file-based storage
+2. **Graphiti** (`packages/core/src/core/memory/provider-graphiti.ts`): External graph memory service
+
+**Extraction Pipeline** (`packages/core/src/core/memory/extraction.ts`):
+
+1. Extract entities, relations, and facts from text using LLM
+2. Resolve entity conflicts (same entity mentioned multiple ways)
+3. Detect contradictions with existing facts
+4. Generate embeddings for semantic search
+5. Store in knowledge graph
+
+##### RAG System
+
+The RAG system enables semantic code search through a multi-stage pipeline.
+
+**`packages/core/src/core/rag/index.ts`** - Main orchestrator
 
 **Pipeline**:
-1. **Chunking**: Files split by strategy (AST for code, semantic for docs)
-2. **Context Generation**: LLM generates searchable descriptions
-3. **Embedding**: Google text-embedding-004 creates vectors
-4. **Indexing**: Combined vector + BM25 index
-5. **Search**: Hybrid retrieval with reranking (Cohere)
+1. **Scan**: Find all files in workspace
+2. **Chunk**: Split files by strategy (AST for code, semantic for docs)
+3. **Contextualize**: Generate searchable descriptions with LLM
+4. **Embed**: Create vector embeddings
+5. **Index**: Build vector + BM25 indexes
+6. **Search**: Hybrid retrieval with reranking
 
 **Chunking Strategies**:
-- **CodeChunkingStrategy**: AST-based (functions, classes, methods)
-- **DocumentChunkingStrategy**: Heading/paragraph-based
+
+- **CodeChunkingStrategy** (`packages/core/src/core/rag/strategies/code-strategy.ts`): AST-based chunking using tree-sitter parsers for .ts, .js, .py, .rs, .go, .java, .c, .cpp files
+- **DocumentChunkingStrategy** (`packages/core/src/core/rag/strategies/document-strategy.ts`): Heading/paragraph-based chunking for .md, .txt files
 
 **Search Flow**:
 ```
 Query → Embedding → Vector Search → BM25 Search → RRF Fusion → Rerank → Results
 ```
 
-### 4. Tool System
+##### Tool System
 
-Tools are organized with a registry that supports:
-- **Dynamic loading**: Tools can be activated on-demand
-- **Semantic search**: Find tools by natural language description
-- **Metadata**: Tags, descriptions, examples for discoverability
+**`packages/core/src/tools/shell.ts`** - Shell Tool
 
-**Tool Categories**:
-- **Core Tools**: Always available (shell, web_search, memory, etc.)
-- **Workspace Tools**: Available when workspace provided (search_codebase, grep_codebase)
-- **Workflow Tools**: Planning and validation
-- **Control Tools**: ask_user, task_complete
+Executes bash commands with safety checks.
 
-### 5. Model Configuration
+**Safety Features**:
+- Blocks dangerous patterns (`rm -rf /`, `dd`, `mkfs`, fork bombs)
+- Timeout limits (30s default)
+- Output size limits (1MB default)
 
-The system uses tiered models via OpenRouter:
+**`packages/core/src/tools/filesystem.ts`** - Filesystem Tools (NEW)
 
-- **fast**: deepseek/deepseek-chat-v3-0324:free (quick tasks)
-- **standard**: google/gemini-2.0-flash-001 (default)
-- **reasoning**: deepseek/deepseek-r1:free (complex reasoning)
-- **powerful**: anthropic/claude-sonnet-4 (high-quality responses)
+Comprehensive file operations with path sandboxing.
 
----
+**12 Tools**:
+1. `read_file`: Read file contents
+2. `write_file`: Create or overwrite file
+3. `edit_file`: Targeted edits using old/new text matching
+4. `delete_file`: Delete file
+5. `move_file`: Move or rename file
+6. `copy_file`: Copy file
+7. `create_directory`: Create directory (recursive)
+8. `list_directory`: List directory contents
+9. `search_files`: Search files by glob pattern
+10. `get_file_info`: Get file metadata (size, dates, permissions)
+11. `read_multiple_files`: Read multiple files in one call
+12. `insert_code_block`: Insert code at specific line number
 
-## Module Documentation
+**Security Features**:
+- Path sandboxing (only allowed directories)
+- Null byte protection
+- Path traversal prevention
+- Symlink validation
 
-## Entry Points
+**`packages/core/src/tools/web-search.ts`** - Web Search Tool
 
-### src/index.ts
+Search via Brave and Tavily APIs.
 
-**Purpose**: Main library entry point that validates environment and exports public API.
+**Engines**:
+- **Brave**: General web search
+- **Tavily**: Research-focused with AI summaries
 
-**Key Functions**:
+**`packages/core/src/tools/fetch-page.ts`** - Fetch Page Tool
 
-#### Environment Validation
-```typescript
-const isBrowser = typeof window !== 'undefined' && typeof window.document !== 'undefined';
-const isNode = typeof process !== 'undefined' && process.versions?.node;
-```
-Checks if running in Node.js environment. Throws error if:
-- Running in browser (needs native modules)
-- Not in Node.js environment
+Fetches and extracts clean content from web pages using Readability + JSDOM.
 
-**Exports**:
-- `createAgentRuntime()`: Factory for agent runtime
-- `createServer()`, `startServer()`: HTTP server functions
-- `ToolRegistry` and related tool functions
-- TypeScript types for public API
+**`packages/core/src/tools/memory.ts`** - Memory Tools
 
-**Usage Example**:
-```typescript
-import { createAgentRuntime } from 'ai-agent-runtime';
-const runtime = await createAgentRuntime();
-```
+Wrappers for memory system operations:
+- `memory_search`: Semantic search
+- `memory_get_episodes`: Recent conversation memories
+- `memory_get_fact`: Fact details
+- `memory_get_entity`: Entity details
+- `memory_get_related`: Graph traversal
 
----
+**`packages/core/src/tools/workflow.ts`** - Workflow Tools
 
-### src/cli.ts
+Planning and validation:
+- `plan`: Multi-step plan management
+- `validate`: TypeScript checking and test execution
 
-**Purpose**: CLI entry point for running standalone server.
+**`packages/core/src/tools/codebase.ts`** - Codebase Tools
 
-**Behavior**:
-1. Loads environment variables from `.env`
-2. Reads `PORT` and `WORKSPACE_ROOT` from environment
-3. Calls `startServer()` with configuration
-4. Exits with error code 1 on failure
+Code search capabilities:
+- `search_codebase`: Semantic code search using RAG
+- `grep_codebase`: Regex pattern matching
 
-**Environment Variables**:
-- `PORT`: HTTP server port (default: 3000)
-- `WORKSPACE_ROOT`: Path to workspace for codebase tools
+**`packages/core/src/tools/agent.ts`** - Agent Control Tools
 
-**Shebang**: `#!/usr/bin/env node` - makes file executable
+Agent interaction:
+- `task_complete`: Signal task completion
+- `ask_user`: Request user input
 
----
+**`packages/core/src/tools/registry.ts`** - Tool Registry
 
-### src/chat.ts
-
-**Purpose**: Interactive CLI for testing agent in terminal.
+Dynamic tool discovery and activation system.
 
 **Features**:
-- REPL-style interface for chatting with agent
-- Readline-based user input with history
-- Shows tool usage and task completion status
-- Graceful shutdown on SIGINT (Ctrl+C)
+- Keyword and semantic search
+- Metadata management
+- Embedding-based discovery
+- Lazy tool loading
 
-**Key Functions**:
+**`packages/core/src/core/tool-instrumentation.ts`** - Tool Instrumentation (NEW)
 
-#### Main Loop
-Continuously prompts user for input, sends to agent, displays response.
+Performance tracking for tools.
 
-**User Input Handler**:
+**Features**:
+- Automatic timing measurement
+- Structured logging
+- Error tracking
+- Duration metadata injection
+
 ```typescript
-askUserHandler: async (question: string) => {
-  logger.info('🤔 Agent asks', { question });
-  const answer = await rl.question('👤 Your response: ');
-  return answer;
-}
-```
-Allows agent to ask clarification questions.
+export function instrumentTool<TArgs, TResult>(
+  toolName: string,
+  execute: (args: TArgs) => Promise<TResult> | TResult
+): (args: TArgs) => Promise<TResult>;
 
-**Usage**:
-```bash
-pnpm chat
-# or with workspace
-WORKSPACE_ROOT=/path/to/project pnpm chat
+export function instrumentTools(tools: Record<string, any>): Record<string, any>;
 ```
 
 ---
 
-### src/server.ts
+### @agent/server
 
-**Purpose**: HTTP server with REST API for agent interactions.
+**Location**: `packages/server/`
+**Purpose**: HTTP server with REST API for agent interactions
 
-**Architecture**:
+#### Structure
+
+```
+packages/server/src/
+├── index.ts              # Server implementation and exports
+└── types/                # Type definitions
+```
+
+#### Key Features
+
 - Built on Hono (lightweight web framework)
 - Session-based conversation management
-- Supports both regular and streaming responses
+- REST API and SSE streaming support
+- CORS configuration
 
-**Key Functions**:
-
-#### `createServer(config?: ServerConfig)`
-Creates and configures HTTP server without starting it.
-
-**Parameters**:
-- `config.port`: Server port (default: 3000)
-- `config.workspaceRoot`: Path for codebase tools
-- `config.corsOrigin`: CORS origins (default: '*')
-
-**Returns**: `{ app, runtime, port }`
-
-#### `startServer(config?: ServerConfig)`
-Creates server and starts listening.
-
-**Endpoints**:
+#### API Endpoints
 
 ##### Health Check
 ```
@@ -361,1667 +624,857 @@ Response: { sessionId: string, ...TaskResult }
 ```
 Auto-creates session if not provided.
 
-**Session Storage**:
-```typescript
-const sessions = new Map<string, AgentSession>();
-```
-In-memory map of session ID to session instance.
+---
 
-**Shutdown Handling**:
-Listens for SIGINT/SIGTERM, clears sessions, closes runtime, stops server.
+### @agent/device-use
+
+**Location**: `packages/device-use/`
+**Purpose**: Cross-platform device control for desktop and mobile (macOS, Linux, Windows, iOS, Android)
+
+#### Structure
+
+```
+packages/device-use/src/
+├── index.ts              # Main exports
+├── types.ts              # Type definitions
+├── tools.ts              # Tool implementations
+├── driver.ts             # Base driver interface
+├── drivers/
+│   ├── desktop.ts        # Desktop driver (nut.js)
+│   └── android.ts        # Android driver (ADB/Appium)
+└── utils/
+    └── safety.ts         # Safety validation
+```
+
+#### Key Technologies
+
+- **nut.js**: Cross-platform desktop automation (100x faster than CLI tools)
+- **ADB**: Android device control
+- **Appium**: Mobile automation (iOS/Android)
+
+#### Supported Actions
+
+**Computer Actions**:
+```typescript
+type ComputerAction =
+  | 'key'           // Keyboard input
+  | 'type'          // Type text
+  | 'mouse_move'    // Move mouse to coordinates
+  | 'left_click'    // Click left mouse button
+  | 'right_click'   // Click right mouse button
+  | 'middle_click'  // Click middle mouse button
+  | 'double_click'  // Double click
+  | 'screenshot'    // Capture screen
+  | 'cursor_position'; // Get cursor position
+```
+
+**Platform Support**:
+- **Desktop**: macOS, Linux (X11 + Wayland), Windows
+- **Mobile**: iOS (via Appium), Android (via ADB + Appium)
+
+#### Features
+
+- High-performance native automation
+- Screenshot capture with base64 encoding
+- Safety validation for destructive actions
+- Coordinate normalization across screen sizes
+- Text editor integration
 
 ---
 
-## Runtime Layer
+### @agent/benchmarks
 
-### src/runtime/agent-runtime.ts
+**Location**: `packages/benchmarks/`
+**Purpose**: Benchmark adapters for testing the agent against evaluation harnesses
 
-**Purpose**: Core runtime managing agent lifecycle, sessions, and memory extraction.
+#### Structure
 
-**Key Types**:
-
-#### `AgentConfig`
-```typescript
-interface AgentConfig {
-  workspaceRoot?: string;  // Path to workspace for codebase tools
-  askUserHandler?: (question: string) => Promise<string>;
-}
+```
+packages/benchmarks/src/
+├── index.ts              # Main exports
+├── cli.ts                # CLI interface
+├── types.ts              # Benchmark types
+└── adapters/
+    ├── hal.ts            # HAL adapter
+    ├── tau-bench.ts      # tau-bench adapter
+    ├── swe-bench.ts      # SWE-bench adapter
+    └── gaia.ts           # GAIA adapter
 ```
 
-#### `TaskInput`
-```typescript
-interface TaskInput {
-  prompt?: string;         // Direct user message
-  messages?: ModelMessage[]; // Or full message array
-}
-```
+#### Supported Benchmarks
 
-#### `TaskResult`
-```typescript
-interface TaskResult {
-  text: string;           // Agent's response text
-  messages: ModelMessage[]; // Full conversation history
-  completed: boolean;     // true if task_complete called
-  needsInput: boolean;    // true if ask_user called
-  pendingQuestion?: string; // Question waiting for user
-  stepsUsed: number;      // Reasoning steps taken
-  toolsUsed: string[];    // Tools invoked
-}
-```
+1. **HAL** - General agent evaluation
+2. **tau-bench** - Task-oriented dialogues (retail, airline domains)
+3. **SWE-bench** - Software engineering tasks
+4. **GAIA** - General AI assistant evaluation
 
-#### `AgentSession`
-```typescript
-interface AgentSession {
-  send(message: string): Promise<TaskResult>;
-  runTask(input: TaskInput): Promise<TaskResult>;
-  getHistory(): ModelMessage[];
-  clearHistory(): void;
-}
-```
+#### CLI Usage
 
-#### `AgentRuntime`
-```typescript
-interface AgentRuntime {
-  createSession(): AgentSession;
-  shutdown(): Promise<void>;
-}
-```
-
-**Key Functions**:
-
-#### `createAgentRuntime(config?: AgentConfig)`
-
-Creates the agent runtime with all necessary initialization.
-
-**Process**:
-1. Calls `initializeAgent()` to set up tools and RAG
-2. Initializes memory provider and extractor
-3. Configures `ask_user` tool handler
-4. Creates agent with orchestrator
-5. Returns runtime factory
-
-**Custom ask_user Handling**:
-```typescript
-if (config.askUserHandler) {
-  tools.ask_user = {
-    ...tools.ask_user,
-    execute: async (args: { question: string }) => {
-      return askUserHandler(args.question);
-    },
-  };
-} else {
-  // Auto-approve by returning 'yes'
-  tools.ask_user = {
-    ...tools.ask_user,
-    execute: async (args: { question: string }) => {
-      logger.info('🤖 ask_user auto-approved', { question: args.question });
-      return 'yes';
-    },
-  };
-}
-```
-
-#### Session Factory (`createSession()`)
-
-Creates isolated session with:
-- Private conversation history
-- Task execution logic
-- Memory extraction on completion
-
-**Session Lifecycle**:
-
-1. **Task Submission** (`runTask()`)
-   - Appends user message to history
-   - Calls agent.generate() with full history
-   - Logs timing and step count
-
-2. **Response Processing**
-   - Extracts tool calls from steps
-   - Updates conversation history
-   - Re-indexes codebase if files modified
-
-3. **Completion Detection**
-   - Checks for `task_complete` tool call
-   - Extracts unique tools used
-   - Triggers memory extraction if no tool calls
-
-4. **Input Detection**
-   - Checks for `ask_user` tool call
-   - Extracts pending question
-
-**Memory Extraction Logic**:
-```typescript
-const hasNoToolCalls = toolsUsed.length === 0;
-if (hasNoToolCalls) {
-  await memoryExtractor.extractFromConversation(conversationHistory);
-}
-```
-Only extracts when agent has finished reasoning (no tools called).
-
-**Codebase Reindexing**:
-```typescript
-const modifiedFiles = result.steps.some((step: any) =>
-  step.toolCalls?.some((tc: any) =>
-    ['write_file', 'edit_file', 'create_directory'].includes(tc.toolName)
-  )
-);
-if (modifiedFiles) {
-  await codebaseRAG.indexCodebase();
-}
-```
-Re-indexes if agent modified files through shell.
-
-#### `shutdown()`
-
-Gracefully shuts down runtime:
-1. Waits for pending memory extractions
-2. Closes memory provider connections
-
----
-
-## Application Layer
-
-### src/application/initialization.ts
-
-**Purpose**: Initializes all agent components including tools, RAG, and registry.
-
-**Key Types**:
-
-#### `InitializationConfig`
-```typescript
-interface InitializationConfig {
-  workspaceRoot?: string;
-  enableReadline?: boolean;
-  registry?: ToolRegistry;
-  enableSemanticSearch?: boolean;
-}
-```
-
-#### `InitializationResult`
-```typescript
-interface InitializationResult {
-  tools: Record<string, any>;
-  codebaseRAG: any;
-  readline: readline.Interface | null;
-  registry: ToolRegistry;
-}
-```
-
-**Key Functions**:
-
-#### `initializeAgent(config?)`
-
-Main initialization function that sets up the agent environment.
-
-**Process**:
-
-1. **Readline Setup** (if enabled)
-   ```typescript
-   let rl: readline.Interface | null = null;
-   if (enableReadline) {
-     rl = readline.createInterface({ input, output });
-   }
-   ```
-
-2. **Registry Creation**
-   ```typescript
-   const registry = providedRegistry ?? createToolRegistry();
-   ```
-
-3. **Codebase RAG Indexing** (if workspace provided)
-   ```typescript
-   if (workspaceRoot) {
-     codebaseRAG = createCodebaseRAG(workspaceRoot);
-     await codebaseRAG.indexCodebase();
-   }
-   ```
-   - Creates RAG instance
-   - Scans and chunks files
-   - Generates embeddings
-   - Builds BM25 index
-
-4. **Tool Assembly**
-   ```typescript
-   const coreTools = {
-     shell: shellTool,
-     web_search: webSearchTool,
-     fetch_page: fetchPageTool,
-     ...memoryTools,
-     plan: planTool,
-     ...workspaceTools,
-     ...agentTools,
-   };
-   ```
-
-5. **Tool Registration**
-   ```typescript
-   registry.registerMany(coreTools, { deferLoading: false });
-   ```
-
-6. **Semantic Search Setup** (if enabled)
-   ```typescript
-   if (enableSemanticSearch) {
-     await registry.generateEmbeddings();
-   }
-   ```
-   Generates embeddings for all tool descriptions for semantic tool discovery.
-
-7. **Dynamic Tool Loading Setup**
-   ```typescript
-   const searchTool = createToolSearchTool(registry);
-   const activateTool = createActivateToolTool(registry, activeTools);
-   const tools = {
-     ...coreTools,
-     search_tools: searchTool,
-     activate_tool: activateTool,
-   };
-   ```
-
-**Tool Categories**:
-- **Core Tools**: shell, web_search, fetch_page, memory_*, plan
-- **Workspace Tools**: search_codebase, grep_codebase, validate
-- **Agent Tools**: ask_user, task_complete
-- **Discovery Tools**: search_tools, activate_tool
-
-**Returns**: Complete initialization result with all tools and RAG.
-
-#### `cleanup(rl)`
-
-Cleanup function for graceful shutdown:
-```typescript
-export async function cleanup(rl: readline.Interface | null) {
-  logger.info('🧹 Cleaning up...');
-  if (rl) {
-    rl.close();
-  }
-  await closeMemory();
-}
-```
-
----
-
-### src/application/orchestrator.ts
-
-**Purpose**: Creates and configures agent with step handlers and context management.
-
-**Key Functions**:
-
-#### `createPrepareStep()`
-
-Creates function that trims conversation history to fit context window.
-
-**Context Management**:
-```typescript
-const MAX_CONTEXT_MESSAGES = 50;
-
-if (messages.length > MAX_CONTEXT_MESSAGES) {
-  logger.info('🔄 Trimming context', { from: messages.length, to: MAX_CONTEXT_MESSAGES });
-  return {
-    messages: [
-      messages[0],  // Keep system message
-      ...messages.slice(-(MAX_CONTEXT_MESSAGES - 1)),  // Keep last N-1 messages
-    ],
-  };
-}
-```
-
-**Why?**
-- Prevents token limit errors
-- Maintains system prompt
-- Keeps recent context
-
-#### `cleanAIText(text)`
-
-Removes XML tags from agent responses:
-```typescript
-function cleanAIText(text: string): string {
-  const xmlTagPattern = /<\/?[a-zA-Z_][a-zA-Z0-9_-]*(?:\s+[^>]*)?\/?>/g;
-  const cleaned = text.replace(xmlTagPattern, '').trim();
-  return cleaned;
-}
-```
-
-Some models output thinking tags like `<thinking>...</thinking>`. This strips them for cleaner UX.
-
-#### `createStepFinishHandler()`
-
-Creates callback for displaying step-by-step agent reasoning.
-
-**Output Format**:
-```
-═══════════════════════════════════════════
-📈 STEP 1
-═══════════════════════════════════════════
-
-💭 AI THINKING:
-────────────────────────────────────────
-[Agent's reasoning text]
-
-🔧 TOOL CALL: shell
-────────────────────────────────────────
-📥 INPUT:
-{
-  "command": "ls -la"
-}
-
-📤 OUTPUT:
-[Command output]
-```
-
-**Features**:
-- Tracks step count
-- Displays agent reasoning
-- Shows tool inputs/outputs with truncation
-- Cleans XML tags from thinking
-
-#### `createAgent(tools, maxSteps?)`
-
-Creates the main agent with all configuration.
-
-**Parameters**:
-- `tools`: Complete tool set
-- `maxSteps`: Maximum reasoning steps (default: 50)
-
-**Agent Configuration**:
-```typescript
-return createAgentWithRole('generic', tools, {
-  modelType: 'standard',
-  stopWhen: stepCountIs(maxSteps),
-  prepareStep: createPrepareStep(),
-  onStepFinish: createStepFinishHandler(),
-});
-```
-
-**Stop Conditions**:
-- Max steps reached
-- `task_complete` called
-- Model stops naturally
-
----
-
-## Core Layer
-
-### Core: Agents
-
-#### src/core/agents/models.ts
-
-**Purpose**: Model configuration and tier management.
-
-**Model Tiers**:
-```typescript
-const MODEL_TIERS = {
-  fast: process.env.MODEL_FAST || 'deepseek/deepseek-chat-v3-0324:free',
-  standard: process.env.MODEL_STANDARD || 'google/gemini-2.0-flash-001',
-  reasoning: process.env.MODEL_REASONING || 'deepseek/deepseek-r1:free',
-  powerful: process.env.MODEL_POWERFUL || 'anthropic/claude-sonnet-4',
-};
-```
-
-**Model Selection**:
-Each tier returns an OpenRouter chat model:
-```typescript
-export const models = {
-  fast: () => {
-    const modelName = MODEL_TIERS.fast;
-    logger.info('🔌 Using OpenRouter model', { tier: 'fast', model: modelName });
-    return openrouter.chat(modelName);
-  },
-  // ... other tiers
-};
-```
-
-**Environment Override**:
-Users can override defaults:
 ```bash
-MODEL_STANDARD=anthropic/claude-3.5-sonnet
+# Run tau-bench retail domain
+pnpm benchmark:tau-retail
+
+# Run tau-bench airline domain
+pnpm benchmark:tau-airline
+
+# Run GAIA benchmark
+pnpm benchmark:gaia
+
+# Run SWE-bench
+agent-benchmark --benchmark swe-bench
 ```
+
+#### Key Features
+
+- Standardized task execution interface
+- Result scoring and validation
+- Session management and reset
+- Graceful shutdown handling
 
 ---
 
-#### src/core/agents/roles.ts
+### @agent/mobile-accessibility
 
-**Purpose**: Role-based system prompts for specialized agents.
+**Location**: `packages/mobile-accessibility/`
+**Purpose**: Native mobile accessibility module for React Native (Expo)
 
-**Roles**:
+#### Structure
 
-##### `generic`
-Default role with balanced capabilities. Imported from templates.
-
-##### `researcher`
-Specialized for information gathering:
-```typescript
-researcher: `You are a research specialist. Your job is to gather information thoroughly.
-
-ALWAYS use tools:
-- web_search for finding information online
-- fetch_page for reading web content and documentation
-- search_codebase for semantic code search
-- grep_codebase for finding specific patterns
-- memory_add to store key findings
-- plan to organize multi-step research
-
-Never just describe what you would research - actually do the research using tools.`
+```
+packages/mobile-accessibility/
+├── android/              # Android native module
+│   └── src/
+├── plugin/
+│   └── src/
+│       └── withMobileAccessibility.ts
+└── package.json
 ```
 
-**Key Directive**: "Never just describe" - enforces action over narration.
+#### Features
 
-##### `coder`
-Specialized for code modification:
-```typescript
-coder: `You are a senior software engineer. Your job is to write and modify code.
+- Native accessibility API access
+- Screen reader support
+- UI element inspection
+- Touch event simulation
+- Gesture recognition
 
-ALWAYS use tools:
-- search_codebase to understand existing patterns
-- grep_codebase to find specific code
-- shell to read files (cat), write files, run git commands, execute tests
-- validate after code changes to check for errors
+#### Platform Support
 
-Never describe code changes - actually make them.`
-```
-
-##### `analyst`
-Specialized for data analysis:
-```typescript
-analyst: `You are a data and business analyst. Your job is to analyze information and provide insights.
-
-ALWAYS use tools:
-- web_search and fetch_page to gather external data
-- search_codebase to understand data structures
-- shell to run analysis scripts or queries
-- memory_add to store findings for later reference
-- plan to organize multi-step analysis
-
-Never just describe analysis - use tools to perform it.`
-```
-
-**Usage**: Different agents can be created for different task types using these roles.
+- **Android**: AccessibilityService API
+- **iOS**: (Coming in Phase 3)
 
 ---
 
-#### src/core/agents/factory.ts
+## Applications
 
-**Purpose**: Factory for creating agents with specific roles and configuration.
+### CLI App
 
-**Key Function**:
+**Location**: `apps/cli/`
+**Purpose**: Command-line interfaces for server and interactive chat
 
-#### `createAgentWithRole(role, tools, options?)`
+#### Structure
 
-Creates a ToolLoopAgent with role-specific configuration.
-
-**Parameters**:
-```typescript
-role: AgentRole  // 'generic' | 'researcher' | 'coder' | 'analyst'
-tools: Record<string, any>  // Tool set
-options?: {
-  modelType?: keyof typeof models;  // 'fast' | 'standard' | 'reasoning' | 'powerful'
-  stopWhen?: any;  // Stop condition
-  prepareStep?: any;  // Context prep function
-  onStepFinish?: any;  // Step callback
-}
+```
+apps/cli/src/
+├── cli.ts                # Server launcher
+├── chat.ts               # Interactive chat CLI
+└── types/                # Type definitions
 ```
 
-**Implementation**:
-```typescript
-export function createAgentWithRole(role, tools, options?) {
-  const modelType = options?.modelType || 'standard';
+#### Commands
 
-  return new ToolLoopAgent({
-    model: models[modelType](),
-    instructions: systemPrompts[role],
-    tools,
-    stopWhen: options?.stopWhen,
-    prepareStep: options?.prepareStep,
-    onStepFinish: options?.onStepFinish,
-  });
-}
-```
-
-**ToolLoopAgent** (from Vercel AI SDK):
-- Implements agentic tool-calling loop
-- Handles multi-step reasoning
-- Manages tool execution and result integration
-
----
-
-### Core: Logger
-
-#### src/core/logger.ts
-
-**Purpose**: Structured logging system with levels, colors, and metadata.
-
-**Log Levels**:
-```typescript
-const LOG_LEVELS: Record<LogLevel, number> = {
-  debug: 0,  // Verbose debugging
-  info: 1,   // General information
-  warn: 2,   // Warnings
-  error: 3,  // Errors
-};
-```
-
-**Color Codes**:
-```typescript
-const LOG_COLORS: Record<LogLevel, string> = {
-  debug: '\x1b[36m',  // Cyan
-  info: '\x1b[32m',   // Green
-  warn: '\x1b[33m',   // Yellow
-  error: '\x1b[31m',  // Red
-};
-```
-
-**Key Types**:
-
-#### `Logger`
-```typescript
-interface Logger {
-  debug(message: string, meta?: Record<string, any>): void;
-  info(message: string, meta?: Record<string, any>): void;
-  warn(message: string, meta?: Record<string, any>): void;
-  error(message: string, meta?: Record<string, any>): void;
-  setLevel(level: LogLevel): void;
-}
-```
-
-**Key Functions**:
-
-#### `createLogger(options?)`
-
-Creates logger instance with configuration.
-
-**Options**:
-```typescript
-interface LoggerOptions {
-  level?: LogLevel;  // Minimum level to log
-  enableColors?: boolean;  // ANSI colors (default: true)
-  enableTimestamps?: boolean;  // ISO timestamps (default: true)
-}
-```
-
-**Environment Override**:
-```typescript
-function getEnvLogLevel(): LogLevel {
-  const envLevel = process.env.LOG_LEVEL?.toLowerCase();
-  if (envLevel && envLevel in LOG_LEVELS) {
-    return envLevel as LogLevel;
-  }
-  return 'info';
-}
-```
-
-**Message Format**:
-```
-[2025-11-28T10:30:45.123Z] INFO  Agent initialized {"workspaceRoot": "/path/to/project"}
-```
-
-**Usage**:
-```typescript
-import { logger } from './core/logger.js';
-
-logger.info('Starting task', { taskId: '123' });
-logger.debug('Tool called', { tool: 'shell', args: { command: 'ls' } });
-logger.error('Operation failed', { error: 'Connection timeout' });
-```
-
-**Singleton Export**:
-```typescript
-export const logger = createLogger();
-```
-Single shared logger instance for entire application.
-
----
-
-### Core: Memory System
-
-The memory system is one of the most complex parts of the codebase. It implements a persistent knowledge graph with automatic entity extraction.
-
-#### src/core/memory/types.ts
-
-**Purpose**: Type definitions for memory system.
-
-**Core Types**:
-
-##### `Entity`
-Represents a named thing in the knowledge graph.
-
-```typescript
-interface Entity {
-  id: string;  // UUID
-  name: string;  // Canonical name
-  type: string;  // 'person', 'project', 'concept', etc.
-  attributes: Record<string, unknown>;  // Flexible metadata
-  embedding?: number[];  // For semantic search
-  createdAt: Date;
-  updatedAt: Date;
-}
-```
-
-**Example**:
-```json
-{
-  "id": "550e8400-e29b-41d4-a716-446655440000",
-  "name": "Randy Wilson",
-  "type": "person",
-  "attributes": {
-    "role": "developer",
-    "prefers": "TypeScript"
-  },
-  "embedding": [0.23, -0.41, ...],
-  "createdAt": "2025-11-28T10:00:00Z",
-  "updatedAt": "2025-11-28T10:00:00Z"
-}
-```
-
-##### `Relation`
-Represents a connection between entities.
-
-```typescript
-interface Relation {
-  id: string;
-  fromEntityId: string;
-  toEntityId: string;
-  type: string;  // 'WORKS_ON', 'CREATED_BY', etc.
-  weight: number;  // Confidence/strength (0-1)
-  attributes: Record<string, unknown>;
-  createdAt: Date;
-}
-```
-
-**Example**:
-```json
-{
-  "id": "...",
-  "fromEntityId": "...",
-  "toEntityId": "...",
-  "type": "WORKS_ON",
-  "weight": 0.95,
-  "attributes": { "since": "2024-01-01" },
-  "createdAt": "2025-11-28T10:00:00Z"
-}
-```
-
-##### `Fact`
-Atomic piece of information with temporal validity.
-
-```typescript
-interface Fact {
-  id: string;
-  content: string;  // The fact text
-  embedding: number[];  // For search
-  entityIds: string[];  // Related entities
-  relationIds: string[];  // Related relations
-  validFrom: Date;  // When fact became true
-  validTo: Date | null;  // When fact became false (null = still valid)
-  createdAt: Date;
-  source: string;  // Where fact came from
-  confidence: number;  // How certain (0-1)
-}
-```
-
-**Example**:
-```json
-{
-  "id": "...",
-  "content": "Randy Wilson prefers TypeScript for backend development",
-  "embedding": [0.12, -0.34, ...],
-  "entityIds": ["..."],  // Randy Wilson entity
-  "relationIds": [],
-  "validFrom": "2025-11-28T10:00:00Z",
-  "validTo": null,
-  "createdAt": "2025-11-28T10:00:00Z",
-  "source": "conversation_extraction",
-  "confidence": 0.9
-}
-```
-
-##### `Episode`
-A conversation turn with linked knowledge.
-
-```typescript
-interface Episode {
-  id: string;
-  groupId: string;  // Session/conversation ID
-  content: string;  // Message content
-  role: 'user' | 'assistant' | 'system';
-  factIds: string[];  // Facts extracted from this turn
-  entityIds: string[];  // Entities mentioned
-  timestamp: Date;
-}
-```
-
-##### `SearchResult`
-Result of memory search operation.
-
-```typescript
-interface SearchResult {
-  facts: Fact[];
-  entities: Entity[];
-  relations: Relation[];
-  score: number;  // Relevance score
-}
-```
-
-##### `MemoryProvider`
-Interface for memory backends.
-
-```typescript
-interface MemoryProvider {
-  add(input: MemoryAddInput): Promise<{ factIds: string[]; entityIds: string[] }>;
-  search(input: MemorySearchInput): Promise<SearchResult>;
-  getEpisodes(groupId: string, limit?: number): Promise<Episode[]>;
-  getFact(factId: string): Promise<Fact | null>;
-  getEntity(entityId: string): Promise<Entity | null>;
-  getRelatedEntities(entityId: string, depth?: number): Promise<Entity[]>;
-  invalidateFact(factId: string): Promise<void>;
-  close(): Promise<void>;
-}
-```
-
-Two implementations:
-- **MemoryLite**: SQLite-based (default)
-- **GraphitiProvider**: External service
-
----
-
-#### src/core/memory/storage.ts
-
-**Purpose**: In-memory storage adapter and interface definition.
-
-**Key Interface**:
-
-##### `StorageAdapter`
-Low-level storage interface for memory backends.
-
-```typescript
-interface StorageAdapter {
-  entities: {
-    create(entity: Entity): Promise<void>;
-    update(id: string, updates: Partial<Entity>): Promise<void>;
-    get(id: string): Promise<Entity | null>;
-    findByName(name: string): Promise<Entity | null>;
-    findByType(type: string): Promise<Entity[]>;
-    search(embedding: number[], limit: number): Promise<Array<{ entity: Entity; score: number }>>;
-    all(): Promise<Entity[]>;
-  };
-
-  relations: {
-    create(relation: Relation): Promise<void>;
-    get(id: string): Promise<Relation | null>;
-    findByEntity(entityId: string): Promise<Relation[]>;
-    findBetween(fromId: string, toId: string): Promise<Relation[]>;
-    all(): Promise<Relation[]>;
-  };
-
-  facts: {
-    create(fact: Fact): Promise<void>;
-    update(id: string, updates: Partial<Fact>): Promise<void>;
-    get(id: string): Promise<Fact | null>;
-    findByEntity(entityId: string): Promise<Fact[]>;
-    findValid(asOf?: Date): Promise<Fact[]>;
-    search(embedding: number[], limit: number, includeExpired?: boolean): Promise<Array<{ fact: Fact; score: number }>>;
-    invalidate(id: string, validTo: Date): Promise<void>;
-  };
-
-  episodes: {
-    create(episode: Episode): Promise<void>;
-    get(id: string): Promise<Episode | null>;
-    findByGroup(groupId: string, limit?: number): Promise<Episode[]>;
-  };
-
-  transaction<T>(fn: () => Promise<T>): Promise<T>;
-  close(): Promise<void>;
-}
-```
-
-**Key Functions**:
-
-##### `cosineSimilarity(a, b)`
-Computes cosine similarity between two embedding vectors.
-
-```typescript
-function cosineSimilarity(a: number[], b: number[]): number {
-  let dot = 0, normA = 0, normB = 0;
-  for (let i = 0; i < a.length; i++) {
-    dot += a[i] * b[i];
-    normA += a[i] * a[i];
-    normB += b[i] * b[i];
-  }
-  return dot / (Math.sqrt(normA) * Math.sqrt(normB));
-}
-```
-
-Formula: `similarity = (A · B) / (||A|| × ||B||)`
-
-Higher score = more similar (range: -1 to 1, typically 0 to 1 for embeddings).
-
-##### `createInMemoryStorage()`
-
-Creates in-memory storage using JavaScript Maps.
-
-**Implementation**:
-- Uses `Map<string, T>` for each entity type
-- Vector search via brute-force cosine similarity
-- No persistence (lost on restart)
-- Useful for testing
-
-**When to Use**:
-- Unit tests
-- Ephemeral sessions
-- Development
-
----
-
-#### src/core/memory/storage-sqlite.ts
-
-**Purpose**: SQLite-based persistent storage adapter.
-
-**Database Schema**:
-
-```sql
-CREATE TABLE entities (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  type TEXT NOT NULL,
-  attributes TEXT NOT NULL,  -- JSON
-  embedding TEXT,  -- JSON array
-  created_at TEXT NOT NULL,
-  updated_at TEXT NOT NULL
-);
-CREATE INDEX idx_entities_name ON entities(name);
-CREATE INDEX idx_entities_type ON entities(type);
-
-CREATE TABLE relations (
-  id TEXT PRIMARY KEY,
-  from_entity_id TEXT NOT NULL,
-  to_entity_id TEXT NOT NULL,
-  type TEXT NOT NULL,
-  weight REAL NOT NULL,
-  attributes TEXT NOT NULL,  -- JSON
-  created_at TEXT NOT NULL,
-  FOREIGN KEY (from_entity_id) REFERENCES entities(id),
-  FOREIGN KEY (to_entity_id) REFERENCES entities(id)
-);
-CREATE INDEX idx_relations_from ON relations(from_entity_id);
-CREATE INDEX idx_relations_to ON relations(to_entity_id);
-
-CREATE TABLE facts (
-  id TEXT PRIMARY KEY,
-  content TEXT NOT NULL,
-  embedding TEXT NOT NULL,  -- JSON array
-  entity_ids TEXT NOT NULL,  -- JSON array
-  relation_ids TEXT NOT NULL,  -- JSON array
-  valid_from TEXT NOT NULL,
-  valid_to TEXT,
-  created_at TEXT NOT NULL,
-  source TEXT NOT NULL,
-  confidence REAL NOT NULL
-);
-CREATE INDEX idx_facts_valid ON facts(valid_from, valid_to);
-
-CREATE TABLE episodes (
-  id TEXT PRIMARY KEY,
-  group_id TEXT NOT NULL,
-  content TEXT NOT NULL,
-  role TEXT NOT NULL,
-  fact_ids TEXT NOT NULL,  -- JSON array
-  entity_ids TEXT NOT NULL,  -- JSON array
-  timestamp TEXT NOT NULL
-);
-CREATE INDEX idx_episodes_group ON episodes(group_id, timestamp);
-```
-
-**Key Features**:
-
-1. **WAL Mode**: Write-Ahead Logging for better concurrency
-   ```typescript
-   db.pragma('journal_mode = WAL');
-   ```
-
-2. **JSON Storage**: Complex types stored as JSON strings
-   ```typescript
-   JSON.stringify(entity.attributes)
-   ```
-
-3. **Type Parsing**: Converts DB rows back to TypeScript types
-   ```typescript
-   const parseEntity = (row: any): Entity => ({
-     id: row.id,
-     name: row.name,
-     type: row.type,
-     attributes: JSON.parse(row.attributes),
-     embedding: row.embedding ? JSON.parse(row.embedding) : undefined,
-     createdAt: new Date(row.created_at),
-     updatedAt: new Date(row.updated_at),
-   });
-   ```
-
-4. **Vector Search**: Brute-force but acceptable for small-medium datasets
-   ```typescript
-   async search(embedding, limit): Promise<EntityWithScore[]> {
-     const all: Entity[] = db.prepare('SELECT * FROM entities WHERE embedding IS NOT NULL').all().map(parseEntity);
-     return all
-       .filter((e: Entity): e is Entity & { embedding: number[] } => e.embedding !== undefined)
-       .map((e): EntityWithScore => ({ entity: e, score: cosineSimilarity(embedding, e.embedding) }))
-       .sort((a: EntityWithScore, b: EntityWithScore) => b.score - a.score)
-       .slice(0, limit);
-   }
-   ```
-
-5. **Transactions**: ACID guarantees for complex operations
-   ```typescript
-   async transaction<T>(fn: () => Promise<T>) {
-     db.exec('BEGIN');
-     try {
-       const result = await fn();
-       db.exec('COMMIT');
-       return result;
-     } catch (e) {
-       db.exec('ROLLBACK');
-       throw e;
-     }
-   }
-   ```
-
-**Performance Considerations**:
-- Fast for < 10k entities
-- Vector search is O(n) but embeddings are cached
-- Indexes on name, type, relations speed up lookups
-- WAL mode allows concurrent reads during writes
-
----
-
-#### src/core/memory/provider-graphiti.ts
-
-**Purpose**: External Graphiti service provider for production deployments.
-
-**Graphiti** is a graph memory service with Neo4j backend, providing:
-- Scalable graph storage
-- Advanced graph traversal
-- Distributed deployment
-- Better performance for large graphs
-
-**Key Functions**:
-
-##### `createGraphitiProvider(graphitiUrl)`
-
-Creates provider that communicates with Graphiti HTTP API.
-
-**API Endpoints Used**:
-
-1. **Add Memory**
-   ```
-   POST /messages
-   Body: {
-     group_id: string,
-     messages: [{
-       uuid: string,
-       content: string,
-       role: string,
-       timestamp: string,
-       source_description: string
-     }]
-   }
-   ```
-
-2. **Search**
-   ```
-   POST /search
-   Body: {
-     query: string,
-     group_ids?: string[],
-     max_facts: number
-   }
-   ```
-
-3. **Get Episodes**
-   ```
-   GET /episodes/:groupId?last_n=10
-   ```
-
-4. **Get Entity**
-   ```
-   GET /entity/:entityId
-   ```
-
-5. **Get Related Entities**
-   ```
-   GET /entity/:entityId/related?depth=1
-   ```
-
-6. **Invalidate Fact**
-   ```
-   POST /entity-edge/:factId/invalidate
-   Body: { invalid_at: string }
-   ```
-
-**Usage**:
+**Server Launcher** (`cli.ts`):
 ```bash
-# Start Graphiti service
-docker compose -f docker/graphiti-compose.yml up -d
+# Start HTTP server
+pnpm --filter @agent/cli run start
 
-# Set environment variable
-export GRAPHITI_URL=http://localhost:8000
+# Environment variables
+PORT=3000 WORKSPACE_ROOT=/path/to/project pnpm start
 ```
 
-The system auto-detects and uses Graphiti if available.
+**Interactive Chat** (`chat.ts`):
+```bash
+# Start chat interface
+pnpm --filter @agent/cli run chat
+
+# With workspace
+WORKSPACE_ROOT=/path/to/project pnpm chat
+```
+
+#### Features
+
+- REPL-style chat interface
+- Tool usage display
+- Task completion status
+- Readline with history
+- Graceful shutdown (Ctrl+C)
 
 ---
 
-#### src/core/memory/factory.ts
+### Mobile App
 
-**Purpose**: Factory for creating memory providers with auto-detection.
+**Location**: `apps/mobile/`
+**Purpose**: React Native mobile application with Expo
 
-**Key Functions**:
+#### Structure
 
-##### `createMemoryProvider(config)`
-
-Creates memory provider based on config.
-
-```typescript
-export function createMemoryProvider(config: MemoryConfig): MemoryProvider {
-  if (config.provider === 'graphiti') {
-    const url = config.graphitiUrl || process.env.GRAPHITI_URL || 'http://localhost:8000';
-    return createGraphitiProvider(url);
-  }
-
-  return createMemoryLite({
-    embeddingModel: config.embeddingModel,
-    extractionModel: config.extractionModel,
-    storagePath: config.storagePath,
-  });
-}
+```
+apps/mobile/
+├── app/                  # App screens (Expo Router)
+│   ├── (tabs)/           # Tab navigation
+│   │   ├── index.tsx     # Home screen
+│   │   └── explore.tsx   # Explore screen
+│   ├── _layout.tsx       # Root layout
+│   └── modal.tsx         # Modal screen
+├── components/           # Reusable components
+│   ├── ui/               # UI components
+│   ├── themed-text.tsx
+│   ├── themed-view.tsx
+│   └── ...
+├── hooks/                # Custom hooks
+├── constants/            # Constants and theme
+├── assets/               # Images, fonts, etc.
+└── app.json              # Expo configuration
 ```
 
-##### `detectAvailableProvider()`
+#### Technologies
 
-Auto-detects which provider is available.
+- **React Native**: Cross-platform mobile framework
+- **Expo**: Development and build tooling
+- **Expo Router**: File-based navigation
+- **TypeScript**: Type safety
 
-```typescript
-export async function detectAvailableProvider(): Promise<'graphiti' | 'lite'> {
-  const graphitiUrl = process.env.GRAPHITI_URL || 'http://localhost:8000';
+#### Features
 
-  try {
-    const response = await fetch(`${graphitiUrl}/health`, {
-      method: 'GET',
-      signal: AbortSignal.timeout(2000),
-    });
-    if (response.ok) {
-      return 'graphiti';
-    }
-  } catch {
-    // Graphiti not available
-  }
-
-  return 'lite';
-}
-```
-
-Health check with 2s timeout. Falls back to SQLite if Graphiti unavailable.
-
-##### `createAutoMemoryProvider(config)`
-
-Auto-detects and creates appropriate provider.
-
-```typescript
-export async function createAutoMemoryProvider(
-  config: Omit<MemoryConfig, 'provider'>
-): Promise<MemoryProvider> {
-  const provider = await detectAvailableProvider();
-  console.log(`Memory provider: ${provider}`);
-
-  return createMemoryProvider({
-    ...config,
-    provider,
-  });
-}
-```
-
-This is what the application uses for automatic provider selection.
+- Tab-based navigation
+- Themed components (light/dark mode)
+- Native device control integration
+- Accessibility support
+- Haptic feedback
 
 ---
 
-#### src/core/memory/index.ts
+## Core Package Deep Dive
 
-**Purpose**: Main memory implementation (MemoryLite) with SQLite backend.
+This section provides detailed documentation for the most complex parts of the core package.
 
-**Key Functions**:
+### Memory System Architecture
 
-##### `createMemoryLite(config)`
+The memory system is a knowledge graph with automatic extraction from conversations.
 
-Creates full-featured memory system with extraction and embeddings.
+#### Data Model
 
-**Configuration**:
+```
+┌─────────────┐
+│   Entity    │
+│  (People,   │
+│  Projects,  │
+│  Concepts)  │
+└──────┬──────┘
+       │
+       │ Relation
+       │ (WORKS_ON,
+       │  CREATED,
+       │  PART_OF)
+       │
+       ▼
+┌──────────────┐       ┌─────────────┐
+│     Fact     │───────│   Episode   │
+│  (Atomic     │       │ (Conversation
+│  statements) │       │  Turn)
+└──────────────┘       └─────────────┘
+```
+
+#### Extraction Flow
+
+```
+Conversation Completes (no tool calls)
+  ↓
+Extract Dialogue Text
+  ↓
+LLM Extraction
+  ├─→ Entities
+  ├─→ Relations
+  └─→ Facts
+  ↓
+For each Entity:
+  ├─→ Check if exists
+  ├─→ Resolve conflicts
+  ├─→ Generate embedding
+  └─→ Store or update
+  ↓
+For each Relation:
+  ├─→ Link entities
+  └─→ Store with weight
+  ↓
+For each Fact:
+  ├─→ Check contradictions
+  ├─→ Invalidate superseded
+  ├─→ Generate embedding
+  └─→ Store with validity dates
+  ↓
+Create Episode
+```
+
+#### Conflict Resolution
+
+When a new entity is extracted, the system checks if an entity with that name already exists. If it does, an LLM determines if they refer to the same thing:
+
 ```typescript
-interface MemoryConfig {
-  embeddingModel?: string;  // Default: 'text-embedding-004'
-  extractionModel?: string;  // Default: gemini-2.0-flash
-  storagePath?: string;  // Default: in-memory
-}
-```
-
-**Internal Functions**:
-
-###### `getEmbedding(text: string)`
-Generates embedding vector for text using Google AI.
-
-```typescript
-async function getEmbedding(text: string): Promise<number[]> {
-  const { embedding } = await embed({
-    model: embeddingModel as any,
-    value: text
-  });
-  return embedding;
-}
-```
-
-###### `getOrCreateEntity(extracted)`
-Finds existing entity or creates new one with conflict resolution.
-
-```typescript
-async function getOrCreateEntity(
-  extracted: { name: string; type: string; attributes: Record<string, unknown> }
-): Promise<Entity> {
-  const existing = await storage.entities.findByName(extracted.name);
-
-  if (existing) {
-    const resolution = await resolveEntityConflicts(extracted, existing, extractionModel);
-    if (resolution.shouldMerge && resolution.mergedAttributes) {
-      await storage.entities.update(existing.id, { attributes: resolution.mergedAttributes });
-      return { ...existing, attributes: resolution.mergedAttributes };
-    }
-    return existing;
-  }
-
-  const embedding = await getEmbedding(`${extracted.name} (${extracted.type}): ${JSON.stringify(extracted.attributes)}`);
-  const entity: Entity = {
-    id: randomUUID(),
-    name: extracted.name,
-    type: extracted.type,
-    attributes: extracted.attributes,
-    embedding,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  };
-  await storage.entities.create(entity);
-  return entity;
-}
-```
-
-**Conflict Resolution**:
-- Checks if entity name already exists
-- Uses LLM to determine if same entity
-- Merges attributes if confirmed same
-- Creates new entity if different
-
-**Provider Implementation**:
-
-##### `add(input: MemoryAddInput)`
-
-Main function for adding content to memory.
-
-**Process**:
-
-1. **Extract Entities, Relations, Facts**
-   ```typescript
-   const existingEntities = (await storage.entities.all()).map(e => e.name);
-   const extracted = await extractFromText(input.content, extractionModel, existingEntities);
-   ```
-   Uses LLM to extract structured knowledge from text.
-
-2. **Create/Update Entities**
-   ```typescript
-   const entityMap = new Map<string, Entity>();
-   for (const e of extracted.entities) {
-     const entity = await getOrCreateEntity(e);
-     entityMap.set(e.name, entity);
-   }
-   ```
-
-3. **Create Relations**
-   ```typescript
-   for (const r of extracted.relations) {
-     const fromEntity = entityMap.get(r.fromEntity);
-     const toEntity = entityMap.get(r.toEntity);
-     if (fromEntity && toEntity) {
-       const relation = {
-         id: randomUUID(),
-         fromEntityId: fromEntity.id,
-         toEntityId: toEntity.id,
-         type: r.type,
-         weight: r.weight || 0.8,
-         attributes: {},
-         createdAt: new Date(),
-       };
-       await storage.relations.create(relation);
-     }
-   }
-   ```
-
-4. **Detect Contradictions**
-   ```typescript
-   const existingFacts = await storage.facts.findValid();
-   const contradictions = await detectContradictions(
-     f.content,
-     existingFacts.map(ef => ef.content),
-     extractionModel
-   );
-
-   for (const supersededContent of contradictions.supersedes) {
-     const superseded = existingFacts.find(ef => ef.content === supersededContent);
-     if (superseded) {
-       await storage.facts.invalidate(superseded.id, new Date());
-     }
-   }
-   ```
-   Invalidates old facts that are superseded by new information.
-
-5. **Create Facts**
-   ```typescript
-   const embedding = await getEmbedding(f.content);
-   const fact: Fact = {
-     id: randomUUID(),
-     content: f.content,
-     embedding,
-     entityIds: relatedEntityIds,
-     relationIds: [],
-     validFrom: new Date(),
-     validTo: null,
-     createdAt: new Date(),
-     source: input.source || 'user_input',
-     confidence: f.confidence,
-   };
-   await storage.facts.create(fact);
-   ```
-
-6. **Create Episode**
-   ```typescript
-   const episode: Episode = {
-     id: randomUUID(),
-     groupId: input.groupId || 'default',
-     content: input.content,
-     role: input.role || 'user',
-     factIds,
-     entityIds: Array.from(entityMap.values()).map(e => e.id),
-     timestamp: new Date(),
-   };
-   await storage.episodes.create(episode);
-   ```
-
-##### `search(input: MemorySearchInput)`
-
-Semantic search over memory.
-
-**Process**:
-
-1. **Generate Query Embedding**
-   ```typescript
-   const queryEmbedding = await getEmbedding(input.query);
-   ```
-
-2. **Vector Search Facts**
-   ```typescript
-   const factResults = await storage.facts.search(
-     queryEmbedding,
-     input.maxResults || 10,
-     input.includeExpired
-   );
-   ```
-
-3. **Gather Related Entities/Relations**
-   ```typescript
-   const entityIds = new Set<string>();
-   const relationIds = new Set<string>();
-   for (const { fact } of factResults) {
-     fact.entityIds.forEach(id => entityIds.add(id));
-     fact.relationIds.forEach(id => relationIds.add(id));
-   }
-
-   const entities = await Promise.all(
-     Array.from(entityIds).map(id => storage.entities.get(id))
-   ).then(results => results.filter((e): e is Entity => e !== null));
-   ```
-
-4. **Return Complete Result**
-   ```typescript
-   return {
-     facts: factResults.map(r => r.fact),
-     entities,
-     relations,
-     score: factResults[0]?.score || 0,
-   };
-   ```
-
-##### `getRelatedEntities(entityId, depth)`
-
-Graph traversal to find related entities.
-
-**Implementation**:
-```typescript
-async getRelatedEntities(entityId: string, depth = 1) {
-  const visited = new Set<string>();
-  const result: Entity[] = [];
-
-  async function traverse(id: string, currentDepth: number) {
-    if (currentDepth > depth || visited.has(id)) return;
-    visited.add(id);
-
-    const relations = await storage.relations.findByEntity(id);
-    for (const rel of relations) {
-      const otherId = rel.fromEntityId === id ? rel.toEntityId : rel.fromEntityId;
-      if (!visited.has(otherId)) {
-        const entity = await storage.entities.get(otherId);
-        if (entity) {
-          result.push(entity);
-          await traverse(otherId, currentDepth + 1);
-        }
-      }
-    }
-  }
-
-  await traverse(entityId, 0);
-  return result;
-}
-```
-
-**Depth Example**:
-- Depth 1: Direct neighbors
-- Depth 2: Neighbors of neighbors
-- Depth 3: Three hops away
-
----
-
-#### src/core/memory/extraction.ts
-
-**Purpose**: LLM-based extraction of entities, relations, and facts from text.
-
-**Key Functions**:
-
-##### `extractFromText(text, model, existingEntities?)`
-
-Extracts structured knowledge from natural language text.
-
-**Extraction Schema**:
-```typescript
-const ExtractionSchema = z.object({
-  entities: z.array(z.object({
-    name: z.string().describe('The canonical name of the entity'),
-    type: z.string().describe('Entity type: person, organization, project, concept, location, event, etc.'),
-    attributes: z.record(z.unknown()).describe('Key attributes of the entity'),
-  })),
-  relations: z.array(z.object({
-    fromEntity: z.string().describe('Name of the source entity'),
-    toEntity: z.string().describe('Name of the target entity'),
-    type: z.string().describe('Relationship type in SCREAMING_SNAKE_CASE (e.g., WORKS_ON, CREATED_BY, PART_OF)'),
-    weight: z.number().min(0).max(1).optional().describe('Confidence/strength of the relationship'),
-  })),
-  facts: z.array(z.object({
-    content: z.string().describe('A single, atomic fact extracted from the text'),
-    entityNames: z.array(z.string()).describe('Names of entities involved in this fact'),
-    confidence: z.number().min(0).max(1).describe('Confidence score for this fact'),
-  })),
-});
-```
-
-**Extraction Prompt**:
-```
-You are an entity and relationship extraction system. Given the input text, extract:
-
-1. ENTITIES: Named things (people, projects, concepts, organizations, etc.)
-   - Use canonical names (normalize "Randy", "randy", "Randy Wilson" to "Randy Wilson")
-   - Identify the type accurately
-   - Extract relevant attributes mentioned
-
-2. RELATIONS: Connections between entities
-   - Use active voice relationship types (WORKS_ON, not WORKED_ON_BY)
-   - Common types: WORKS_ON, CREATED, OWNS, PART_OF, RELATED_TO, KNOWS, USES, DEPENDS_ON
-   - Assign weight based on how explicitly stated the relationship is
-
-3. FACTS: Atomic pieces of information
-   - Each fact should be self-contained and verifiable
-   - Link facts to the entities they involve
-   - Assign confidence based on how definitive the statement is
-
-Be thorough but precise. Only extract what is explicitly stated or strongly implied.
-```
-
-**Normalization with Existing Entities**:
-```typescript
-const contextPrompt = existingEntities?.length
-  ? `\n\nKnown entities (prefer these names if referring to the same thing): ${existingEntities.join(', ')}`
-  : '';
-```
-
-Helps LLM use consistent entity names across extractions.
-
-**Usage**:
-```typescript
-const extracted = await extractFromText(
-  "Randy prefers TypeScript for backend work and created the auth-service project.",
-  model,
-  ['Randy Wilson']
-);
-// Result:
-// {
-//   entities: [
-//     { name: 'Randy Wilson', type: 'person', attributes: { prefers: 'TypeScript' } },
-//     { name: 'auth-service', type: 'project', attributes: { language: 'TypeScript' } }
-//   ],
-//   relations: [
-//     { fromEntity: 'Randy Wilson', toEntity: 'auth-service', type: 'CREATED', weight: 1.0 }
-//   ],
-//   facts: [
-//     { content: 'Randy Wilson prefers TypeScript for backend development', entityNames: ['Randy Wilson'], confidence: 0.95 },
-//     { content: 'Randy Wilson created the auth-service project', entityNames: ['Randy Wilson', 'auth-service'], confidence: 1.0 }
-//   ]
-// }
-```
-
-##### `resolveEntityConflicts(newEntity, existingEntity, model)`
-
-Determines if two entity mentions refer to the same real-world entity.
-
-**Schema**:
-```typescript
-schema: z.object({
-  shouldMerge: z.boolean().describe('Whether these entities refer to the same thing'),
-  mergedAttributes: z.record(z.unknown()).optional().describe('Combined attributes if merging'),
-  reasoning: z.string().describe('Brief explanation'),
-})
-```
-
-**Prompt**:
-```
-Determine if these two entities refer to the same thing and should be merged:
-
-Entity 1: ${JSON.stringify(newEntity)}
-Entity 2: ${JSON.stringify(existingEntity)}
-
-If they are the same entity, merge their attributes (prefer newer/more specific values).
-```
-
-**Example**:
-```typescript
+// Example
 // Existing: { name: 'Randy', type: 'person', attributes: { role: 'developer' } }
 // New: { name: 'Randy Wilson', type: 'person', attributes: { prefers: 'TypeScript' } }
-// Result: { shouldMerge: true, mergedAttributes: { role: 'developer', prefers: 'TypeScript' } }
+// Result: Merge into { name: 'Randy Wilson', attributes: { role: 'developer', prefers: 'TypeScript' } }
 ```
 
-##### `detectContradictions(newFact, existingFacts, model)`
+#### Contradiction Detection
 
-Identifies which existing facts are contradicted or superseded by a new fact.
+When a new fact is added, the system checks for contradictions with existing facts:
 
-**Schema**:
 ```typescript
-schema: z.object({
-  contradicts: z.array(z.number()).describe('Indices of facts that directly contradict the new fact'),
-  supersedes: z.array(z.number()).describe('Indices of facts that the new fact updates/replaces'),
-})
-```
-
-**Prompt**:
-```
-Analyze if the new fact contradicts or supersedes any existing facts.
-
-New fact: "${newFact}"
-
-Existing facts:
-${existingFacts.map((f, i) => `${i}: "${f}"`).join('\n')}
-
-- contradicts: Facts that cannot both be true (logical contradiction)
-- supersedes: Facts that the new fact updates (same topic, newer information)
-```
-
-**Example**:
-```typescript
-// Existing: ["Randy prefers JavaScript", "Randy lives in Seattle"]
+// Example
+// Existing: "Randy prefers JavaScript"
 // New: "Randy prefers TypeScript"
-// Result: { contradicts: [], supersedes: [0] }
-// Action: Invalidate fact at index 0, insert new fact
+// Result: Invalidate old fact, insert new fact
+```
+
+### RAG System Architecture
+
+The RAG system provides semantic code search through a hybrid retrieval pipeline.
+
+#### Indexing Pipeline
+
+```
+Workspace Files
+  ↓
+Strategy Selection
+  ├─→ Code Files (.ts, .js, .py, etc.) → CodeChunkingStrategy (AST)
+  └─→ Docs (.md, .txt) → DocumentChunkingStrategy (Semantic)
+  ↓
+Chunking
+  ├─→ Functions/Classes (for code)
+  └─→ Headings/Paragraphs (for docs)
+  ↓
+Context Generation (LLM)
+  ├─→ Generate searchable description
+  └─→ Extract key concepts
+  ↓
+Embedding Generation
+  ├─→ Google text-embedding-004
+  └─→ 768-dimensional vectors
+  ↓
+Indexing
+  ├─→ Vector Index (cosine similarity)
+  └─→ BM25 Index (keyword matching)
+```
+
+#### Search Pipeline
+
+```
+User Query
+  ↓
+Generate Query Embedding
+  ↓
+Parallel Search
+  ├─→ Vector Search (top 100)
+  └─→ BM25 Search (top 100)
+  ↓
+Reciprocal Rank Fusion (RRF)
+  ├─→ Merge results
+  └─→ Score = 1 / (k + rank)
+  ↓
+Reranking (Cohere)
+  ├─→ Top 100 candidates
+  └─→ Return top 20
+  ↓
+Results to Agent
+```
+
+#### Caching Strategy
+
+The RAG system uses file-based caching to avoid re-processing unchanged files:
+
+```typescript
+// Cache key = hash(file content + file path + chunking strategy)
+// Cached data = { chunks, embeddings, contextual descriptions }
+// Cache location = .rag-cache/ directory
 ```
 
 ---
 
-#### src/core/memory/extractor.ts
+## Development Workflow
 
-**Purpose**: Orchestrates memory extraction from conversations.
+### Project Setup
 
-**Key Types**:
+```bash
+# Clone repository
+git clone <repo>
+cd agent-platform
 
-##### `MemoryExtractorConfig`
-```typescript
-interface MemoryExtractorConfig {
-  memoryProvider: MemoryProvider;
-  groupId?: string;  // Default: 'default'
-}
+# Install dependencies
+pnpm install
+
+# Configure environment
+cp .env.example .env
+# Edit .env with your API keys
+
+# Build all packages
+pnpm build
 ```
 
-##### `MemoryExtractor`
-```typescript
-interface MemoryExtractor {
-  extractFromConversation(messages: ModelMessage[]): Promise<void>;
-  waitForPending(): Promise<void>;
-}
+### Development Commands
+
+```bash
+# Build all packages
+pnpm build
+
+# Build specific package
+pnpm --filter @agent/core build
+
+# Clean all build outputs
+pnpm clean
+
+# Run all tests
+pnpm test
+
+# Run tests for specific package
+pnpm --filter @agent/core test
+
+# Watch mode for tests
+pnpm --filter @agent/core test:watch
+
+# Type checking
+pnpm exec tsc --noEmit
+
+# Linting
+pnpm lint
+pnpm lint:fix
 ```
 
-**Key Functions**:
+### Adding a New Package
 
-##### `extractDialogueText(messages)`
-
-Converts message history to plain dialogue format.
-
-```typescript
-function extractDialogueText(messages: ModelMessage[]): string {
-  const dialogueParts: string[] = [];
-
-  for (const message of messages) {
-    if (message.role === 'user') {
-      if (typeof message.content === 'string') {
-        dialogueParts.push(`User: ${message.content}`);
-      } else if (Array.isArray(message.content)) {
-        const textParts = message.content
-          .filter((part): part is { type: 'text'; text: string } => part.type === 'text')
-          .map(part => part.text);
-        if (textParts.length > 0) {
-          dialogueParts.push(`User: ${textParts.join(' ')}`);
-        }
-      }
-    } else if (message.role === 'assistant') {
-      // Similar handling for assistant messages
-    }
+1. Create package directory in `packages/`
+2. Initialize `package.json`:
+```json
+{
+  "name": "@agent/new-package",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "test": "vitest run"
   }
-
-  return dialogueParts.join('\n\n');
 }
 ```
-
-**Output Format**:
+3. Create `tsconfig.json`:
+```json
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src"
+  },
+  "include": ["src/**/*"]
+}
 ```
-User: I'm working on a TypeScript project
+4. Add to `turbo.json` if needed
+5. Reference from other packages using `workspace:*`
 
-Assistant: I need to implement authentication
-```
+### Adding a New Tool
 
-Extracts only text content, ignoring tool calls and system messages.
-
-##### `createMemoryExtractor(config)`
-
-Creates memory extractor instance.
-
-**Implementation**:
+1. Create tool file in `packages/core/src/tools/`
+2. Define tool using `tool()` from Vercel AI SDK:
 ```typescript
-export function createMemoryExtractor(config: MemoryExtractorConfig): MemoryExtractor {
-  const { memoryProvider, groupId = 'default' } = config;
-  const pendingExtractions: Promise<void>[] = [];
+import { tool } from 'ai';
+import { z } from 'zod';
 
-  async function doExtraction(dialogueText: string): Promise<void> {
-    if (\!dialogueText.trim()) {
-      return;
-    }
+export const myTool = tool({
+  description: 'Does something useful',
+  inputSchema: z.object({
+    input: z.string().describe('Input parameter'),
+  }),
+  execute: async ({ input }) => {
+    // Implementation
+    return JSON.stringify({ result: 'done' });
+  },
+});
+```
+3. Export from `packages/core/src/tools/index.ts`
+4. Register in `packages/core/src/application/initialization.ts`
+5. Add tests in `packages/core/src/tools/*.test.ts`
 
-    try {
-      const result = await memoryProvider.add({
-        content: dialogueText,
-        role: 'user',
-        groupId,
-        source: 'conversation_extraction',
-      });
+---
 
-      logger.info('Memory extraction complete', {
-        factIds: result.factIds.length,
-        entityIds: result.entityIds.length,
-      });
-    } catch (error) {
-      logger.error('Memory extraction failed', { error: String(error) });
-    }
-  }
+## Testing
 
-  return {
-    async extractFromConversation(messages: ModelMessage[]): Promise<void> {
-      const dialogueText = extractDialogueText(messages);
-      const extraction = doExtraction(dialogueText);
-      pendingExtractions.push(extraction);
+### Test Structure
 
-      try {
-        await extraction;
-      } finally {
-        const index = pendingExtractions.indexOf(extraction);
-        if (index > -1) {
-          pendingExtractions.splice(index, 1);
-        }
-      }
-    },
-
-    async waitForPending(): Promise<void> {
-      if (pendingExtractions.length > 0) {
-        await Promise.all(pendingExtractions);
-      }
-    },
-  };
-}
+```
+packages/core/tests/
+├── fixtures/
+│   ├── sample-code.ts
+│   └── sample-utils.js
+├── helpers/
+│   ├── test-mcp-server.ts
+│   ├── test-model.ts
+│   └── test-utils.ts
+└── [test files organized by module]
 ```
 
-**Features**:
-- Tracks pending extractions for graceful shutdown
-- Handles extraction errors gracefully
-- Logs extraction results
+### Test Files by Module
 
-**Usage in Runtime**:
+**RAG System**:
+- `packages/core/src/core/rag/bm25.test.ts` - BM25 indexing and search
+- `packages/core/src/core/rag/chunking.test.ts` - Code chunking
+- `packages/core/src/core/rag/strategies/document-strategy.test.ts` - Document chunking
+- `packages/core/src/core/rag/strategies/registry.test.ts` - Strategy registry
+
+**Tools**:
+- `packages/core/src/tools/registry.test.ts` - Tool registry
+- `packages/core/src/tools/filesystem.test.ts` - Filesystem tools
+- `packages/core/src/tools/tool-wrapper.test.ts` - Tool activation manager
+
+**Memory**:
+- `packages/core/src/core/memory/index.test.ts` - Memory system
+- `packages/core/src/core/memory/extractor.test.ts` - Memory extractor
+
+**Application**:
+- `packages/core/src/application/initialization.test.ts` - Initialization
+
+**Benchmarks**:
+- `packages/benchmarks/src/adapters/hal.test.ts` - HAL adapter
+- `packages/benchmarks/src/adapters/tau-bench.test.ts` - tau-bench adapter
+- `packages/benchmarks/src/adapters/swe-bench.test.ts` - SWE-bench adapter
+- `packages/benchmarks/src/adapters/gaia.test.ts` - GAIA adapter
+
+**Device Use**:
+- `packages/device-use/tests/` - Device control tests
+
+### Running Tests
+
+```bash
+# All tests
+pnpm test
+
+# Specific package
+pnpm --filter @agent/core test
+
+# Watch mode
+pnpm --filter @agent/core test:watch
+
+# With coverage
+pnpm test --coverage
+```
+
+### Test Configuration
+
+**vitest.config.ts**:
 ```typescript
-const memoryExtractor = createMemoryExtractor({ memoryProvider });
+import { defineConfig } from 'vitest/config';
 
-// After task completes without tool calls
-const hasNoToolCalls = toolsUsed.length === 0;
-if (hasNoToolCalls) {
-  await memoryExtractor.extractFromConversation(conversationHistory);
-}
-
-// On shutdown
-await memoryExtractor.waitForPending();
+export default defineConfig({
+  test: {
+    globals: true,
+    environment: 'node',
+    include: ['src/**/*.test.ts', 'tests/**/*.test.ts'],
+    exclude: ['node_modules', 'dist'],
+  },
+});
 ```
 
 ---
 
-## Core: RAG System
+## Data Flow
 
-The RAG (Retrieval-Augmented Generation) system enables semantic code search through chunking, embedding, and hybrid retrieval.
+### User Message Flow
 
-Continuing in next message due to length...
+```
+User Input
+  ↓
+HTTP Server OR CLI OR Mobile App
+  ↓
+AgentSession.send()
+  ↓
+Agent.generate() [Vercel AI SDK]
+  ├→ Reasoning Steps
+  ├→ Tool Calls
+  │   ├→ shell (execute commands)
+  │   ├→ filesystem (file operations)
+  │   ├→ web_search (fetch web data)
+  │   ├→ memory_search (query knowledge graph)
+  │   ├→ search_codebase (RAG retrieval)
+  │   ├→ device_control (automation)
+  │   └→ ... (other tools)
+  └→ Response Generation
+  ↓
+Task Result
+  ├→ Update conversation history
+  ├→ Re-index codebase (if files modified)
+  └→ Extract memories (if no tool calls)
+```
+
+### Memory Extraction Flow
+
+```
+Conversation Completes (no tool calls)
+  ↓
+extractFromConversation()
+  ↓
+extractDialogueText() - Convert to plain text
+  ↓
+extractFromText() - LLM extraction
+  ├→ Entities (people, projects, concepts)
+  ├→ Relations (WORKS_ON, CREATED, etc.)
+  └→ Facts (atomic statements)
+  ↓
+For each entity:
+  ├→ Check if exists (findByName)
+  ├→ Resolve conflicts (LLM)
+  ├→ Generate embedding
+  └→ Store or update
+  ↓
+For each relation:
+  ├→ Link fromEntity → toEntity
+  └→ Store with weight
+  ↓
+For each fact:
+  ├→ Check contradictions (LLM)
+  ├→ Invalidate superseded facts
+  ├→ Generate embedding
+  └→ Store with validity dates
+  ↓
+Create episode linking all extracted data
+```
+
+### RAG Search Flow
+
+```
+User Query: "How does authentication work?"
+  ↓
+search_codebase tool called
+  ↓
+createCodebaseRAG.searchCodebase()
+  ↓
+1. Generate query embedding (Google AI)
+  ↓
+2. Vector search (cosine similarity, top 100)
+  ↓
+3. BM25 search (keyword matching, top 100)
+  ↓
+4. Merge results (Reciprocal Rank Fusion)
+  ↓
+5. Rerank (Cohere, top 20)
+  ↓
+Return relevant code chunks with context
+  ↓
+Agent uses chunks to formulate answer
+```
+
+---
+
+## Environment Variables Reference
+
+### Required
+
+- `OPENROUTER_API_KEY` - OpenRouter API key for LLM access
+- `GOOGLE_GENERATIVE_AI_API_KEY` - Google AI API key for embeddings
+
+### Optional: Web Search
+
+- `BRAVE_API_KEY` - Brave Search API key
+- `TAVILY_API_KEY` - Tavily Search API key
+
+### Optional: Memory
+
+- `MEMORY_DB_PATH` - SQLite database path (default: `./memory.db`)
+- `GRAPHITI_URL` - Graphiti service URL (default: `http://localhost:8000`)
+
+### Optional: Models
+
+- `MODEL_FAST` - Fast model tier (default: deepseek-chat-v3)
+- `MODEL_STANDARD` - Standard model (default: gemini-2.0-flash-001)
+- `MODEL_REASONING` - Reasoning model (default: deepseek-r1)
+- `MODEL_POWERFUL` - Powerful model (default: claude-sonnet-4)
+- `MODEL_EXTRACTION` - Extraction model (default: inherits MODEL_STANDARD)
+
+### Optional: Server
+
+- `PORT` - HTTP server port (default: 3000)
+- `WORKSPACE_ROOT` - Workspace path for codebase tools
+- `LOG_LEVEL` - Logging level: debug, info, warn, error (default: info)
+
+---
+
+## Performance Considerations
+
+### Memory System
+
+- **SQLite is fast** for < 10k entities
+- **Vector search is O(n)** but acceptable with caching
+- **Batch entity creation** to reduce transactions
+- **Use indexes** on frequently queried fields
+
+### RAG System
+
+- **Caching is critical** - reuse embeddings
+- **BM25 is O(log n)** - very fast
+- **Reranking is expensive** - limit to top 100 candidates
+- **Parallel context generation** - use concurrency parameter
+
+### Tool Registry
+
+- **Semantic search requires embeddings** - generate once at startup
+- **Keyword search is instant** - fallback when embeddings not available
+- **Lazy tool loading** - defer heavy tools until needed
+
+### HTTP Server
+
+- **Session map is in-memory** - will not scale to millions
+- **Use external session store** for production (Redis, etc.)
+- **Streaming responses** for long-running tasks
+- **CORS configuration** for security
+
+---
+
+## Security Considerations
+
+### Shell Tool
+
+**Dangerous pattern blocking**:
+- `rm -rf /` - Filesystem destruction
+- `dd if=/dev/random of=/dev/sda` - Disk wiping
+- `mkfs.*` - Filesystem formatting
+- Fork bombs
+
+**Mitigations**:
+- Pattern-based blocking (not foolproof)
+- Timeout limits (30s default)
+- Output size limits (1MB default)
+
+**Recommendations**:
+- Run in containerized environment
+- Use read-only filesystem mounts
+- Implement command allowlists for production
+- Log all shell commands
+
+### Filesystem Tools
+
+**Path Sandboxing**:
+- Only allowed directories are accessible
+- Path traversal prevention
+- Symlink validation
+- Null byte protection
+
+### Memory System
+
+**SQL Injection**: Not vulnerable (uses prepared statements)
+
+**XSS**: Possible if rendering memory content without sanitization
+
+**Data Privacy**: Memory persists indefinitely - implement retention policies
+
+### HTTP Server
+
+**CORS**: Configure allowed origins carefully
+
+**Authentication**: Not implemented - add middleware for production
+
+**Rate Limiting**: Not implemented - add for production
+
+**Input Validation**: Uses Zod schemas - pretty robust
+
+### API Keys
+
+**Storage**: Never commit `.env` file
+
+**Rotation**: Rotate keys periodically
+
+**Scope**: Use minimum necessary permissions
+
+---
+
+## Troubleshooting
+
+### Common Issues
+
+**"No search engines available"**
+- Check `BRAVE_API_KEY` or `TAVILY_API_KEY` environment variables
+- Verify API key validity
+
+**"Tool registry has no embeddings"**
+- Ensure `enableSemanticSearch` is true
+- Check `GOOGLE_GENERATIVE_AI_API_KEY`
+
+**"Memory extraction failed"**
+- Check extraction model configuration
+- Verify OpenRouter API key
+- Check rate limits
+
+**"Codebase indexing fails"**
+- Verify workspace path exists
+- Check file permissions
+- Review supported file extensions
+
+**"TypeScript errors"**
+- Run `pnpm build` to check
+- Ensure all imports are correct
+- Check `tsconfig.json` paths
+
+**"Device control not working"**
+- Check platform support
+- Verify nut.js installation
+- Check accessibility permissions (macOS)
+
+---
+
+## Design Patterns
+
+### Factory Pattern
+
+Used extensively for creating complex objects:
+- `createAgentRuntime()` - Runtime factory
+- `createAgent()` - Agent factory
+- `createAgentWithRole()` - Role-based agents
+- `createMemoryProvider()` - Provider factory
+- `createCodebaseRAG()` - RAG factory
+- `createToolRegistry()` - Registry factory
+- `createDeviceTools()` - Device tools factory
+
+### Strategy Pattern
+
+Used for pluggable behavior:
+- **Chunking Strategies**: `CodeChunkingStrategy`, `DocumentChunkingStrategy`
+- **Memory Providers**: `MemoryLite`, `GraphitiProvider`
+- **Agent Roles**: `generic`, `researcher`, `coder`, `analyst`
+
+### Observer Pattern
+
+Used for step tracking and logging:
+- `onStepFinish` callback in agent orchestrator
+- Progress callbacks in RAG indexing
+
+### Repository Pattern
+
+Used in memory system:
+- `StorageAdapter` interface with `entities`, `relations`, `facts`, `episodes` repositories
+- Multiple implementations (in-memory, SQLite)
+
+### Facade Pattern
+
+Used for simplified APIs:
+- `AgentRuntime` facade for complex initialization
+- `CodebaseRAG` facade for multi-step retrieval
+- Tool wrappers simplify complex operations
+
+---
+
+**End of Documentation**
+
+This documentation covers the complete monorepo architecture. For additional details on specific topics, see:
+- `ARCHITECTURE.md` - Evolution roadmap
+- `CONTRIBUTING.md` - Contribution guidelines
+- `TESTING.md` - Testing strategies
+- Individual package READMEs
