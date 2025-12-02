@@ -1,0 +1,46 @@
+{
+  "name": "@agent/benchmarks",
+  "version": "0.1.0",
+  "description": "Benchmark adapters for testing the agent against HAL, tau-bench, SWE-bench, and other evaluation harnesses",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./hal": {
+      "import": "./dist/adapters/hal.js",
+      "types": "./dist/adapters/hal.d.ts"
+    },
+    "./tau-bench": {
+      "import": "./dist/adapters/tau-bench.js",
+      "types": "./dist/adapters/tau-bench.d.ts"
+    }
+  },
+  "bin": {
+    "agent-benchmark": "./dist/cli.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "benchmark:tau-retail": "tsx src/cli.ts --benchmark tau-bench --domain retail",
+    "benchmark:tau-airline": "tsx src/cli.ts --benchmark tau-bench --domain airline",
+    "benchmark:gaia": "tsx src/cli.ts --benchmark gaia"
+  },
+  "dependencies": {
+    "@agent/core": "workspace:*",
+    "@agent/shared": "workspace:*",
+    "commander": "^13.1.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "^2.1.9"
+  }
+}

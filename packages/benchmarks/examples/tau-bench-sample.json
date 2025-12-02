@@ -1,0 +1,34 @@
+[
+  {
+    "id": "retail-001",
+    "messages": [
+      {"role": "user", "content": "I want to return my order #12345"}
+    ],
+    "tools": [
+      {
+        "name": "get_order_details",
+        "description": "Get details of an order by order ID",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "order_id": {"type": "string", "description": "The order ID"}
+          },
+          "required": ["order_id"]
+        }
+      },
+      {
+        "name": "initiate_return",
+        "description": "Initiate a return for an order",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "order_id": {"type": "string"},
+            "reason": {"type": "string"}
+          },
+          "required": ["order_id", "reason"]
+        }
+      }
+    ]
+  }
+]
+

@@ -1,0 +1,11 @@
+[
+  {
+    "id": "test-001",
+    "prompt": "What is 2 + 2? Reply with just the number."
+  },
+  {
+    "id": "test-002", 
+    "prompt": "List three primary colors. Reply with a comma-separated list."
+  }
+]
+

@@ -2,7 +2,15 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "./dist",
-    "skipLibCheck": true
+    "rootDir": "./src",
+    "declaration": true,
+    "declarationMap": true,
+    "skipLibCheck": true,
+    "baseUrl": ".",
+    "paths": {
+      "@agent/shared": ["../shared/dist"],
+      "@agent/shared/*": ["../shared/dist/*"]
+    }
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "**/*.test.ts"]
