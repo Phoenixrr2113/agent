@@ -1,84 +1,73 @@
-#!/usr/bin/env tsx
 
-import 'dotenv/config';
-import { readFileSync } from 'fs';
-import { createAgentRuntime } from '../src/runtime/agent-runtime.js';
-import { logger } from '../src/core/logger.js';
+import { config } from 'dotenv';
+import { resolve } from 'path';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+import fs from 'fs/promises';
+import { createAgentRuntime } from '@agent/core';
+import { logger } from '@agent/shared';
 
-const promptFile = process.argv[2];
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
-if (!promptFile) {
-  console.error('Usage: npm run test-agent <prompt-file>');
-  console.error('Example: npm run test-agent tests/prompts/research-task.txt');
-  process.exit(1);
-}
+// Load environment variables
+config({ path: resolve(__dirname, '../.env') });
 
-let promptText: string;
-try {
-  promptText = readFileSync(promptFile, 'utf-8').trim();
-} catch (error) {
-  console.error(`Failed to read prompt file: ${promptFile}`);
-  console.error(error);
-  process.exit(1);
-}
+logger.reconfigure();
 
-if (!promptText) {
-  console.error('Prompt file is empty');
-  process.exit(1);
-}
+async function runTest() {
+  const promptFile = process.argv[2];
 
-console.log('\n🧪 Agent Test Runner\n');
-console.log('━'.repeat(80));
-console.log('📄 Prompt File:', promptFile);
-console.log('📝 Prompt Length:', promptText.length, 'characters');
-console.log('━'.repeat(80));
-console.log('\n📋 PROMPT:\n');
-console.log(promptText);
-console.log('\n' + '━'.repeat(80) + '\n');
-
-const workspaceRoot = process.env.WORKSPACE_ROOT || process.argv[3];
-
-const runtime = await createAgentRuntime({
-  workspaceRoot,
-  askUserHandler: async (question: string) => {
-    logger.warn('⚠️  Agent requested user input but running in non-interactive mode');
-    logger.info('Question:', { question });
-    return 'Please proceed with your best judgment.';
-  },
-});
-
-const session = runtime.createSession();
-
-console.log('🤖 Starting agent execution...\n');
-const startTime = Date.now();
-
-try {
-  const result = await session.send(promptText);
-
-  const duration = Date.now() - startTime;
-  const durationSec = (duration / 1000).toFixed(2);
-
-  console.log('\n' + '━'.repeat(80));
-  console.log('✅ AGENT RESPONSE:\n');
-  console.log(result.text);
-  console.log('\n' + '━'.repeat(80));
-  console.log('\n📊 EXECUTION SUMMARY:\n');
-  console.log('⏱️  Duration:', durationSec, 'seconds');
-  console.log('🔧 Tools Used:', result.toolsUsed.length > 0 ? result.toolsUsed.join(', ') : 'None');
-  console.log('📈 Steps:', result.stepsUsed);
-  console.log('✓  Completed:', result.completed ? 'Yes' : 'No');
-  console.log('❓ Needs Input:', result.needsInput ? 'Yes' : 'No');
-  
-  if (result.pendingQuestion) {
-    console.log('💬 Pending Question:', result.pendingQuestion);
+  if (!promptFile) {
+    console.error('Please provide a prompt file path');
+    process.exit(1);
   }
 
-  console.log('\n' + '━'.repeat(80) + '\n');
+  try {
+    const promptPath = resolve(process.cwd(), promptFile);
+    const promptContent = await fs.readFile(promptPath, 'utf-8');
 
-} catch (error) {
-  console.error('\n❌ ERROR:', error);
-  process.exit(1);
-} finally {
-  await runtime.shutdown();
+    console.log('\n🧪 Agent Test Runner\n');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log(`📄 Prompt File: ${promptFile}`);
+    console.log(`📝 Prompt Length: ${promptContent.length} characters`);
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+    console.log('📋 PROMPT:\n');
+    console.log(promptContent);
+    console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+    console.log('🤖 Starting agent execution...\n');
+
+    const runtime = await createAgentRuntime({
+      workspaceRoot: process.cwd(),
+      askUserHandler: async (question: string) => {
+        logger.info('🤔 Agent asks', { question });
+        return 'This is a non-interactive test. Please proceed with the best possible action based on the initial prompt.';
+      },
+    });
+
+    const session = runtime.createSession();
+    const startTime = Date.now();
+
+    const result = await session.send(promptContent);
+
+    const duration = ((Date.now() - startTime) / 1000).toFixed(2);
+
+    console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('✅ AGENT RESPONSE:\n');
+    console.log(result.text);
+    console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+    console.log('📊 EXECUTION SUMMARY:\n');
+    console.log(`⏱️  Duration: ${duration} seconds`);
+    console.log(`🔧 Tools Used: ${result.toolsUsed.join(', ') || 'None'}`);
+    console.log(`✓  Completed: ${result.completed ? 'Yes' : 'No'}`);
+    console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+
+    await runtime.shutdown();
+
+  } catch (error) {
+    console.error('Error running test:', error);
+    process.exit(1);
+  }
 }
 
+runTest();

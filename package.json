@@ -29,7 +29,8 @@
     "lint": "turbo run lint",
     "test": "turbo run test",
     "chat": "pnpm --filter @agent/cli chat",
-    "server": "pnpm --filter @agent/server dev"
+    "server": "pnpm --filter @agent/server dev",
+    "test-agent": "tsx scripts/test-agent.ts"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

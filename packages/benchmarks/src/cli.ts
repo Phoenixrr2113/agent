@@ -1,6 +1,9 @@
 #!/usr/bin/env node
+import 'dotenv/config';
 import { Command } from 'commander';
 import { logger } from '@agent/shared';
+
+logger.reconfigure();
 import { run as halRun, shutdown as halShutdown, resetSession } from './adapters/hal.js';
 import { runTauBenchTask, shutdown as tauShutdown } from './adapters/tau-bench.js';
 import {
