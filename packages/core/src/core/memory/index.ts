@@ -16,6 +16,7 @@ import { createInMemoryStorage, type StorageAdapter } from './storage.js';
 import { createSQLiteStorage } from './storage-sqlite.js';
 import { extractFromText, detectContradictionsBatch, resolveEntityConflicts } from './extraction.js';
 import { logger } from '@agent/shared';
+import { BaseMemoryProvider } from './provider-base.js';
 
 /**
  * Normalizes fact content for comparison to handle LLM extraction variations.
@@ -32,6 +33,7 @@ function normalizeFactContent(content: string): string {
 export * from './types.js';
 export { createInMemoryStorage } from './storage.js';
 export { createSQLiteStorage } from './storage-sqlite.js';
+export { BaseMemoryProvider } from './provider-base.js';
 
 const DEFAULT_EXTRACTION_MODEL = process.env.MODEL_EXTRACTION || process.env.MODEL_STANDARD || 'google/gemini-2.0-flash-001';
 
@@ -104,7 +106,7 @@ export function createMemoryLite(config: Omit<MemoryConfig, 'provider'>): Memory
     return entity;
   }
 
-  return {
+  const implementation = {
     async add(input: MemoryAddInput) {
       const overallStartTime = performance.now();
       logger.info('⏱️  [memory] Starting memory add operation', {
@@ -375,5 +377,48 @@ export function createMemoryLite(config: Omit<MemoryConfig, 'provider'>): Memory
       await storage.close();
     },
   };
+
+  class MemoryLiteProvider extends BaseMemoryProvider {
+    async add(input: MemoryAddInput) {
+      const result = await implementation.add(input);
+      this.validateAddResult(result);
+      return result;
+    }
+
+    async search(input: MemorySearchInput): Promise<SearchResult> {
+      const result = await implementation.search(input);
+      return this.validateSearchResult(result);
+    }
+
+    async getEpisodes(groupId: string, limit = 10): Promise<Episode[]> {
+      const result = await implementation.getEpisodes(groupId, limit);
+      return this.validateEpisodes(result);
+    }
+
+    async getFact(factId: string): Promise<Fact | null> {
+      const result = await implementation.getFact(factId);
+      return this.validateFact(result);
+    }
+
+    async getEntity(entityId: string): Promise<Entity | null> {
+      const result = await implementation.getEntity(entityId);
+      return this.validateEntity(result);
+    }
+
+    async getRelatedEntities(entityId: string, depth = 1): Promise<Entity[]> {
+      const result = await implementation.getRelatedEntities(entityId, depth);
+      return this.validateEntities(result);
+    }
+
+    async invalidateFact(factId: string): Promise<void> {
+      await implementation.invalidateFact(factId);
+    }
+
+    async close(): Promise<void> {
+      await implementation.close();
+    }
+  }
+
+  return new MemoryLiteProvider();
 }
 

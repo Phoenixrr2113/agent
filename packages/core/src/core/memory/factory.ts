@@ -2,6 +2,9 @@ import type { MemoryProvider, MemoryConfig } from './types.js';
 import { createMemoryLite } from './index.js';
 import { createGraphitiProvider } from './provider-graphiti.js';
 
+export { BaseMemoryProvider } from './provider-base.js';
+export type { MemoryProvider, MemoryConfig } from './types.js';
+
 export function createMemoryProvider(config: MemoryConfig): MemoryProvider {
   if (config.provider === 'graphiti') {
     const url = config.graphitiUrl || process.env.GRAPHITI_URL || 'http://localhost:8000';
