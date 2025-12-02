@@ -5,6 +5,7 @@ export { memoryTools, memorySearchTool, memoryGetEpisodesTool, memoryGetFactTool
 export { planTool, validationTool } from './workflow.js';
 export { createCodebaseTools } from './codebase.js';
 export { createAgentTools } from './agent.js';
+export { createFilesystemTools, setAllowedDirectories, getAllowedDirectories } from './filesystem.js';
 export {
   ToolRegistry,
   createToolRegistry,
