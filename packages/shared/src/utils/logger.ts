@@ -3,6 +3,31 @@ import path from 'path';
 
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
+function findRepositoryRoot(startDir?: string): string {
+  let currentDir = startDir || process.cwd();
+  while (currentDir !== path.dirname(currentDir)) {
+    if (fs.existsSync(path.join(currentDir, 'pnpm-workspace.yaml'))) {
+      return currentDir;
+    }
+    if (fs.existsSync(path.join(currentDir, 'package.json'))) {
+      const packageJson = JSON.parse(fs.readFileSync(path.join(currentDir, 'package.json'), 'utf-8'));
+      if (packageJson.workspaces) {
+        return currentDir;
+      }
+    }
+    currentDir = path.dirname(currentDir);
+  }
+  return process.cwd();
+}
+
+function resolveLogFilePath(logFilePath: string): string {
+  if (path.isAbsolute(logFilePath)) {
+    return logFilePath;
+  }
+  const repoRoot = findRepositoryRoot();
+  return path.resolve(repoRoot, logFilePath);
+}
+
 export interface LoggerOptions {
   level?: LogLevel;
   enableColors?: boolean;
@@ -55,11 +80,12 @@ export function createLogger(options: LoggerOptions = {}): Logger {
   let fileStream: fs.WriteStream | null = null;
 
   if (logFile) {
-    const logDir = path.dirname(logFile);
+    const resolvedLogFile = resolveLogFilePath(logFile);
+    const logDir = path.dirname(resolvedLogFile);
     if (!fs.existsSync(logDir)) {
       fs.mkdirSync(logDir, { recursive: true });
     }
-    fileStream = fs.createWriteStream(logFile, { flags: 'a' });
+    fileStream = fs.createWriteStream(resolvedLogFile, { flags: 'a' });
   }
 
   function shouldLog(level: LogLevel): boolean {
@@ -147,11 +173,12 @@ export function createLogger(options: LoggerOptions = {}): Logger {
       }
 
       if (newLogFile) {
-        const logDir = path.dirname(newLogFile);
+        const resolvedLogFile = resolveLogFilePath(newLogFile);
+        const logDir = path.dirname(resolvedLogFile);
         if (!fs.existsSync(logDir)) {
           fs.mkdirSync(logDir, { recursive: true });
         }
-        fileStream = fs.createWriteStream(newLogFile, { flags: 'a' });
+        fileStream = fs.createWriteStream(resolvedLogFile, { flags: 'a' });
       }
     },
 
