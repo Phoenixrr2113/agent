@@ -6,7 +6,8 @@ import { logger } from '@agent/shared';
 export function createAgentTools(rl: readline.Interface | null) {
   return {
     task_complete: tool({
-      description: 'Call this when you have fully completed the user\'s request and have nothing more to do. This will end the current agent iteration.',
+      description:
+        'Signal that you have fully completed the user\'s request. IMPORTANT: Calling this tool ENDS your execution immediately - no further actions will be taken. Only call when you are truly done.',
       inputSchema: z.object({
         summary: z.string().describe('A brief summary of what was accomplished'),
         nextSteps: z.string().optional().default('').describe('Optional suggestions for what the user might want to do next'),

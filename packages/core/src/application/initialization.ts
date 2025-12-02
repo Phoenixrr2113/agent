@@ -76,7 +76,7 @@ export async function initializeAgent(config: InitializationConfig = {}): Promis
   const activeTools = {
     shell: shellTool,
     plan: planTool,
-    think: sequentialThinkingTool,
+    sequential_thinking: sequentialThinkingTool,
     ...agentTools,
   };
 
