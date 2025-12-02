@@ -13,6 +13,7 @@ import { planTool, validationTool } from '../tools/workflow.js';
 import { createCodebaseTools } from '../tools/codebase.js';
 import { createAgentTools } from '../tools/agent.js';
 import { sequentialThinkingTool } from '../tools/sequential-thinking.js';
+import { createFilesystemTools } from '../tools/filesystem.js';
 import {
   ToolRegistry,
   createToolRegistry,
@@ -71,6 +72,9 @@ export async function initializeAgent(config: InitializationConfig = {}): Promis
   const workspaceTools = codebaseRAG && workspaceRoot
     ? createCodebaseTools(codebaseRAG, grepWorkspace, workspaceRoot)
     : {};
+  const filesystemTools = workspaceRoot
+    ? createFilesystemTools(workspaceRoot)
+    : {};
   const agentTools = createAgentTools(rl);
 
   const activeTools = {
@@ -86,6 +90,7 @@ export async function initializeAgent(config: InitializationConfig = {}): Promis
     ...memoryTools,
     validate: validationTool,
     ...workspaceTools,
+    ...filesystemTools,
   };
 
   registry.registerMany(activeTools, { deferLoading: false });
