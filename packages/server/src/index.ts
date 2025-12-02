@@ -168,8 +168,10 @@ function formatResult(result: TaskResult) {
 }
 
 export async function startServer(config: ServerConfig = {}) {
+  logger.reconfigure();
+
   const { app, runtime, port } = await createServer(config);
-  
+
   const server = serve({ fetch: app.fetch, port }, (info) => {
     logger.info(`🚀 Agent server running on http://localhost:${info.port}`);
   });

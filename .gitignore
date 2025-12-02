@@ -20,3 +20,5 @@ apps/**/*.tsbuildinfo
 !packages/**/dist/**
 !apps/**/dist/**
 !apps/**/plugins/**
+packages/core/tsconfig.tsbuildinfo
+packages/shared/tsconfig.tsbuildinfo

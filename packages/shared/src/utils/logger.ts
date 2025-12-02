@@ -17,6 +17,7 @@ export interface Logger {
   warn(message: string, meta?: Record<string, any>): void;
   error(message: string, meta?: Record<string, any>): void;
   setLevel(level: LogLevel): void;
+  reconfigure(options?: LoggerOptions): void;
   close(): void;
 }
 
@@ -133,6 +134,25 @@ export function createLogger(options: LoggerOptions = {}): Logger {
 
     setLevel(level: LogLevel): void {
       currentLevel = level;
+    },
+
+    reconfigure(newOptions: LoggerOptions = {}): void {
+      currentLevel = newOptions.level || getEnvLogLevel();
+
+      const newLogFile = newOptions.logFile || process.env.LOG_FILE;
+
+      if (fileStream) {
+        fileStream.end();
+        fileStream = null;
+      }
+
+      if (newLogFile) {
+        const logDir = path.dirname(newLogFile);
+        if (!fs.existsSync(logDir)) {
+          fs.mkdirSync(logDir, { recursive: true });
+        }
+        fileStream = fs.createWriteStream(newLogFile, { flags: 'a' });
+      }
     },
 
     close(): void {
