@@ -38,6 +38,9 @@ agent-platform/
 - **Web Intelligence**: Search (Brave/Tavily) and page parsing (Readability)
 - **Shell Execution**: Full bash access for git, filesystem, and system operations
 - **Device Control**: High-performance cross-platform automation via nut.js (100x faster than CLI tools, Wayland support)
+- **Filesystem Tools**: 12 comprehensive file operations (read, write, edit, search, move, metadata)
+- **Smart Tool Management**: Deferred loading with semantic search and dynamic activation
+- **Sequential Thinking**: Multi-step reasoning with branching and revision support
 - **Optional Codebase Tools**: RAG-powered semantic search and grep (when workspace provided)
 - **Session Management**: Multiple concurrent conversations with isolated history
 - **HTTP Server**: Built-in Hono server with REST API
@@ -211,28 +214,72 @@ pnpm --filter @agent/core add <package>
 
 ## Tools
 
-### Always Available (11 tools)
+The agent uses a smart tool management system with **deferred loading** - tools are loaded on-demand to reduce token usage. Tools are organized into active (always loaded) and deferred (loaded when needed).
+
+**Total: 29 tools** (with workspace), **15 core tools** (without workspace)
+
+### Active Tools (Always Loaded)
 
 | Tool | Description |
 |------|-------------|
-| `shell` | Execute bash commands |
-| `web_search` | Search the internet (Brave/Tavily) |
-| `fetch_page` | Fetch and parse web pages |
+| `shell` | Execute bash commands with full system access |
+| `plan` | Create and track multi-step plans with task breakdown |
+| `sequential_thinking` | Complex reasoning with branching and revision support |
+| `task_complete` | Signal task completion and end execution |
+| `ask_user` | Request user input or clarification |
+
+### Tool Management (3 tools)
+
+| Tool | Description |
+|------|-------------|
+| `search_tools` | Semantic search across available tools by description |
+| `activate_tool` | Dynamically activate deferred tools when needed |
+| `deactivate_tool` | Deactivate tools to reduce token usage |
+
+### Deferred Tools (Loaded on Demand)
+
+#### Web & Search (2 tools)
+| Tool | Description |
+|------|-------------|
+| `web_search` | Search the internet (Brave/Tavily APIs) |
+| `fetch_page` | Fetch and parse web pages with Readability |
+
+#### Memory & Knowledge Graph (5 tools)
+| Tool | Description |
+|------|-------------|
 | `memory_search` | Semantic search over stored knowledge |
 | `memory_get_episodes` | Get recent conversation episodes |
 | `memory_get_fact` | Retrieve specific fact by ID |
 | `memory_get_entity` | Get entity details by ID |
-| `memory_get_related` | Find related entities via graph |
-| `plan` | Create and track multi-step plans |
-| `ask_user` | Request user input |
-| `task_complete` | Signal task completion |
+| `memory_get_related` | Find related entities via graph connections |
 
-### Workspace Tools (3 tools, when `workspaceRoot` provided)
+### Workspace Tools (when `workspaceRoot` provided)
 
+#### Codebase Analysis (2 tools)
 | Tool | Description |
 |------|-------------|
-| `search_codebase` | Semantic search over indexed code and documents |
+| `search_codebase` | Semantic search over indexed code and documents using RAG |
 | `grep_codebase` | Regex pattern matching in files |
+
+#### Filesystem Operations (12 tools)
+| Tool | Description |
+|------|-------------|
+| `read_text_file` | Read file contents (supports head/tail for large files) |
+| `read_media_file` | Read images/audio as base64 with MIME type detection |
+| `read_multiple_files` | Batch read multiple files simultaneously |
+| `write_file` | Create or overwrite files (atomic write for safety) |
+| `edit_file` | Line-based text replacement with git-style diff output |
+| `create_directory` | Create directories recursively (idempotent) |
+| `list_directory` | List directory contents with file/directory prefixes |
+| `list_directory_with_sizes` | List with file sizes and sorting options |
+| `directory_tree` | Generate recursive directory tree structure |
+| `search_files` | Glob-pattern file search with exclude support |
+| `get_file_info` | Get file metadata (size, timestamps, permissions) |
+| `move_file` | Rename or move files/directories |
+
+#### Validation (1 tool)
+| Tool | Description |
+|------|-------------|
 | `validate` | Run TypeScript checks and tests |
 
 **RAG (Retrieval-Augmented Generation)**: The workspace indexing uses a pluggable strategy system that automatically selects the appropriate chunking method based on file type:
@@ -242,6 +289,63 @@ pnpm --filter @agent/core add <package>
 - **Custom strategies** - Easily add support for new file types (PDFs, etc.)
 
 See [packages/core/src/core/rag/strategies/README.md](packages/core/src/core/rag/strategies/README.md) for details on creating custom chunking strategies.
+
+### Tool Usage Examples
+
+#### Filesystem Tools
+
+```typescript
+const runtime = await createAgentRuntime({ workspaceRoot: '/path/to/project' });
+const session = runtime.createSession();
+
+// Read a file
+await session.send('Read the package.json file');
+
+// Edit a file with diff preview
+await session.send('Replace "version": "1.0.0" with "version": "2.0.0" in package.json');
+
+// Search for files
+await session.send('Find all TypeScript test files');
+
+// Create a directory and write files
+await session.send('Create a new feature directory with index.ts and tests');
+
+// Get file metadata
+await session.send('Show me file info for the largest files in src/');
+```
+
+#### Sequential Thinking
+
+The `sequential_thinking` tool enables complex multi-step reasoning:
+
+```typescript
+// Agent automatically uses sequential thinking for complex tasks
+await session.send('Analyze the performance bottlenecks in this codebase and suggest optimizations');
+
+// The agent will:
+// 1. Think through the problem (Thought 1/5)
+// 2. Search codebase for performance patterns
+// 3. Continue reasoning (Thought 2/5)
+// 4. Identify specific issues
+// 5. Revise earlier thoughts if needed
+// 6. Provide final recommendations
+```
+
+#### Tool Management
+
+```typescript
+// Search for tools by description
+await session.send('What tools are available for working with files?');
+// Agent uses search_tools to find filesystem tools
+
+// Deferred tools are automatically activated when needed
+await session.send('Search the web for TypeScript best practices');
+// Agent automatically activates web_search tool
+
+// Manually control tool activation
+await session.send('Activate the memory search tool');
+await session.send('Deactivate web search to save tokens');
+```
 
 ## Memory System
 
