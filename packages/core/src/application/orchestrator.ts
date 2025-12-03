@@ -124,9 +124,25 @@ export function createAgent(
 ) {
   const { maxSteps = 50, activationManager } = options;
 
+  // Create custom stop condition that checks for task_complete
+  const stopWhen = ({ steps }: { steps: StepResult<any>[] }) => {
+    // Check if task_complete was called in any step
+    const taskCompleted = steps.some((step) =>
+      step.toolCalls?.some((tc) => tc.toolName === 'task_complete')
+    );
+
+    if (taskCompleted) {
+      logger.info('✅ Task marked as complete by agent');
+      return true;
+    }
+
+    // Otherwise check step count
+    return stepCountIs(maxSteps)({ steps });
+  };
+
   return createAgentWithRole('generic', tools, {
     modelType: 'standard',
-    stopWhen: stepCountIs(maxSteps),
+    stopWhen,
     prepareStep: createPrepareStep(activationManager),
     onStepFinish: createStepFinishHandler(),
   });
