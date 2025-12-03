@@ -55,7 +55,7 @@ export function createCodebaseRAG(
     enableBM25 = true,
     enableReranking = true,
     rerankTopN = 100,
-    returnTopN = 20,
+    returnTopN = 10,
     onProgress,
     strategyRegistry,
   } = options;
