@@ -1,0 +1,172 @@
+[
+  {
+    "id": "planning-medium-001",
+    "category": "multi-step-planning",
+    "difficulty": "medium",
+    "prompt": "Create a complete feature: Add a new benchmark adapter for 'WebArena' to packages/benchmarks/src/adapters/. Include: TypeScript interface, task runner, result scoring, unit tests, and update the CLI to support it. Plan all steps before implementing.",
+    "required_steps": [
+      "Plan the implementation",
+      "Create interface types",
+      "Implement adapter logic",
+      "Add scoring function",
+      "Write unit tests",
+      "Update CLI commands",
+      "Update exports",
+      "Test end-to-end"
+    ],
+    "min_steps": 8,
+    "success_criteria": {
+      "planning_document_created": true,
+      "all_files_created": true,
+      "tests_pass": true,
+      "cli_works": true,
+      "typescript_compiles": true
+    },
+    "grading": {
+      "type": "feature_implementation",
+      "check_planning": true,
+      "verify_completeness": true,
+      "run_tests": true
+    }
+  },
+  {
+    "id": "planning-medium-002",
+    "category": "multi-step-planning",
+    "difficulty": "medium",
+    "prompt": "Refactor the tool registry: Extract the search functionality into a separate SearchService class that can be reused. Update all references, maintain backwards compatibility, add tests, and ensure no functionality is lost.",
+    "required_steps": [
+      "Analyze current implementation",
+      "Design new SearchService class",
+      "Extract search methods",
+      "Update ToolRegistry to use SearchService",
+      "Update all callers",
+      "Add tests for SearchService",
+      "Verify backwards compatibility",
+      "Update documentation"
+    ],
+    "affected_files_count": "5+",
+    "success_criteria": {
+      "service_extracted": true,
+      "all_references_updated": true,
+      "tests_pass": true,
+      "backwards_compatible": true
+    },
+    "grading": {
+      "type": "refactoring",
+      "check_separation_of_concerns": true,
+      "verify_no_functionality_lost": true
+    }
+  },
+  {
+    "id": "planning-hard-001",
+    "category": "multi-step-planning",
+    "difficulty": "hard",
+    "prompt": "Implement a complete caching layer: Add a Redis-based cache for RAG embeddings (replacing file-based cache). Requirements: connection management, TTL support, cache invalidation, fallback to file cache if Redis unavailable, performance comparison, tests, configuration via environment variables, and migration script from old cache format.",
+    "required_components": [
+      "Redis client setup",
+      "Cache interface abstraction",
+      "Redis cache implementation",
+      "File cache implementation (existing)",
+      "Cache factory with fallback logic",
+      "TTL and invalidation logic",
+      "Configuration management",
+      "Migration script",
+      "Performance benchmarks",
+      "Unit and integration tests",
+      "Documentation"
+    ],
+    "min_steps": 15,
+    "success_criteria": {
+      "redis_cache_works": true,
+      "fallback_works": true,
+      "migration_script_works": true,
+      "performance_improved": true,
+      "all_tests_pass": true,
+      "documented": true
+    },
+    "grading": {
+      "type": "infrastructure_implementation",
+      "check_completeness": true,
+      "verify_error_handling": true,
+      "measure_performance": true
+    }
+  },
+  {
+    "id": "planning-hard-002",
+    "category": "multi-step-planning",
+    "difficulty": "hard",
+    "prompt": "Build a complete benchmarking dashboard: Create a web-based dashboard that displays benchmark results over time. Requirements: data collection service, results storage (SQLite), REST API for querying results, React frontend with charts, trend analysis, comparison views, and deployment configuration. Plan the architecture first.",
+    "required_components": [
+      "Architecture document",
+      "Database schema design",
+      "Backend API (Express + TypeScript)",
+      "SQLite integration",
+      "Results collection service",
+      "REST endpoints",
+      "Frontend React app",
+      "Chart components (recharts)",
+      "Trend analysis logic",
+      "Docker deployment config",
+      "Tests for API and frontend"
+    ],
+    "min_steps": 20,
+    "success_criteria": {
+      "architecture_documented": true,
+      "backend_api_works": true,
+      "frontend_renders": true,
+      "data_persists": true,
+      "charts_display": true,
+      "can_deploy": true
+    },
+    "grading": {
+      "type": "full_stack_implementation",
+      "check_architecture": true,
+      "verify_all_layers": true,
+      "test_integration": true
+    }
+  },
+  {
+    "id": "planning-hard-003",
+    "category": "multi-step-planning",
+    "difficulty": "hard",
+    "prompt": "Migrate to a new AI provider: Replace all Google Gemini calls with Anthropic Claude. Affects: embeddings (switch to Voyage AI), chat completions (Claude 3.5), context generation, tool embeddings. Requirements: provider abstraction layer, configuration management, cost comparison, performance testing, gradual rollout strategy, backwards compatibility during migration, and comprehensive testing.",
+    "affected_areas": [
+      "Embedding generation (RAG)",
+      "Tool embeddings (registry)",
+      "Context generation",
+      "Chat completions (agent runtime)",
+      "Configuration management",
+      "Cost tracking",
+      "Performance monitoring"
+    ],
+    "required_steps": [
+      "Audit all AI provider usage",
+      "Design provider abstraction interface",
+      "Implement Anthropic provider",
+      "Implement Voyage AI for embeddings",
+      "Add provider factory/strategy pattern",
+      "Update configuration system",
+      "Add cost tracking",
+      "Create A/B testing framework",
+      "Migrate each component",
+      "Performance comparison",
+      "Update documentation",
+      "Deprecation plan for old provider"
+    ],
+    "min_steps": 25,
+    "success_criteria": {
+      "abstraction_layer_created": true,
+      "all_components_migrated": true,
+      "backwards_compatible": true,
+      "performance_comparable": true,
+      "cost_tracked": true,
+      "tests_pass": true
+    },
+    "grading": {
+      "type": "system_migration",
+      "check_abstraction_quality": true,
+      "verify_completeness": true,
+      "measure_impact": true
+    }
+  }
+]

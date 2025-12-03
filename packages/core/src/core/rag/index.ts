@@ -1,5 +1,5 @@
 import { embed, embedMany } from 'ai';
-import { google } from '@ai-sdk/google';
+import { openai } from '@ai-sdk/openai';
 import fs from 'fs/promises';
 import path from 'path';
 import { createFileCache, computeHash, type Cache } from './cache.js';
@@ -55,7 +55,7 @@ export function createCodebaseRAG(
     enableBM25 = true,
     enableReranking = true,
     rerankTopN = 100,
-    returnTopN = 20,
+    returnTopN = 10,
     onProgress,
     strategyRegistry,
   } = options;
@@ -82,13 +82,49 @@ export function createCodebaseRAG(
   const scanWorkspaceFallback = async (): Promise<Chunk[]> => {
     const chunks: Chunk[] = [];
 
+    // Directories to exclude from indexing (matches common .gitignore patterns)
+    const excludedDirs = new Set([
+      'node_modules',
+      'dist',
+      '.git',
+      'build',
+      '.rag-cache',
+      'workspace.rag-cache',
+      'logs',
+      '.turbo',
+      'coverage',
+      '.next',
+      '.nuxt',
+      'out',
+      'tests/temp',
+    ]);
+
+    // File patterns to exclude
+    const excludedFilePatterns = [
+      /\.log$/,
+      /\.db$/,
+      /\.db-shm$/,
+      /\.db-wal$/,
+      /\.tsbuildinfo$/,
+    ];
+
+    const shouldExcludeFile = (filename: string): boolean => {
+      return excludedFilePatterns.some(pattern => pattern.test(filename));
+    };
+
     const scanDir = async (dir: string): Promise<void> => {
       const entries = await fs.readdir(dir, { withFileTypes: true });
 
       for (const entry of entries) {
         const fullPath = path.join(dir, entry.name);
 
-        if (['node_modules', 'dist', '.git', 'build', '.rag-cache'].includes(entry.name)) {
+        // Skip excluded directories
+        if (entry.isDirectory() && excludedDirs.has(entry.name)) {
+          continue;
+        }
+
+        // Skip excluded file patterns
+        if (entry.isFile() && shouldExcludeFile(entry.name)) {
           continue;
         }
 
@@ -132,7 +168,7 @@ export function createCodebaseRAG(
 
     log('Generating embeddings...');
     const { embeddings: vectors } = await embedMany({
-      model: google.embedding('text-embedding-004') as any,
+      model: openai.embedding('text-embedding-3-small'),
       values: contextualChunks.map((c) => c.contextualContent),
     });
 
@@ -249,7 +285,7 @@ export function createCodebaseRAG(
 
       const embeddingStartTime = performance.now();
       const { embedding: queryEmbedding } = await embed({
-        model: google.embedding('text-embedding-004') as any,
+        model: openai.embedding('text-embedding-3-small'),
         value: query,
       });
       const embeddingDuration = performance.now() - embeddingStartTime;

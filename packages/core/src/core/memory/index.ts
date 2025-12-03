@@ -1,5 +1,5 @@
 import { embed } from 'ai';
-import { google } from '@ai-sdk/google';
+import { openai } from '@ai-sdk/openai';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { randomUUID } from 'crypto';
 import type {
@@ -43,12 +43,12 @@ export function createMemoryLite(config: Omit<MemoryConfig, 'provider'>): Memory
     : createInMemoryStorage();
 
   const openrouter = createOpenRouter();
-  const embeddingModel = google.embedding(config.embeddingModel || 'text-embedding-004');
+  const embeddingModel = openai.embedding(config.embeddingModel || 'text-embedding-3-small');
   const extractionModel = openrouter(config.extractionModel || DEFAULT_EXTRACTION_MODEL);
 
   async function getEmbedding(text: string): Promise<number[]> {
     const startTime = performance.now();
-    const { embedding } = await embed({ model: embeddingModel as any, value: text });
+    const { embedding } = await embed({ model: embeddingModel, value: text });
     const duration = performance.now() - startTime;
     logger.debug('⏱️  [memory] Embedding generated', {
       durationMs: duration.toFixed(2),

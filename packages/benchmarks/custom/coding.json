@@ -1,0 +1,155 @@
+[
+  {
+    "id": "code-easy-001",
+    "category": "coding",
+    "difficulty": "easy",
+    "prompt": "Write a TypeScript function called 'isPalindrome' that checks if a string is a palindrome (reads the same forwards and backwards). Ignore spaces and capitalization. Include proper type annotations.",
+    "expected_pattern": "function.*isPalindrome.*string.*boolean",
+    "test_cases": [
+      {"input": "racecar", "output": true},
+      {"input": "hello", "output": false},
+      {"input": "A man a plan a canal Panama", "output": true}
+    ],
+    "grading": {
+      "type": "code_execution",
+      "check_syntax": true,
+      "check_types": true,
+      "run_tests": true
+    }
+  },
+  {
+    "id": "code-easy-002",
+    "category": "coding",
+    "difficulty": "easy",
+    "prompt": "Write a function that takes an array of numbers and returns a new array with only the even numbers, sorted in descending order.",
+    "expected_pattern": "function.*filter.*sort",
+    "test_cases": [
+      {"input": [1,2,3,4,5,6], "output": [6,4,2]},
+      {"input": [10,15,20,25], "output": [20,10]},
+      {"input": [1,3,5], "output": []}
+    ],
+    "grading": {
+      "type": "code_execution",
+      "check_syntax": true,
+      "run_tests": true
+    }
+  },
+  {
+    "id": "code-medium-001",
+    "category": "coding",
+    "difficulty": "medium",
+    "prompt": "Implement a simple LRU (Least Recently Used) cache class in TypeScript with get() and put() methods. The cache should have a maximum size and evict the least recently used item when full.",
+    "expected_pattern": "class.*LRU.*get.*put",
+    "requirements": [
+      "Must track access order",
+      "Must evict LRU item when full",
+      "get() and put() should be O(1)",
+      "Use Map for storage"
+    ],
+    "grading": {
+      "type": "code_execution",
+      "check_syntax": true,
+      "check_types": true,
+      "check_complexity": true
+    }
+  },
+  {
+    "id": "code-medium-002",
+    "category": "coding",
+    "difficulty": "medium",
+    "prompt": "Write a function to flatten a nested array of arbitrary depth. For example, [1, [2, [3, [4]], 5]] should become [1, 2, 3, 4, 5]. Implement both recursive and iterative solutions.",
+    "expected_pattern": "(flatten|flat).*recursive.*iterative",
+    "test_cases": [
+      {"input": [1, [2, [3, [4]], 5]], "output": [1, 2, 3, 4, 5]},
+      {"input": [[[[1]]]], "output": [1]},
+      {"input": [1, 2, 3], "output": [1, 2, 3]}
+    ],
+    "grading": {
+      "type": "code_execution",
+      "check_syntax": true,
+      "run_tests": true,
+      "check_both_implementations": true
+    }
+  },
+  {
+    "id": "code-medium-003",
+    "category": "coding",
+    "difficulty": "medium",
+    "prompt": "Create a debounce function in TypeScript. It should take a function and a delay, and return a new function that delays invoking the original function until after the delay has elapsed since the last time it was called.",
+    "expected_pattern": "debounce.*setTimeout.*clearTimeout",
+    "requirements": [
+      "Must use generics for type safety",
+      "Must clear previous timeout",
+      "Must preserve 'this' context",
+      "Must handle arguments correctly"
+    ],
+    "grading": {
+      "type": "code_execution",
+      "check_syntax": true,
+      "check_types": true,
+      "check_functionality": true
+    }
+  },
+  {
+    "id": "code-hard-001",
+    "category": "coding",
+    "difficulty": "hard",
+    "prompt": "Implement a simple event emitter class in TypeScript with on(), off(), once(), and emit() methods. Support multiple listeners per event, wildcard events, and proper TypeScript typing for event names and handlers.",
+    "expected_pattern": "class.*EventEmitter.*on.*off.*once.*emit",
+    "requirements": [
+      "Type-safe event names and handlers",
+      "Support for once() that auto-removes listener",
+      "Support for wildcard '*' event",
+      "Proper cleanup in off()",
+      "Return unsubscribe function from on()"
+    ],
+    "grading": {
+      "type": "code_execution",
+      "check_syntax": true,
+      "check_types": true,
+      "check_edge_cases": true
+    }
+  },
+  {
+    "id": "code-hard-002",
+    "category": "coding",
+    "difficulty": "hard",
+    "prompt": "Write a function that implements async retry logic with exponential backoff. It should accept: a function to retry, max attempts, initial delay, max delay, and backoff multiplier. Include proper error handling and TypeScript types.",
+    "expected_pattern": "retry.*async.*exponential.*backoff",
+    "requirements": [
+      "Generic return type matching input function",
+      "Exponential backoff: delay = min(initialDelay * multiplier^attempt, maxDelay)",
+      "Throw last error if all attempts fail",
+      "Include attempt number in error",
+      "Support for custom shouldRetry predicate"
+    ],
+    "grading": {
+      "type": "code_execution",
+      "check_syntax": true,
+      "check_types": true,
+      "check_edge_cases": true,
+      "verify_backoff_timing": true
+    }
+  },
+  {
+    "id": "code-hard-003",
+    "category": "coding",
+    "difficulty": "hard",
+    "prompt": "Implement a simple dependency injection container in TypeScript. Support registering services (singleton, transient, scoped), resolving dependencies, and circular dependency detection.",
+    "expected_pattern": "class.*Container.*register.*resolve.*singleton.*transient",
+    "requirements": [
+      "register() with lifetime: 'singleton' | 'transient' | 'scoped'",
+      "resolve() with automatic dependency injection",
+      "Detect circular dependencies and throw clear error",
+      "Type-safe service registration and resolution",
+      "Support for factory functions"
+    ],
+    "grading": {
+      "type": "code_execution",
+      "check_syntax": true,
+      "check_types": true,
+      "check_circular_detection": true,
+      "check_lifetime_behavior": true
+    }
+  }
+]
