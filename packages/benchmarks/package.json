@@ -29,7 +29,15 @@
     "test:watch": "vitest",
     "benchmark:tau-retail": "tsx src/cli.ts --benchmark tau-bench --domain retail",
     "benchmark:tau-airline": "tsx src/cli.ts --benchmark tau-bench --domain airline",
-    "benchmark:gaia": "tsx src/cli.ts --benchmark gaia"
+    "benchmark:gaia": "tsx src/cli.ts --benchmark gaia",
+    "bench:quick": "./run-benchmarks.sh --quick",
+    "bench:all": "./run-benchmarks.sh",
+    "bench:reasoning": "./run-benchmarks.sh --category=reasoning",
+    "bench:coding": "./run-benchmarks.sh --category=coding",
+    "bench:tool-use": "./run-benchmarks.sh --category=tool-use",
+    "bench:comprehension": "./run-benchmarks.sh --category=codebase-comprehension",
+    "bench:bugs": "./run-benchmarks.sh --category=bug-fixing",
+    "bench:planning": "./run-benchmarks.sh --category=multi-step-planning"
   },
   "dependencies": {
     "@agent/core": "workspace:*",
