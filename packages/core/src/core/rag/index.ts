@@ -1,5 +1,5 @@
 import { embed, embedMany } from 'ai';
-import { google } from '@ai-sdk/google';
+import { openai } from '@ai-sdk/openai';
 import fs from 'fs/promises';
 import path from 'path';
 import { createFileCache, computeHash, type Cache } from './cache.js';
@@ -168,7 +168,7 @@ export function createCodebaseRAG(
 
     log('Generating embeddings...');
     const { embeddings: vectors } = await embedMany({
-      model: google.embedding('text-embedding-004') as any,
+      model: openai.embedding('text-embedding-3-small'),
       values: contextualChunks.map((c) => c.contextualContent),
     });
 
@@ -285,7 +285,7 @@ export function createCodebaseRAG(
 
       const embeddingStartTime = performance.now();
       const { embedding: queryEmbedding } = await embed({
-        model: google.embedding('text-embedding-004') as any,
+        model: openai.embedding('text-embedding-3-small'),
         value: query,
       });
       const embeddingDuration = performance.now() - embeddingStartTime;
