@@ -12,7 +12,8 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 // Load .env from project root (../../.env from dist/)
-config({ path: path.join(__dirname, '../../..', '.env') });
+const PROJECT_ROOT = path.join(__dirname, '../../..');
+config({ path: path.join(PROJECT_ROOT, '.env') });
 
 logger.reconfigure();
 
@@ -66,35 +67,43 @@ interface BenchmarkSummary {
   results: BenchmarkResult[];
 }
 
-let runtime: Awaited<ReturnType<typeof createAgentRuntime>> | null = null;
-let session: AgentSession | null = null;
+// Track runtimes by workspace path to avoid recreating for same workspace
+const runtimeCache = new Map<string, Awaited<ReturnType<typeof createAgentRuntime>>>();
 
-async function getOrCreateSession(workspace?: string): Promise<AgentSession> {
+async function createFreshSession(workspace?: string): Promise<{
+  session: AgentSession;
+  shutdown: () => Promise<void>;
+}> {
+  const cacheKey = workspace || 'no-workspace';
+
+  let runtime = runtimeCache.get(cacheKey);
+
   if (!runtime) {
+    logger.info('🚀 Creating agent runtime', { workspace: workspace || '(none)' });
     runtime = await createAgentRuntime({
-      // Only index workspace for codebase-comprehension tasks to avoid memory issues
       workspaceRoot: workspace,
     });
+    runtimeCache.set(cacheKey, runtime);
   }
-  if (!session) {
-    session = runtime.createSession();
-  }
-  return session;
+
+  // Always create a fresh session for each task
+  const session = runtime.createSession();
+
+  return {
+    session,
+    shutdown: async () => {
+      // Don't shutdown runtime (reuse for same workspace), just the session
+      // We'll shutdown all runtimes at the end
+    },
+  };
 }
 
-async function resetSession(): Promise<void> {
-  if (session) {
-    session.clearHistory();
-  }
-  session = null;
-}
-
-async function shutdown(): Promise<void> {
-  if (runtime) {
+async function shutdownAll(): Promise<void> {
+  logger.info('🧹 Shutting down all agent runtimes');
+  for (const runtime of runtimeCache.values()) {
     await runtime.shutdown();
-    runtime = null;
-    session = null;
   }
+  runtimeCache.clear();
 }
 
 async function loadBenchmark(category: BenchmarkCategory): Promise<BenchmarkTask[]> {
@@ -120,8 +129,13 @@ async function runTask(task: BenchmarkTask, workspace?: string): Promise<Benchma
 
     // Only enable RAG for codebase-comprehension tasks to avoid memory issues
     const needsWorkspace = task.category === 'codebase-comprehension';
-    const agentSession = await getOrCreateSession(needsWorkspace ? workspace : undefined);
+    const workspacePath = needsWorkspace ? (workspace || PROJECT_ROOT) : undefined;
+    const { session: agentSession, shutdown } = await createFreshSession(workspacePath);
+
+    // Send task to agent (default maxSteps is 50)
     const result = await agentSession.send(task.prompt);
+
+    await shutdown();
 
     const durationMs = Date.now() - startTime;
 
@@ -211,7 +225,7 @@ async function runBenchmarkCategory(
   const results: BenchmarkResult[] = [];
 
   for (const task of filteredTasks) {
-    await resetSession();
+    // Each task gets a fresh session automatically in runTask
     const result = await runTask(task, options.workspace);
     results.push(result);
   }
@@ -258,7 +272,7 @@ async function runAllBenchmarks(options: {
   // Print summary
   printSummary(summary);
 
-  await shutdown();
+  await shutdownAll();
 
   return summary;
 }
@@ -354,13 +368,13 @@ if (isMainModule) {
     });
   } else if (BENCHMARK_CATEGORIES.includes(category)) {
     runBenchmarkCategory(category, { difficulty, limit, workspace })
-      .then(results => {
+      .then(async results => {
         const summary = calculateSummary(results);
         printSummary(summary);
         if (outputFile) {
-          fs.writeFile(outputFile, JSON.stringify({ summary, results }, null, 2));
+          await fs.writeFile(outputFile, JSON.stringify({ summary, results }, null, 2));
         }
-        return shutdown();
+        await shutdownAll();
       })
       .catch(error => {
         logger.error('Benchmark failed', { error: String(error) });
