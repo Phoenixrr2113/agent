@@ -203,6 +203,27 @@ async function runTask(task: BenchmarkTask, workspace?: string): Promise<Benchma
   }
 }
 
+async function saveResults(
+  outputFile: string,
+  results: BenchmarkResult[],
+  partial: boolean = false
+): Promise<void> {
+  const summary = calculateSummary(results);
+  const data = {
+    summary,
+    results,
+    partial, // Flag to indicate if this is a partial result set
+    lastUpdated: new Date().toISOString(),
+  };
+
+  await fs.writeFile(outputFile, JSON.stringify(data, null, 2));
+  if (partial) {
+    logger.info('Partial results saved', { path: outputFile, tasksCompleted: results.length });
+  } else {
+    logger.info('Final results saved', { path: outputFile });
+  }
+}
+
 async function runBenchmarkCategory(
   category: BenchmarkCategory,
   options: { difficulty?: string; limit?: number; workspace?: string } = {}
@@ -248,25 +269,36 @@ async function runAllBenchmarks(options: {
     logger.info(`Starting category: ${category}`);
     logger.info('='.repeat(60));
 
-    const categoryResults = await runBenchmarkCategory(category, {
-      difficulty: options.difficulty,
-      limit: options.limit,
-      workspace: options.workspace,
-    });
+    try {
+      const categoryResults = await runBenchmarkCategory(category, {
+        difficulty: options.difficulty,
+        limit: options.limit,
+        workspace: options.workspace,
+      });
 
-    allResults.push(...categoryResults);
+      allResults.push(...categoryResults);
+
+      // Save partial results after each category completes
+      if (options.outputFile) {
+        await saveResults(options.outputFile, allResults, true);
+      }
+    } catch (error) {
+      logger.error(`Category ${category} failed`, { error: String(error) });
+      // Save partial results even on failure
+      if (options.outputFile) {
+        await saveResults(options.outputFile, allResults, true);
+      }
+      // Continue with next category instead of crashing
+      continue;
+    }
   }
 
-  // Calculate summary statistics
+  // Calculate final summary statistics
   const summary = calculateSummary(allResults);
 
-  // Save results if output file specified
+  // Save final results
   if (options.outputFile) {
-    await fs.writeFile(
-      options.outputFile,
-      JSON.stringify({ summary, results: allResults }, null, 2)
-    );
-    logger.info('Results saved', { path: options.outputFile });
+    await saveResults(options.outputFile, allResults, false);
   }
 
   // Print summary
