@@ -1,0 +1,9 @@
+# Benchmark result files (generated output)
+benchmark-results-*.json
+
+# Build output
+dist/
+*.tsbuildinfo
+
+# Test coverage
+coverage/
