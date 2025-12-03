@@ -153,15 +153,19 @@ async function runTask(task: BenchmarkTask, workspace?: string): Promise<Benchma
         score = 0.0;
         feedback = 'Answer does not match expected result';
       }
-    }
-
-    if (task.expected_concepts && task.expected_concepts.length > 0) {
+    } else if (task.expected_concepts && task.expected_concepts.length > 0) {
       const responseLower = result.text.toLowerCase();
       const matchedConcepts = task.expected_concepts.filter(concept =>
         responseLower.includes(concept.toLowerCase())
       );
       score = matchedConcepts.length / task.expected_concepts.length;
       feedback = `Matched ${matchedConcepts.length}/${task.expected_concepts.length} concepts`;
+    } else if (result.completed) {
+      // For tasks without specific grading criteria, give full score if completed successfully
+      score = 1.0;
+      feedback = 'Task completed successfully';
+    } else {
+      feedback = 'Task not completed';
     }
 
     logger.info('Task completed', {

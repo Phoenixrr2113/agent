@@ -105,8 +105,8 @@ fi
 echo "Output: $OUTPUT"
 echo ""
 
-# Execute
-node dist/custom-runner.js $CATEGORY $DIFFICULTY $LIMIT --workspace=$WORKSPACE --output=$OUTPUT
+# Execute with increased heap size to handle memory extraction + RAG indexing
+node --max-old-space-size=8192 dist/custom-runner.js $CATEGORY $DIFFICULTY $LIMIT --workspace=$WORKSPACE --output=$OUTPUT
 
 echo ""
 echo -e "${GREEN}═══════════════════════════════════════════════════════════${NC}"
