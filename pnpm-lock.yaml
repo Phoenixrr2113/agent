@@ -11,6 +11,9 @@ importers:
       '@types/node':
         specifier: ^20.0.0
         version: 20.19.25
+      '@types/ws':
+        specifier: ^8.18.1
+        version: 8.18.1
       dotenv:
         specifier: ^17.2.3
         version: 17.2.3
@@ -26,6 +29,9 @@ importers:
       vitest:
         specifier: ^2.0.0
         version: 2.1.9(@types/node@20.19.25)(jsdom@27.2.0)(lightningcss@1.30.2)(terser@5.44.1)
+      ws:
+        specifier: ^8.18.3
+        version: 8.18.3
 
   apps/cli:
     dependencies:
@@ -308,12 +314,18 @@ importers:
       '@hono/node-server':
         specifier: ^1.19.6
         version: 1.19.6(hono@4.10.7)
+      '@types/ws':
+        specifier: ^8.18.1
+        version: 8.18.1
       dotenv:
         specifier: ^17.2.3
         version: 17.2.3
       hono:
         specifier: ^4.10.7
         version: 4.10.7
+      ws:
+        specifier: ^8.18.3
+        version: 8.18.3
     devDependencies:
       '@types/node':
         specifier: ^20.0.0
@@ -2293,6 +2305,9 @@ packages:
 
   '@types/tough-cookie@4.0.5':
     resolution: {integrity: sha512-/Ad8+nIOV7Rl++6f1BdKxFSMgmoqEoYbHRpPcx3JEfv8VRsQe9Z4mCXeJBzxs7mbHY/XOZZuXlRNfhpVPbs6ZA==}
+
+  '@types/ws@8.18.1':
+    resolution: {integrity: sha512-ThVF6DCVhA8kUGy+aazFQ4kXQ7E1Ty7A3ypFOe0IcJV8O/M511G99AW24irKrW56Wt44yG9+ij8FaqoBGkuBXg==}
 
   '@types/yargs-parser@21.0.3':
     resolution: {integrity: sha512-I4q9QU9MQv4oEOz4tAHJtNz1cwuLxn2F3xcc2iV5WdqLPpUnj30aUuxt1mAxYTG+oe8CZMV/+6rU4S4gRDzqtQ==}
@@ -8356,6 +8371,10 @@ snapshots:
   '@types/stack-utils@2.0.3': {}
 
   '@types/tough-cookie@4.0.5': {}
+
+  '@types/ws@8.18.1':
+    dependencies:
+      '@types/node': 20.19.25
 
   '@types/yargs-parser@21.0.3': {}
 

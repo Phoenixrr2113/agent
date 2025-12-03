@@ -3,6 +3,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import * as AgentAccessibility from '@agent/mobile-accessibility';
 import { useState, useEffect } from 'react';
+import { AgentBridge } from '@/components/agent-bridge';
 
 export default function HomeScreen() {
   const [enabled, setEnabled] = useState(false);
@@ -30,6 +31,7 @@ export default function HomeScreen() {
   return (
     <ThemedView style={styles.container}>
       <ThemedText type="title">Agent Accessibility</ThemedText>
+      <AgentBridge />
       <ThemedText>Status: {enabled ? 'Enabled' : 'Disabled'}</ThemedText>
       <Button title="Refresh Status" onPress={checkStatus} />
 

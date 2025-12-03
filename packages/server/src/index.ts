@@ -1,9 +1,16 @@
+import { config } from 'dotenv';
+import { join } from 'path';
+
+// Load environment variables from root .env
+config({ path: join(process.cwd(), '../../.env') });
+
 import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { serve } from '@hono/node-server';
 import { streamSSE } from 'hono/streaming';
 import { createAgentRuntime, type AgentSession, type TaskResult } from '@agent/core';
 import { logger } from '@agent/shared';
+import { WebSocketServer, WebSocket } from 'ws';
 
 export interface ServerConfig {
   port?: number;
@@ -153,8 +160,19 @@ export async function createServer(config: ServerConfig = {}) {
     });
   });
 
+  app.post('/mobile/command', async (c) => {
+    const body = await c.req.json<{ type: string;[key: string]: any }>();
+    if (!mobileClient) {
+      return c.json({ error: 'Mobile client not connected' }, 400);
+    }
+    mobileClient.send(JSON.stringify(body));
+    return c.json({ success: true });
+  });
+
   return { app, runtime, port };
 }
+
+let mobileClient: WebSocket | null = null;
 
 function formatResult(result: TaskResult) {
   return {
@@ -174,6 +192,22 @@ export async function startServer(config: ServerConfig = {}) {
 
   const server = serve({ fetch: app.fetch, port }, (info) => {
     logger.info(`🚀 Agent server running on http://localhost:${info.port}`);
+  });
+
+  const wss = new WebSocketServer({ server: server as any });
+
+  wss.on('connection', (ws) => {
+    logger.info('Mobile client connected');
+    mobileClient = ws;
+
+    ws.on('message', (message) => {
+      logger.info('Received from mobile:', { message: message.toString() });
+    });
+
+    ws.on('close', () => {
+      logger.info('Mobile client disconnected');
+      mobileClient = null;
+    });
   });
 
   const shutdown = async () => {
