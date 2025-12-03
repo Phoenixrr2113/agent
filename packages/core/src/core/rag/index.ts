@@ -82,13 +82,49 @@ export function createCodebaseRAG(
   const scanWorkspaceFallback = async (): Promise<Chunk[]> => {
     const chunks: Chunk[] = [];
 
+    // Directories to exclude from indexing (matches common .gitignore patterns)
+    const excludedDirs = new Set([
+      'node_modules',
+      'dist',
+      '.git',
+      'build',
+      '.rag-cache',
+      'workspace.rag-cache',
+      'logs',
+      '.turbo',
+      'coverage',
+      '.next',
+      '.nuxt',
+      'out',
+      'tests/temp',
+    ]);
+
+    // File patterns to exclude
+    const excludedFilePatterns = [
+      /\.log$/,
+      /\.db$/,
+      /\.db-shm$/,
+      /\.db-wal$/,
+      /\.tsbuildinfo$/,
+    ];
+
+    const shouldExcludeFile = (filename: string): boolean => {
+      return excludedFilePatterns.some(pattern => pattern.test(filename));
+    };
+
     const scanDir = async (dir: string): Promise<void> => {
       const entries = await fs.readdir(dir, { withFileTypes: true });
 
       for (const entry of entries) {
         const fullPath = path.join(dir, entry.name);
 
-        if (['node_modules', 'dist', '.git', 'build', '.rag-cache'].includes(entry.name)) {
+        // Skip excluded directories
+        if (entry.isDirectory() && excludedDirs.has(entry.name)) {
+          continue;
+        }
+
+        // Skip excluded file patterns
+        if (entry.isFile() && shouldExcludeFile(entry.name)) {
           continue;
         }
 

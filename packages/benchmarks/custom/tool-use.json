@@ -1,0 +1,166 @@
+[
+  {
+    "id": "tool-easy-001",
+    "category": "tool-use",
+    "difficulty": "easy",
+    "prompt": "Create a new directory called 'test-workspace' and create a file inside it called 'hello.txt' with the content 'Hello, World!'",
+    "required_tools": ["create_directory", "write_file"],
+    "success_criteria": {
+      "directory_exists": "test-workspace",
+      "file_exists": "test-workspace/hello.txt",
+      "file_content_matches": "Hello, World!"
+    },
+    "grading": {
+      "type": "file_verification",
+      "check_directory": true,
+      "check_file": true,
+      "check_content": true
+    }
+  },
+  {
+    "id": "tool-easy-002",
+    "category": "tool-use",
+    "difficulty": "easy",
+    "prompt": "Read the package.json file and tell me the name and version of this project.",
+    "required_tools": ["read_text_file"],
+    "success_criteria": {
+      "mentions_name": true,
+      "mentions_version": true,
+      "correct_format": true
+    },
+    "grading": {
+      "type": "answer_verification",
+      "check_json_parsing": true
+    }
+  },
+  {
+    "id": "tool-medium-001",
+    "category": "tool-use",
+    "difficulty": "medium",
+    "prompt": "Find all TypeScript files in the packages/core/src directory, count them, and create a summary file listing each file path.",
+    "required_tools": ["search_files", "write_file"],
+    "min_tools": 2,
+    "success_criteria": {
+      "file_created": true,
+      "correct_count": true,
+      "lists_files": true
+    },
+    "grading": {
+      "type": "file_verification",
+      "check_completeness": true
+    }
+  },
+  {
+    "id": "tool-medium-002",
+    "category": "tool-use",
+    "difficulty": "medium",
+    "prompt": "Search the codebase for all files that import 'logger' from '@agent/shared'. Create a markdown report listing each file and showing the import statement.",
+    "required_tools": ["grep_codebase", "write_file"],
+    "min_tools": 2,
+    "success_criteria": {
+      "report_created": true,
+      "markdown_format": true,
+      "includes_file_paths": true,
+      "includes_import_lines": true
+    },
+    "grading": {
+      "type": "file_verification",
+      "check_format": "markdown",
+      "check_accuracy": true
+    }
+  },
+  {
+    "id": "tool-medium-003",
+    "category": "tool-use",
+    "difficulty": "medium",
+    "prompt": "Create a backup of the packages/benchmarks/package.json file by copying its contents to a new file called package.json.backup in the same directory.",
+    "required_tools": ["read_text_file", "write_file"],
+    "min_tools": 2,
+    "success_criteria": {
+      "backup_created": true,
+      "content_matches": true
+    },
+    "grading": {
+      "type": "file_verification",
+      "compare_files": true
+    }
+  },
+  {
+    "id": "tool-hard-001",
+    "category": "tool-use",
+    "difficulty": "hard",
+    "prompt": "Analyze the packages/core/src/tools directory. For each tool file, extract the tool name and description, then create a JSON file with a structured catalog of all tools.",
+    "required_tools": ["list_directory", "read_text_file", "write_file"],
+    "min_tools": 3,
+    "success_criteria": {
+      "json_valid": true,
+      "all_tools_cataloged": true,
+      "includes_descriptions": true,
+      "proper_structure": true
+    },
+    "grading": {
+      "type": "file_verification",
+      "check_json_validity": true,
+      "check_completeness": true
+    }
+  },
+  {
+    "id": "tool-hard-002",
+    "category": "tool-use",
+    "difficulty": "hard",
+    "prompt": "Find all test files (*.test.ts) in the entire codebase, count how many test suites (describe blocks) exist in total, and create a detailed report showing: total test files, total describe blocks, and a breakdown by package.",
+    "required_tools": ["search_files", "read_text_file", "write_file", "grep_codebase"],
+    "min_tools": 3,
+    "success_criteria": {
+      "report_created": true,
+      "accurate_counts": true,
+      "breakdown_by_package": true,
+      "structured_format": true
+    },
+    "grading": {
+      "type": "file_verification",
+      "check_accuracy": true,
+      "check_structure": true
+    }
+  },
+  {
+    "id": "tool-hard-003",
+    "category": "tool-use",
+    "difficulty": "hard",
+    "prompt": "Create a dependency graph analyzer: find all package.json files in the workspace, extract their dependencies, and create a markdown report showing which packages depend on which other workspace packages. Include a visual tree representation.",
+    "required_tools": ["search_files", "read_text_file", "write_file"],
+    "min_tools": 3,
+    "success_criteria": {
+      "finds_all_packages": true,
+      "extracts_dependencies": true,
+      "shows_relationships": true,
+      "tree_visualization": true,
+      "markdown_format": true
+    },
+    "grading": {
+      "type": "file_verification",
+      "check_completeness": true,
+      "check_visualization": true
+    }
+  },
+  {
+    "id": "tool-hard-004",
+    "category": "tool-use",
+    "difficulty": "hard",
+    "prompt": "Analyze code complexity: find all TypeScript files in packages/core/src, count the number of functions/methods in each file, and create a CSV report with columns: filepath, line_count, function_count, avg_function_length. Sort by function_count descending.",
+    "required_tools": ["search_files", "read_text_file", "write_file", "grep_codebase"],
+    "min_tools": 3,
+    "success_criteria": {
+      "csv_format": true,
+      "correct_headers": true,
+      "accurate_counts": true,
+      "sorted_correctly": true
+    },
+    "grading": {
+      "type": "file_verification",
+      "check_csv_validity": true,
+      "check_calculations": true,
+      "check_sorting": true
+    }
+  }
+]

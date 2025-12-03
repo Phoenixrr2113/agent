@@ -1,0 +1,103 @@
+[
+  {
+    "id": "reasoning-easy-001",
+    "category": "reasoning",
+    "difficulty": "easy",
+    "prompt": "If it takes 5 machines 5 minutes to make 5 widgets, how long would it take 100 machines to make 100 widgets?",
+    "expected_answer": "5 minutes",
+    "explanation": "Each machine makes 1 widget in 5 minutes, so 100 machines make 100 widgets in 5 minutes (parallelism)",
+    "grading": {
+      "type": "keyword_match",
+      "keywords": ["5", "five", "5 minutes"],
+      "required_concepts": ["parallel", "same time"]
+    }
+  },
+  {
+    "id": "reasoning-easy-002",
+    "category": "reasoning",
+    "difficulty": "easy",
+    "prompt": "You have a 3-gallon jug and a 5-gallon jug. How can you measure exactly 4 gallons?",
+    "expected_answer": "Fill 5-gallon jug, pour into 3-gallon (leaving 2 gallons in 5-gallon jug). Empty 3-gallon. Pour 2 gallons from 5-gallon into 3-gallon. Fill 5-gallon again. Pour from 5-gallon into 3-gallon (which has 2, so only 1 more fits). 5-gallon jug now has 4 gallons.",
+    "explanation": "Classic water jug puzzle requiring multi-step reasoning",
+    "grading": {
+      "type": "keyword_match",
+      "keywords": ["fill", "pour", "empty", "4"],
+      "required_concepts": ["steps", "sequence"]
+    }
+  },
+  {
+    "id": "reasoning-medium-001",
+    "category": "reasoning",
+    "difficulty": "medium",
+    "prompt": "A farmer has 17 sheep. All but 9 die. How many sheep are left?",
+    "expected_answer": "9",
+    "explanation": "Trick question - 'all but 9' means 9 survived",
+    "grading": {
+      "type": "exact_match",
+      "keywords": ["9", "nine"]
+    }
+  },
+  {
+    "id": "reasoning-medium-002",
+    "category": "reasoning",
+    "difficulty": "medium",
+    "prompt": "You're in a race and pass the person in 2nd place. What place are you in now?",
+    "expected_answer": "2nd place",
+    "explanation": "If you pass 2nd place, you take their position",
+    "grading": {
+      "type": "exact_match",
+      "keywords": ["2", "second", "2nd"]
+    }
+  },
+  {
+    "id": "reasoning-medium-003",
+    "category": "reasoning",
+    "difficulty": "medium",
+    "prompt": "A bat and ball cost $1.10 in total. The bat costs $1 more than the ball. How much does the ball cost?",
+    "expected_answer": "$0.05",
+    "explanation": "If ball is x, bat is x+1. x + (x+1) = 1.10, so 2x+1=1.10, x=0.05",
+    "grading": {
+      "type": "exact_match",
+      "keywords": ["0.05", "5 cents", "five cents", "$0.05"]
+    }
+  },
+  {
+    "id": "reasoning-hard-001",
+    "category": "reasoning",
+    "difficulty": "hard",
+    "prompt": "You have 8 identical-looking balls. One ball is slightly heavier than the others. Using a balance scale only twice, how can you identify the heavier ball?",
+    "expected_answer": "Divide into 3 groups (3-3-2). Weigh the two groups of 3. If balanced, the heavy ball is in the group of 2 - weigh those. If unbalanced, take the heavier group of 3, divide into 1-1-1, and weigh any two - if balanced, third is heavy; if not, heavier one is the heavy ball.",
+    "explanation": "Information theory puzzle requiring optimal decision tree",
+    "grading": {
+      "type": "keyword_match",
+      "keywords": ["divide", "group", "weigh", "twice", "3"],
+      "required_concepts": ["strategy", "eliminate"]
+    }
+  },
+  {
+    "id": "reasoning-hard-002",
+    "category": "reasoning",
+    "difficulty": "hard",
+    "prompt": "There are 100 prisoners and 100 boxes. Each box contains a random prisoner's number. Each prisoner may open 50 boxes to find their number. If all prisoners find their number, they all go free. What strategy gives them better than 31% chance of success?",
+    "expected_answer": "Each prisoner starts at the box with their number, then follows the chain: open that box, go to the box with that number, repeat. This creates permutation cycles. Loops of length >50 cause failure. Probability of all loops ≤50 is ~31%.",
+    "explanation": "Famous 100 prisoners problem requiring understanding of permutation cycles",
+    "grading": {
+      "type": "keyword_match",
+      "keywords": ["cycle", "loop", "chain", "follow", "strategy"],
+      "required_concepts": ["permutation", "probability"]
+    }
+  },
+  {
+    "id": "reasoning-hard-003",
+    "category": "reasoning",
+    "difficulty": "hard",
+    "prompt": "A rope hangs over a pulley. A 10kg weight is on one end. A monkey of equal weight climbs the rope on the other end. What happens to the weight?",
+    "expected_answer": "The weight rises at the same speed the monkey climbs. The system is balanced, so any force the monkey exerts downward on the rope to climb is matched by an equal upward force on the weight.",
+    "explanation": "Physics/mechanics problem requiring understanding of forces and equilibrium",
+    "grading": {
+      "type": "keyword_match",
+      "keywords": ["rises", "same", "balanced", "equal"],
+      "required_concepts": ["force", "equilibrium"]
+    }
+  }
+]

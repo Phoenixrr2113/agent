@@ -1,0 +1,100 @@
+[
+  {
+    "id": "comprehension-easy-001",
+    "category": "codebase-comprehension",
+    "difficulty": "easy",
+    "prompt": "Find and explain what the ToolRegistry class does in packages/core/src/tools/registry.ts. What are its main methods and what do they do?",
+    "expected_concepts": ["tool registration", "search", "semantic search", "metadata"],
+    "grading": {
+      "type": "explanation_quality",
+      "must_mention": ["register", "search", "embeddings", "metadata"],
+      "check_accuracy": true
+    }
+  },
+  {
+    "id": "comprehension-easy-002",
+    "category": "codebase-comprehension",
+    "difficulty": "easy",
+    "prompt": "How many packages are in this monorepo? List them and briefly describe what each package does based on its package.json description.",
+    "expected_count": 9,
+    "grading": {
+      "type": "enumeration",
+      "check_completeness": true,
+      "check_descriptions": true
+    }
+  },
+  {
+    "id": "comprehension-medium-001",
+    "category": "codebase-comprehension",
+    "difficulty": "medium",
+    "prompt": "Trace the execution flow when a user sends a message to the agent. Start from packages/core/src/runtime/agent-runtime.ts and explain what happens step-by-step until the agent responds.",
+    "expected_concepts": ["session.send", "agent.generate", "tool execution", "message history"],
+    "grading": {
+      "type": "flow_understanding",
+      "must_cover_steps": ["input", "agent generation", "tool calls", "response"],
+      "check_accuracy": true
+    }
+  },
+  {
+    "id": "comprehension-medium-002",
+    "category": "codebase-comprehension",
+    "difficulty": "medium",
+    "prompt": "Explain how the RAG (Retrieval-Augmented Generation) system works in this codebase. Cover: chunking strategies, embedding generation, indexing, and retrieval. Reference specific files.",
+    "expected_files": ["packages/core/src/core/rag/index.ts", "strategies/code-strategy.ts", "strategies/document-strategy.ts"],
+    "grading": {
+      "type": "system_understanding",
+      "must_mention": ["chunking", "embeddings", "BM25", "hybrid search"],
+      "check_file_references": true
+    }
+  },
+  {
+    "id": "comprehension-medium-003",
+    "category": "codebase-comprehension",
+    "difficulty": "medium",
+    "prompt": "What is the purpose of the tool activation system? How does it reduce context window size? Find the implementation and explain how deferred tools work.",
+    "expected_files": ["packages/core/src/tools/tool-wrapper.ts", "packages/core/src/application/orchestrator.ts"],
+    "grading": {
+      "type": "concept_explanation",
+      "must_mention": ["deferred loading", "context window", "activation", "wrapper"],
+      "check_accuracy": true
+    }
+  },
+  {
+    "id": "comprehension-hard-001",
+    "category": "codebase-comprehension",
+    "difficulty": "hard",
+    "prompt": "Map out the complete dependency graph of workspace packages. Which packages depend on @agent/core? Which packages depend on @agent/shared? Are there any circular dependencies?",
+    "expected_output": "dependency graph",
+    "grading": {
+      "type": "dependency_analysis",
+      "check_completeness": true,
+      "check_accuracy": true,
+      "detect_cycles": true
+    }
+  },
+  {
+    "id": "comprehension-hard-002",
+    "category": "codebase-comprehension",
+    "difficulty": "hard",
+    "prompt": "Analyze the memory system architecture. Explain: How is memory stored? What providers are supported? How does memory extraction work? How are entities and relations tracked? Include code references.",
+    "expected_files": ["packages/core/src/tools/memory.ts", "packages/core/src/core/memory/"],
+    "grading": {
+      "type": "architecture_understanding",
+      "must_cover": ["provider abstraction", "extraction", "entities", "relations"],
+      "check_code_references": true
+    }
+  },
+  {
+    "id": "comprehension-hard-003",
+    "category": "codebase-comprehension",
+    "difficulty": "hard",
+    "prompt": "Trace how a search_codebase tool call works end-to-end. Start from when the agent calls the tool, through RAG retrieval, to returning results. Include: embedding generation, hybrid search (BM25 + semantic), RRF fusion, and reranking.",
+    "expected_flow": ["tool call", "embed query", "semantic search", "BM25 search", "RRF merge", "reranking", "return results"],
+    "grading": {
+      "type": "execution_trace",
+      "check_completeness": true,
+      "check_technical_accuracy": true,
+      "must_mention_all_steps": true
+    }
+  }
+]

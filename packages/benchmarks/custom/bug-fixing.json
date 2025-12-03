@@ -1,0 +1,129 @@
+[
+  {
+    "id": "bug-easy-001",
+    "category": "bug-fixing",
+    "difficulty": "easy",
+    "prompt": "Create a simple bug fix: In packages/benchmarks/custom, create a new file called 'math-utils.ts' with a function 'add(a: number, b: number): number' that currently returns a - b (bug). Fix it to return a + b and create a test file to verify.",
+    "setup_required": true,
+    "success_criteria": {
+      "file_created": true,
+      "bug_fixed": true,
+      "test_passes": true,
+      "typescript_compiles": true
+    },
+    "grading": {
+      "type": "code_correctness",
+      "run_tests": true,
+      "check_types": true
+    }
+  },
+  {
+    "id": "bug-easy-002",
+    "category": "bug-fixing",
+    "difficulty": "easy",
+    "prompt": "Fix a TypeScript type error: Create a file with a function that expects `string | number` but is called with a boolean. Identify the type mismatch and fix it.",
+    "setup_required": true,
+    "success_criteria": {
+      "type_error_fixed": true,
+      "compiles_cleanly": true
+    },
+    "grading": {
+      "type": "type_correctness",
+      "check_compilation": true
+    }
+  },
+  {
+    "id": "bug-medium-001",
+    "category": "bug-fixing",
+    "difficulty": "medium",
+    "prompt": "Investigate and fix: Create a scenario where a tool activation fails silently. The tool should be marked as 'activated' but the wrapper still blocks execution. Debug the ToolActivationManager to identify why this happens and fix it.",
+    "affected_files": ["packages/core/src/tools/tool-wrapper.ts"],
+    "setup_required": true,
+    "success_criteria": {
+      "bug_identified": true,
+      "fix_applied": true,
+      "test_added": true
+    },
+    "grading": {
+      "type": "debugging",
+      "check_root_cause": true,
+      "verify_fix": true
+    }
+  },
+  {
+    "id": "bug-medium-002",
+    "category": "bug-fixing",
+    "difficulty": "medium",
+    "prompt": "Fix a race condition: Create a scenario where two tools try to write to the same file simultaneously. Implement proper file locking or atomic writes to prevent corruption.",
+    "affected_area": "filesystem tools",
+    "setup_required": true,
+    "success_criteria": {
+      "race_condition_demonstrated": true,
+      "fix_implemented": true,
+      "concurrent_test_passes": true
+    },
+    "grading": {
+      "type": "concurrency_fix",
+      "test_concurrent_access": true
+    }
+  },
+  {
+    "id": "bug-hard-001",
+    "category": "bug-fixing",
+    "difficulty": "hard",
+    "prompt": "Memory leak investigation: The agent runtime doesn't properly clean up sessions when shutdown() is called. Event listeners and file watchers remain active. Find all cleanup points that are missing and implement proper disposal pattern.",
+    "affected_files": ["packages/core/src/runtime/agent-runtime.ts", "packages/core/src/core/rag/index.ts"],
+    "symptoms": ["memory growth", "file handles not released", "event listeners persist"],
+    "success_criteria": {
+      "all_leaks_found": true,
+      "disposal_pattern_implemented": true,
+      "test_validates_cleanup": true
+    },
+    "grading": {
+      "type": "memory_safety",
+      "check_all_cleanup_paths": true,
+      "verify_no_leaks": true
+    }
+  },
+  {
+    "id": "bug-hard-002",
+    "category": "bug-fixing",
+    "difficulty": "hard",
+    "prompt": "Performance regression: The RAG search_codebase tool becomes extremely slow (>10s) when the codebase has >1000 chunks. Profile the code, identify the bottleneck (likely in BM25 indexing or similarity calculation), and optimize it to handle 10,000+ chunks efficiently.",
+    "affected_files": ["packages/core/src/core/rag/index.ts", "packages/core/src/core/rag/bm25.ts"],
+    "performance_target": {
+      "1000_chunks": "<1s",
+      "10000_chunks": "<3s"
+    },
+    "success_criteria": {
+      "bottleneck_identified": true,
+      "optimization_applied": true,
+      "performance_target_met": true,
+      "correctness_maintained": true
+    },
+    "grading": {
+      "type": "performance_optimization",
+      "measure_before_after": true,
+      "verify_correctness": true
+    }
+  },
+  {
+    "id": "bug-hard-003",
+    "category": "bug-fixing",
+    "difficulty": "hard",
+    "prompt": "Cross-package breaking change: The @agent/shared logger interface changed but @agent/core hasn't been updated. This causes type errors in 5+ files across the core package. Fix all affected files and ensure the build passes. Add a test to prevent this regression.",
+    "affected_packages": ["@agent/shared", "@agent/core"],
+    "simulated_change": "logger.info() now requires an options object as second parameter",
+    "success_criteria": {
+      "all_type_errors_fixed": true,
+      "build_passes": true,
+      "regression_test_added": true,
+      "backwards_compatibility_considered": true
+    },
+    "grading": {
+      "type": "cross_package_fix",
+      "check_all_files_updated": true,
+      "verify_build": true
+    }
+  }
+]
