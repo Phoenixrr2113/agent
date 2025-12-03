@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import 'dotenv/config';
+import { config } from 'dotenv';
 import { createAgentRuntime, type AgentSession } from '@agent/core';
 import { logger } from '@agent/shared';
 import fs from 'fs/promises';
@@ -10,6 +10,9 @@ import { dirname } from 'path';
 // ES module __dirname equivalent
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+// Load .env from project root (../../.env from dist/)
+config({ path: path.join(__dirname, '../../..', '.env') });
 
 logger.reconfigure();
 
