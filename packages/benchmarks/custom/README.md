@@ -72,6 +72,28 @@ Tests long-horizon planning and complex feature implementation.
 - Build full-stack applications
 - Migrate infrastructure components
 
+## Prerequisites
+
+Before running benchmarks, you need to set up your API keys:
+
+1. **Create `.env` file** in the project root:
+   ```bash
+   cp .env.example .env
+   ```
+
+2. **Add your Google API key** to `.env`:
+   ```bash
+   GOOGLE_GENERATIVE_AI_API_KEY=your_api_key_here
+   ```
+
+   Get your API key from: https://aistudio.google.com/app/apikey
+
+3. **Build the benchmarks package**:
+   ```bash
+   cd packages/benchmarks
+   npm run build
+   ```
+
 ## Quick Start
 
 ### Method 1: Shell Script (Easiest)
@@ -307,10 +329,19 @@ jobs:
 ## Troubleshooting
 
 ### "API key missing"
-Set up your `.env` file in the project root:
+Create a `.env` file in the project root (if it doesn't exist):
 ```bash
-GOOGLE_GENERATIVE_AI_API_KEY=your_key_here
+# From project root
+cp .env.example .env
+# Then edit .env and add your API key
 ```
+
+Your `.env` file should contain:
+```bash
+GOOGLE_GENERATIVE_AI_API_KEY=your_actual_api_key_here
+```
+
+Get your API key from: https://aistudio.google.com/app/apikey
 
 ### "dist/custom-runner.js not found"
 Build the benchmarks package:
