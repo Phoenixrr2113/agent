@@ -69,7 +69,8 @@ let session: AgentSession | null = null;
 async function getOrCreateSession(workspace?: string): Promise<AgentSession> {
   if (!runtime) {
     runtime = await createAgentRuntime({
-      workspaceRoot: workspace || process.cwd(),
+      // Only index workspace for codebase-comprehension tasks to avoid memory issues
+      workspaceRoot: workspace,
     });
   }
   if (!session) {
@@ -114,7 +115,9 @@ async function runTask(task: BenchmarkTask, workspace?: string): Promise<Benchma
       difficulty: task.difficulty,
     });
 
-    const agentSession = await getOrCreateSession(workspace);
+    // Only enable RAG for codebase-comprehension tasks to avoid memory issues
+    const needsWorkspace = task.category === 'codebase-comprehension';
+    const agentSession = await getOrCreateSession(needsWorkspace ? workspace : undefined);
     const result = await agentSession.send(task.prompt);
 
     const durationMs = Date.now() - startTime;
