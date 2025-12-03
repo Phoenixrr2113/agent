@@ -324,8 +324,10 @@ function printSummary(summary: BenchmarkSummary): void {
   console.log('\n' + '='.repeat(80));
 }
 
-// CLI interface
-if (require.main === module) {
+// CLI interface - ES module entry point detection
+const isMainModule = import.meta.url === `file://${process.argv[1]}`;
+
+if (isMainModule) {
   const args = process.argv.slice(2);
   const category = args[0] as BenchmarkCategory | 'all' | undefined;
   const difficulty = args.find(a => a.startsWith('--difficulty='))?.split('=')[1];
