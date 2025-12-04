@@ -1,6 +1,6 @@
 import { tool, type Tool, embed } from 'ai';
-import { openai } from '@ai-sdk/openai';
 import { z } from 'zod';
+import { getEmbeddingModel } from '../core/agents/embeddings.js';
 
 export interface ToolMetadata {
   name: string;
@@ -155,7 +155,7 @@ export class ToolRegistry {
   ): Promise<ToolMetadata[]> {
     const { limit = 10, includeDeferred = true, threshold = 0.3 } = options;
 
-    const embeddingModel = openai.embedding('text-embedding-3-small');
+    const embeddingModel = getEmbeddingModel();
     const { embedding: queryEmbedding } = await embed({
       model: embeddingModel,
       value: query,
@@ -180,7 +180,7 @@ export class ToolRegistry {
   }
 
   async generateEmbeddings(): Promise<void> {
-    const embeddingModel = openai.embedding('text-embedding-3-small');
+    const embeddingModel = getEmbeddingModel();
 
     for (const [name, registered] of this.tools) {
       if (registered.embedding) continue;

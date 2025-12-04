@@ -1,5 +1,4 @@
 import { embed } from 'ai';
-import { openai } from '@ai-sdk/openai';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { randomUUID } from 'crypto';
 import type {
@@ -17,6 +16,7 @@ import { createSQLiteStorage } from './storage-sqlite.js';
 import { extractFromText, detectContradictionsBatch, resolveEntityConflicts } from './extraction.js';
 import { logger } from '@agent/shared';
 import { BaseMemoryProvider } from './provider-base.js';
+import { getEmbeddingModel } from '../agents/embeddings.js';
 
 /**
  * Normalizes fact content for comparison to handle LLM extraction variations.
@@ -43,7 +43,7 @@ export function createMemoryLite(config: Omit<MemoryConfig, 'provider'>): Memory
     : createInMemoryStorage();
 
   const openrouter = createOpenRouter();
-  const embeddingModel = openai.embedding(config.embeddingModel || 'text-embedding-3-small');
+  const embeddingModel = getEmbeddingModel();
   const extractionModel = openrouter(config.extractionModel || DEFAULT_EXTRACTION_MODEL);
 
   async function getEmbedding(text: string): Promise<number[]> {

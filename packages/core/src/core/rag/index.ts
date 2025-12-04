@@ -1,5 +1,4 @@
 import { embed, embedMany } from 'ai';
-import { openai } from '@ai-sdk/openai';
 import fs from 'fs/promises';
 import path from 'path';
 import { createFileCache, computeHash, type Cache } from './cache.js';
@@ -12,6 +11,7 @@ import { createBM25Index, mergeSearchResults, type BM25Index } from './bm25.js';
 import { rerankWithFallback } from './rerank.js';
 import { createDefaultRegistry, type StrategyRegistry, type Chunk } from './strategies/index.js';
 import { logger } from '@agent/shared';
+import { getEmbeddingModel } from '../agents/embeddings.js';
 
 export type { ContextualChunk } from './context.js';
 export type { Chunk, ChunkingStrategy, ChunkMetadata } from './strategies/index.js';
@@ -168,7 +168,7 @@ export function createCodebaseRAG(
 
     log('Generating embeddings...');
     const { embeddings: vectors } = await embedMany({
-      model: openai.embedding('text-embedding-3-small'),
+      model: getEmbeddingModel(),
       values: contextualChunks.map((c) => c.contextualContent),
     });
 
@@ -285,7 +285,7 @@ export function createCodebaseRAG(
 
       const embeddingStartTime = performance.now();
       const { embedding: queryEmbedding } = await embed({
-        model: openai.embedding('text-embedding-3-small'),
+        model: getEmbeddingModel(),
         value: query,
       });
       const embeddingDuration = performance.now() - embeddingStartTime;

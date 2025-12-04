@@ -1,7 +1,7 @@
 import { generateText } from 'ai';
-import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import type { CodeChunk } from './chunking.js';
 import { logger } from '@agent/shared';
+import { models } from '../agents/models.js';
 
 export interface ContextualChunk extends CodeChunk {
   context: string;
@@ -48,9 +48,7 @@ export async function generateChunkContext(
   chunk: CodeChunk,
   model?: any
 ): Promise<string> {
-  // Use OpenRouter with free tier model for better rate limits
-  const openrouter = createOpenRouter();
-  const contextModel = model || openrouter(process.env.MODEL_FAST || 'google/gemini-2.0-flash');
+  const contextModel = model || models.fast();
   const prompt = buildPrompt(chunk);
 
   const { text } = await generateText({
