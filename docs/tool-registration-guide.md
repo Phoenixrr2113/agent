@@ -178,15 +178,15 @@ With rich metadata, agents can find tools using natural language:
 
 ```typescript
 // Agent needs: "fetch customer details"
-search_tools({ query: "fetch customer details" })
+tool_search({ query: "fetch customer details" })
 // ✅ Finds: get_user_profile (tags: user, profile, read)
 
 // Agent needs: "modify account information"
-search_tools({ query: "modify account information" })
+tool_search({ query: "modify account information" })
 // ✅ Finds: update_user_profile (tags: user, profile, write)
 
 // Agent needs: "permanently remove account"
-search_tools({ query: "permanently remove account" })
+tool_search({ query: "permanently remove account" })
 // ✅ Finds: delete_user_account (tags: account, delete, destructive)
 ```
 
@@ -204,7 +204,7 @@ const agent = new ToolLoopAgent({
     // Active tools (always available)
     shell: shellTool,
     plan: planTool,
-    search_tools: searchToolTool,
+    tool_search: searchToolTool,
     activate_tool: activateToolTool,
     // Wrapped deferred tools (require activation)
     web_search: wrappedWebSearchTool,
@@ -225,7 +225,7 @@ It depends on how the agent decides to plan:
 **Sequential Discovery (Common):**
 ```typescript
 // Agent realizes it needs something
-1. Call search_tools({ query: "web search" })
+1. Call tool_search({ query: "web search" })
 2. See result, decide to activate
 3. Call activate_tool({ toolName: "web_search" })
 4. Use web_search({ query: "..." })
@@ -234,9 +234,9 @@ It depends on how the agent decides to plan:
 **Parallel Discovery (Possible):**
 ```typescript
 // Agent can make multiple search calls in one step
-1. Call search_tools({ query: "web search" })
-   Call search_tools({ query: "code analysis" })
-   Call search_tools({ query: "database query" })
+1. Call tool_search({ query: "web search" })
+   Call tool_search({ query: "code analysis" })
+   Call tool_search({ query: "database query" })
 2. Review all results
 3. Activate needed tools in parallel
 4. Use tools

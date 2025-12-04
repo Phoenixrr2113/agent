@@ -132,7 +132,7 @@ describe('initializeAgent', () => {
         enableSemanticSearch: false,
       });
 
-      expect(result.tools.search_tools).toBeDefined();
+      expect(result.tools.tool_search).toBeDefined();
       expect(result.tools.activate_tool).toBeDefined();
       expect(result.tools.deactivate_tool).toBeDefined();
 

@@ -232,7 +232,7 @@ The agent uses a smart tool management system with **deferred loading** - tools 
 
 | Tool | Description |
 |------|-------------|
-| `search_tools` | Semantic search across available tools by description |
+| `tool_search` | Semantic search across available tools by description |
 | `activate_tool` | Dynamically activate deferred tools when needed |
 | `deactivate_tool` | Deactivate tools to reduce token usage |
 
@@ -336,7 +336,7 @@ await session.send('Analyze the performance bottlenecks in this codebase and sug
 ```typescript
 // Search for tools by description
 await session.send('What tools are available for working with files?');
-// Agent uses search_tools to find filesystem tools
+// Agent uses tool_search to find filesystem tools
 
 // Deferred tools are automatically activated when needed
 await session.send('Search the web for TypeScript best practices');

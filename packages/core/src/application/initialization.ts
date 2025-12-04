@@ -25,6 +25,20 @@ import {
   createToolActivationManager,
 } from '../tools/tool-wrapper.js';
 
+/**
+ * Core tools that are always available without requiring activation.
+ * These tools are essential for the agent's operation and reasoning.
+ */
+export const CORE_TOOL_NAMES = [
+  'plan',
+  'sequential_thinking',
+  'ask_user',
+  'task_complete',
+  'tool_search',
+  'activate_tool',
+  'deactivate_tool',
+] as const;
+
 export interface InitializationConfig {
   workspaceRoot?: string;
   enableReadline?: boolean;
@@ -78,13 +92,13 @@ export async function initializeAgent(config: InitializationConfig = {}): Promis
   const agentTools = createAgentTools(rl);
 
   const activeTools = {
-    shell: shellTool,
     plan: planTool,
     sequential_thinking: sequentialThinkingTool,
     ...agentTools,
   };
 
   const deferredTools = {
+    shell: shellTool,
     web_search: webSearchTool,
     fetch_page: fetchPageTool,
     ...memoryTools,
@@ -121,7 +135,7 @@ export async function initializeAgent(config: InitializationConfig = {}): Promis
   const tools = {
     ...activeTools,
     ...wrappedDeferredTools,
-    search_tools: searchTool,
+    tool_search: searchTool,
     activate_tool: activateTool,
     deactivate_tool: deactivateTool,
   };

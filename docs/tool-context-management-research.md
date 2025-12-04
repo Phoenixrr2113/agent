@@ -207,7 +207,7 @@ The `activeTools` parameter allows limiting which tools are available to the mod
 prepareStep: async ({ stepNumber }) => {
   if (stepNumber === 0) {
     return {
-      activeTools: ['search_tools', 'shell'],  // Only these tools available
+      activeTools: ['tool_search', 'shell'],  // Only these tools available
     };
   }
 
@@ -408,7 +408,7 @@ export function createPrepareStep(activationManager: ToolActivationManager): Pre
     // Dynamic tool filtering based on activation state
     const activeToolNames = activationManager.getActiveToolNames();
     const coreTools = ['shell', 'plan', 'ask_user', 'task_complete',
-                       'search_tools', 'activate_tool', 'deactivate_tool'];
+                       'tool_search', 'activate_tool', 'deactivate_tool'];
 
     return {
       messages: finalMessages,
@@ -441,7 +441,7 @@ activate_tool({ toolName: 'web_search' });
 {
   activeTools: [
     'shell', 'plan', 'ask_user', 'task_complete',
-    'search_tools', 'activate_tool', 'deactivate_tool',
+    'tool_search', 'activate_tool', 'deactivate_tool',
     'web_search'  // ← Only activated deferred tool
   ]
 }

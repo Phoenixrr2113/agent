@@ -74,17 +74,17 @@ export class SequentialThinkingEngine {
 const globalEngine = new SequentialThinkingEngine();
 
 export const sequentialThinkingTool = tool({
-  description: `Record a reasoning step. Use for complex problems where you need to think through multiple steps. You can pause between thoughts to gather information, use other tools, or take actions, then continue reasoning. Set nextThoughtNeeded to false when you've reached your conclusion.`,
+  description: `Record deep reasoning steps for complex problems that require careful thinking. Use this when you need to reason through something step-by-step, building on previous thoughts. Each thought captures one piece of reasoning - you can use other tools between thoughts to gather information. This is for analysis and understanding, not for tracking implementation work (use plan for that). Set nextThoughtNeeded=false when your reasoning is complete.`,
   inputSchema: z.object({
-    thought: z.string().describe('Your current thinking step'),
-    nextThoughtNeeded: z.boolean().describe('Whether another thought step is needed'),
-    thoughtNumber: z.number().int().min(1).describe('Current thought number'),
-    totalThoughts: z.number().int().min(1).describe('Estimated total thoughts needed'),
-    isRevision: z.boolean().optional().describe('Whether this revises previous thinking'),
-    revisesThought: z.number().int().min(1).optional().describe('Which thought is being reconsidered'),
-    branchFromThought: z.number().int().min(1).optional().describe('Branching point thought number'),
-    branchId: z.string().optional().describe('Branch identifier'),
-    needsMoreThoughts: z.boolean().optional().describe('If more thoughts are needed'),
+    thought: z.string().describe('Your current reasoning step - one clear idea or observation'),
+    nextThoughtNeeded: z.boolean().describe('True if you need more reasoning steps, false when done'),
+    thoughtNumber: z.number().int().min(1).describe('Current step number (1, 2, 3...)'),
+    totalThoughts: z.number().int().min(1).describe('How many steps you expect to need'),
+    isRevision: z.boolean().optional().describe('True if reconsidering a previous thought'),
+    revisesThought: z.number().int().min(1).optional().describe('Which thought number to revise'),
+    branchFromThought: z.number().int().min(1).optional().describe('Split reasoning from this thought'),
+    branchId: z.string().optional().describe('Name for this reasoning branch'),
+    needsMoreThoughts: z.boolean().optional().describe('True if need to extend thinking'),
   }),
   execute: async (input) => {
     const result = globalEngine.processThought(input as ThoughtData);

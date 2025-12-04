@@ -1,6 +1,6 @@
 import { tool, type Tool, embed } from 'ai';
-import { openai } from '@ai-sdk/openai';
 import { z } from 'zod';
+import { getEmbeddingModel } from '../core/agents/embeddings.js';
 
 export interface ToolMetadata {
   name: string;
@@ -155,7 +155,7 @@ export class ToolRegistry {
   ): Promise<ToolMetadata[]> {
     const { limit = 10, includeDeferred = true, threshold = 0.3 } = options;
 
-    const embeddingModel = openai.embedding('text-embedding-3-small');
+    const embeddingModel = getEmbeddingModel();
     const { embedding: queryEmbedding } = await embed({
       model: embeddingModel,
       value: query,
@@ -180,7 +180,7 @@ export class ToolRegistry {
   }
 
   async generateEmbeddings(): Promise<void> {
-    const embeddingModel = openai.embedding('text-embedding-3-small');
+    const embeddingModel = getEmbeddingModel();
 
     for (const [name, registered] of this.tools) {
       if (registered.embedding) continue;
@@ -308,7 +308,7 @@ export function createActivateToolTool(
   activationManager: any
 ) {
   return tool({
-    description: `Activate a deferred tool so you can use it. Call this after using search_tools to find a tool you need. Only deferred tools require activation - active tools are always available.`,
+    description: `Activate a deferred tool so you can use it. Call this after using tool_search to find a tool you need. Only deferred tools require activation - active tools are always available.`,
     inputSchema: z.object({
       toolName: z.string().describe('Name of the tool to activate'),
     }),
