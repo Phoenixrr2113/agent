@@ -25,6 +25,20 @@ import {
   createToolActivationManager,
 } from '../tools/tool-wrapper.js';
 
+/**
+ * Core tools that are always available without requiring activation.
+ * These tools are essential for the agent's operation and reasoning.
+ */
+export const CORE_TOOL_NAMES = [
+  'plan',
+  'sequential_thinking',
+  'ask_user',
+  'task_complete',
+  'search_tools',
+  'activate_tool',
+  'deactivate_tool',
+] as const;
+
 export interface InitializationConfig {
   workspaceRoot?: string;
   enableReadline?: boolean;

@@ -1,8 +1,9 @@
 /**
- * Token estimation utilities for context window management.
- * Uses character-based heuristic: ~4 characters per token for English text.
- * This is a reasonable approximation without requiring tiktoken dependency.
+ * Token counting utilities for context window management.
+ * Uses gpt-tokenizer for accurate token counting across different models.
  */
+
+import { encode } from 'gpt-tokenizer';
 
 export interface TokenBudget {
   maxTokens: number;
@@ -14,12 +15,13 @@ export interface TokenBudget {
 }
 
 /**
- * Estimate tokens using character-based heuristic.
- * ~4 characters per token is a reasonable approximation.
+ * Count tokens accurately using gpt-tokenizer.
+ * Uses GPT-4o tokenizer which is a good approximation for most modern LLMs.
  */
-export function estimateTokens(text: string): number {
+export function countTokens(text: string): number {
   if (!text) return 0;
-  return Math.ceil(text.length / 4);
+  const tokens = encode(text);
+  return tokens.length;
 }
 
 /**
@@ -32,12 +34,12 @@ export function calculateRAGBudget(
   userMessageLength: number = 500,
   safetyBuffer: number = 500
 ): TokenBudget {
-  const systemPromptTokens = estimateTokens(systemPrompt);
+  const systemPromptTokens = countTokens(systemPrompt);
 
   // Rough estimate: ~100 tokens per tool definition (description + schema)
   const toolDefinitionsTokens = toolCount * 100;
 
-  const userMessageTokens = estimateTokens(' '.repeat(userMessageLength));
+  const userMessageTokens = countTokens(' '.repeat(userMessageLength));
 
   const usedTokens = systemPromptTokens + toolDefinitionsTokens + userMessageTokens + safetyBuffer;
   const availableForRAG = Math.max(0, maxContextTokens - usedTokens);
@@ -64,7 +66,7 @@ export function filterChunksToFitBudget<T extends { contextualContent: string }>
   let usedTokens = 0;
 
   for (const chunk of chunks) {
-    const chunkTokens = estimateTokens(chunk.contextualContent);
+    const chunkTokens = countTokens(chunk.contextualContent);
 
     if (usedTokens + chunkTokens <= tokenBudget) {
       result.push(chunk);

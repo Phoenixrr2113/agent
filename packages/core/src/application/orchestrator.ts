@@ -1,6 +1,7 @@
 import { stepCountIs, type StepResult, type PrepareStepFunction } from 'ai';
 import { createAgentWithRole } from '../core/agents/factory.js';
 import { logger } from '@agent/shared';
+import { CORE_TOOL_NAMES } from './initialization.js';
 
 export function createPrepareStep(activationManager?: any): PrepareStepFunction<any> {
   return ({ messages }) => {
@@ -17,15 +18,7 @@ export function createPrepareStep(activationManager?: any): PrepareStepFunction<
 
     // Filter inactive tool schemas from context window
     if (activationManager) {
-      const coreTools = [
-        'plan',
-        'sequential_thinking',
-        'ask_user',
-        'task_complete',
-        'search_tools',
-        'activate_tool',
-        'deactivate_tool',
-      ];
+      const coreTools = [...CORE_TOOL_NAMES];
       const activeToolNames = activationManager.getActiveToolNames();
 
       logger.debug('🔧 Active tools', {

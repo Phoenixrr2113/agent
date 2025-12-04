@@ -74,7 +74,7 @@ export class SequentialThinkingEngine {
 const globalEngine = new SequentialThinkingEngine();
 
 export const sequentialThinkingTool = tool({
-  description: `Break down complex reasoning into steps. Use when you need to: analyze an unfamiliar codebase, debug a tricky issue, design an architecture, or solve a problem that requires careful analysis. Each thought is one reasoning step - you can gather info with other tools between thoughts. Set nextThoughtNeeded=false when done thinking.`,
+  description: `Record deep reasoning steps for complex problems that require careful thinking. Use this when you need to reason through something step-by-step, building on previous thoughts. Each thought captures one piece of reasoning - you can use other tools between thoughts to gather information. This is for analysis and understanding, not for tracking implementation work (use plan for that). Set nextThoughtNeeded=false when your reasoning is complete.`,
   inputSchema: z.object({
     thought: z.string().describe('Your current reasoning step - one clear idea or observation'),
     nextThoughtNeeded: z.boolean().describe('True if you need more reasoning steps, false when done'),

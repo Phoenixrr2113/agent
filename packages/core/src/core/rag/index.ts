@@ -12,7 +12,7 @@ import { rerankWithFallback } from './rerank.js';
 import { createDefaultRegistry, type StrategyRegistry, type Chunk } from './strategies/index.js';
 import { logger } from '@agent/shared';
 import { getEmbeddingModel } from '../agents/embeddings.js';
-import { filterChunksToFitBudget, estimateTokens } from './tokens.js';
+import { filterChunksToFitBudget, countTokens } from './tokens.js';
 
 export type { ContextualChunk } from './context.js';
 export type { Chunk, ChunkingStrategy, ChunkMetadata } from './strategies/index.js';
@@ -350,7 +350,7 @@ export function createCodebaseRAG(
             original: originalCount,
             filtered: results.length,
             budgetTokens: maxTokens,
-            usedTokens: results.reduce((sum, c) => sum + estimateTokens(c.contextualContent), 0),
+            usedTokens: results.reduce((sum, c) => sum + countTokens(c.contextualContent), 0),
           });
         }
       }
