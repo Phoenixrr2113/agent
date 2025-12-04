@@ -78,13 +78,13 @@ export async function initializeAgent(config: InitializationConfig = {}): Promis
   const agentTools = createAgentTools(rl);
 
   const activeTools = {
-    shell: shellTool,
     plan: planTool,
     sequential_thinking: sequentialThinkingTool,
     ...agentTools,
   };
 
   const deferredTools = {
+    shell: shellTool,
     web_search: webSearchTool,
     fetch_page: fetchPageTool,
     ...memoryTools,
