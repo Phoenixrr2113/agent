@@ -18,8 +18,8 @@ export function createPrepareStep(activationManager?: any): PrepareStepFunction<
     // Filter inactive tool schemas from context window
     if (activationManager) {
       const coreTools = [
-        'shell',
         'plan',
+        'sequential_thinking',
         'ask_user',
         'task_complete',
         'search_tools',

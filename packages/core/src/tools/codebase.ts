@@ -10,7 +10,7 @@ export function createCodebaseTools(codebaseRAG: any, grepWorkspace: any, worksp
         topK: z.number().optional().default(5).describe('Number of results to return (default: 5)'),
       }),
       execute: async ({ query, topK = 5 }: { query: string; topK?: number }) => {
-        const results = await codebaseRAG.searchCodebase(query, topK);
+        const results = await codebaseRAG.searchCodebase(query, { topK });
         return JSON.stringify(results.map((r: any) => ({
           file: r.filePath,
           lines: `${r.startLine}-${r.endLine}`,

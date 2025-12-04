@@ -21,14 +21,14 @@ interface Plan {
 let currentPlan: Plan | null = null;
 
 export const planTool = tool({
-  description: 'Manage implementation plan. Create plan at task start, update as you progress through steps.',
+  description: 'Track implementation work with a multi-step plan. Use for coding tasks with clear steps: fixing bugs, adding features, refactoring. Create a plan with specific actions, mark each in_progress when starting, completed when done. Different from sequential_thinking which is for analysis/reasoning.',
   inputSchema: z.object({
-    action: z.enum(['create', 'update_status', 'add_note', 'add_step', 'view']).describe('Action to perform'),
-    title: z.string().optional().describe('Plan title (for create action)'),
-    steps: z.array(z.string()).optional().describe('Step names (for create action)'),
-    stepName: z.string().optional().describe('Step to update'),
-    status: z.enum(['pending', 'in_progress', 'completed', 'blocked']).optional().describe('New status'),
-    note: z.string().optional().describe('Note to add to step'),
+    action: z.enum(['create', 'update_status', 'add_note', 'add_step', 'view']).describe('What to do: create, update_status, add_note, add_step, or view'),
+    title: z.string().optional().describe('Plan title (when creating)'),
+    steps: z.array(z.string()).optional().describe('List of step names (when creating)'),
+    stepName: z.string().optional().describe('Which step to update'),
+    status: z.enum(['pending', 'in_progress', 'completed', 'blocked']).optional().describe('New status for the step'),
+    note: z.string().optional().describe('Note to attach to a step'),
   }),
   // eslint-disable-next-line @typescript-eslint/require-await
   execute: async ({ action, title, steps, stepName, status, note }) => {

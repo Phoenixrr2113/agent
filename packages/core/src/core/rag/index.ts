@@ -12,6 +12,7 @@ import { rerankWithFallback } from './rerank.js';
 import { createDefaultRegistry, type StrategyRegistry, type Chunk } from './strategies/index.js';
 import { logger } from '@agent/shared';
 import { getEmbeddingModel } from '../agents/embeddings.js';
+import { filterChunksToFitBudget, estimateTokens } from './tokens.js';
 
 export type { ContextualChunk } from './context.js';
 export type { Chunk, ChunkingStrategy, ChunkMetadata } from './strategies/index.js';
@@ -26,9 +27,14 @@ interface CachedFileData {
   hash: string;
 }
 
+export interface SearchOptions {
+  topK?: number;
+  maxTokens?: number;
+}
+
 export interface CodebaseRAG {
   indexCodebase: () => Promise<void>;
-  searchCodebase: (query: string, topK?: number) => Promise<EmbeddedChunk[]>;
+  searchCodebase: (query: string, options?: SearchOptions) => Promise<EmbeddedChunk[]>;
   getStats: () => { totalChunks: number; files: number };
   clearCache: () => Promise<void>;
   dispose: () => void;
@@ -41,6 +47,7 @@ export interface RAGOptions {
   enableReranking?: boolean;
   rerankTopN?: number;
   returnTopN?: number;
+  maxTokensPerSearch?: number;
   onProgress?: (message: string) => void;
   strategyRegistry?: StrategyRegistry;
 }
@@ -56,6 +63,7 @@ export function createCodebaseRAG(
     enableReranking = true,
     rerankTopN = 100,
     returnTopN = 8,
+    maxTokensPerSearch = 3000,
     onProgress,
     strategyRegistry,
   } = options;
@@ -272,11 +280,12 @@ export function createCodebaseRAG(
       });
     },
 
-    searchCodebase: async (query: string, topK?: number) => {
+    searchCodebase: async (query: string, options?: SearchOptions) => {
       const startTime = performance.now();
-      logger.debug('⏱️  [RAG] Starting search', { query });
+      logger.debug('⏱️  [RAG] Starting search', { query, options });
 
-      const finalTopK = topK ?? returnTopN;
+      const finalTopK = options?.topK ?? returnTopN;
+      const maxTokens = options?.maxTokens ?? maxTokensPerSearch;
 
       if (embeddedChunks.length === 0) {
         logger.debug('⏱️  [RAG] Search completed (no chunks)');
@@ -328,9 +337,23 @@ export function createCodebaseRAG(
         finalIds = candidateIds.slice(0, finalTopK);
       }
 
-      const results = finalIds
+      let results = finalIds
         .map((id) => chunkMap.get(id))
         .filter((c): c is EmbeddedChunk => c !== undefined);
+
+      // Filter by token budget if specified
+      if (maxTokens !== undefined && maxTokens > 0) {
+        const originalCount = results.length;
+        results = filterChunksToFitBudget(results, maxTokens);
+        if (results.length < originalCount) {
+          logger.info('⏱️  [RAG] Filtered chunks to fit token budget', {
+            original: originalCount,
+            filtered: results.length,
+            budgetTokens: maxTokens,
+            usedTokens: results.reduce((sum, c) => sum + estimateTokens(c.contextualContent), 0),
+          });
+        }
+      }
 
       const duration = performance.now() - startTime;
       logger.info('⏱️  [RAG] Search completed', {
