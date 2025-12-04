@@ -2,8 +2,6 @@ import { createOpenRouter } from '@openrouter/ai-sdk-provider';
 import { createOllama } from 'ollama-ai-provider-v2';
 import { logger } from '@agent/shared';
 
-const OLLAMA_ENABLED = process.env.OLLAMA_ENABLED === 'true';
-
 const openrouter = createOpenRouter();
 const ollama = createOllama({
   baseURL: process.env.OLLAMA_BASE_URL || 'http://localhost:11434/api',
@@ -25,7 +23,7 @@ const OLLAMA_TIERS = {
 
 export const models: any = {
   fast: () => {
-    if (OLLAMA_ENABLED) {
+    if (process.env.OLLAMA_ENABLED === 'true') {
       const modelName = OLLAMA_TIERS.fast;
       logger.info('🔌 Using Ollama model', { tier: 'fast', model: modelName });
       return ollama(modelName);
@@ -36,7 +34,7 @@ export const models: any = {
   },
 
   standard: () => {
-    if (OLLAMA_ENABLED) {
+    if (process.env.OLLAMA_ENABLED === 'true') {
       const modelName = OLLAMA_TIERS.standard;
       logger.info('🔌 Using Ollama model', { tier: 'standard', model: modelName });
       return ollama(modelName);
@@ -47,7 +45,7 @@ export const models: any = {
   },
 
   reasoning: () => {
-    if (OLLAMA_ENABLED) {
+    if (process.env.OLLAMA_ENABLED === 'true') {
       const modelName = OLLAMA_TIERS.reasoning;
       logger.info('🔌 Using Ollama model', { tier: 'reasoning', model: modelName });
       return ollama(modelName);
@@ -58,7 +56,7 @@ export const models: any = {
   },
 
   powerful: () => {
-    if (OLLAMA_ENABLED) {
+    if (process.env.OLLAMA_ENABLED === 'true') {
       const modelName = OLLAMA_TIERS.powerful;
       logger.info('🔌 Using Ollama model', { tier: 'powerful', model: modelName });
       return ollama(modelName);
