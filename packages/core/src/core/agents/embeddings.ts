@@ -7,14 +7,13 @@ const ollama = createOllama({
   baseURL: process.env.OLLAMA_BASE_URL || 'http://localhost:11434/api',
 });
 
-const OLLAMA_EMBEDDING_MODEL = process.env.OLLAMA_EMBEDDING_MODEL || 'nomic-embed-text';
-const OPENAI_EMBEDDING_MODEL = process.env.OPENAI_EMBEDDING_MODEL || 'text-embedding-3-small';
-
 export function getEmbeddingModel(): EmbeddingModel {
   if (process.env.OLLAMA_ENABLED === 'true') {
-    logger.info('🔌 Using Ollama embedding model', { model: OLLAMA_EMBEDDING_MODEL });
-    return ollama.textEmbeddingModel(OLLAMA_EMBEDDING_MODEL);
+    const modelName = process.env.OLLAMA_EMBEDDING_MODEL || 'nomic-embed-text';
+    logger.info('🔌 Using Ollama embedding model', { model: modelName });
+    return ollama.textEmbeddingModel(modelName);
   }
-  logger.info('🔌 Using OpenAI embedding model', { model: OPENAI_EMBEDDING_MODEL });
-  return openai.embedding(OPENAI_EMBEDDING_MODEL);
+  const modelName = process.env.OPENAI_EMBEDDING_MODEL || 'text-embedding-3-small';
+  logger.info('🔌 Using OpenAI embedding model', { model: modelName });
+  return openai.embedding(modelName);
 }

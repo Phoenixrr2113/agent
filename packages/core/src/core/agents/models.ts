@@ -7,61 +7,47 @@ const ollama = createOllama({
   baseURL: process.env.OLLAMA_BASE_URL || 'http://localhost:11434/api',
 });
 
-const OPENROUTER_TIERS = {
-  fast: process.env.MODEL_FAST || 'deepseek/deepseek-chat-v3-0324:free',
-  standard: process.env.MODEL_STANDARD || 'google/gemini-2.0-flash-001',
-  reasoning: process.env.MODEL_REASONING || 'deepseek/deepseek-r1:free',
-  powerful: process.env.MODEL_POWERFUL || 'anthropic/claude-sonnet-4',
-};
-
-const OLLAMA_TIERS = {
-  fast: process.env.OLLAMA_FAST_MODEL || 'qwen3:4b',
-  standard: process.env.OLLAMA_STANDARD_MODEL || 'qwen2.5-coder:14b',
-  reasoning: process.env.OLLAMA_REASONING_MODEL || 'deepseek-r1:14b',
-  powerful: process.env.OLLAMA_POWERFUL_MODEL || 'qwen2.5-coder:14b',
-};
-
 export const models: any = {
   fast: () => {
     if (process.env.OLLAMA_ENABLED === 'true') {
-      const modelName = OLLAMA_TIERS.fast;
+      const modelName = process.env.OLLAMA_FAST_MODEL || 'qwen3:4b';
       logger.info('🔌 Using Ollama model', { tier: 'fast', model: modelName });
       return ollama(modelName);
     }
-    const modelName = OPENROUTER_TIERS.fast;
+    const modelName = process.env.MODEL_FAST || 'deepseek/deepseek-chat-v3-0324:free';
     logger.info('🔌 Using OpenRouter model', { tier: 'fast', model: modelName });
     return openrouter.chat(modelName);
   },
 
   standard: () => {
     if (process.env.OLLAMA_ENABLED === 'true') {
-      const modelName = OLLAMA_TIERS.standard;
+      const modelName = process.env.OLLAMA_STANDARD_MODEL || 'qwen2.5-coder:14b';
       logger.info('🔌 Using Ollama model', { tier: 'standard', model: modelName });
       return ollama(modelName);
     }
-    const modelName = OPENROUTER_TIERS.standard;
+    const modelName = process.env.MODEL_STANDARD || 'google/gemini-2.0-flash-001';
     logger.info('🔌 Using OpenRouter model', { tier: 'standard', model: modelName });
     return openrouter.chat(modelName);
   },
 
   reasoning: () => {
     if (process.env.OLLAMA_ENABLED === 'true') {
-      const modelName = OLLAMA_TIERS.reasoning;
+      const modelName = process.env.OLLAMA_REASONING_MODEL || 'deepseek-r1:14b';
       logger.info('🔌 Using Ollama model', { tier: 'reasoning', model: modelName });
       return ollama(modelName);
     }
-    const modelName = OPENROUTER_TIERS.reasoning;
+    const modelName = process.env.MODEL_REASONING || 'deepseek/deepseek-r1:free';
     logger.info('🔌 Using OpenRouter model', { tier: 'reasoning', model: modelName });
     return openrouter.chat(modelName);
   },
 
   powerful: () => {
     if (process.env.OLLAMA_ENABLED === 'true') {
-      const modelName = OLLAMA_TIERS.powerful;
+      const modelName = process.env.OLLAMA_POWERFUL_MODEL || 'qwen2.5-coder:14b';
       logger.info('🔌 Using Ollama model', { tier: 'powerful', model: modelName });
       return ollama(modelName);
     }
-    const modelName = OPENROUTER_TIERS.powerful;
+    const modelName = process.env.MODEL_POWERFUL || 'anthropic/claude-sonnet-4';
     logger.info('🔌 Using OpenRouter model', { tier: 'powerful', model: modelName });
     return openrouter.chat(modelName);
   },
