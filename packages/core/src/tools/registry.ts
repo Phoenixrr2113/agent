@@ -308,7 +308,7 @@ export function createActivateToolTool(
   activationManager: any
 ) {
   return tool({
-    description: `Activate a deferred tool so you can use it. Call this after using search_tools to find a tool you need. Only deferred tools require activation - active tools are always available.`,
+    description: `Activate a deferred tool so you can use it. Call this after using tool_search to find a tool you need. Only deferred tools require activation - active tools are always available.`,
     inputSchema: z.object({
       toolName: z.string().describe('Name of the tool to activate'),
     }),

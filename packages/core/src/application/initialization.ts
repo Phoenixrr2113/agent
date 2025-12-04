@@ -34,7 +34,7 @@ export const CORE_TOOL_NAMES = [
   'sequential_thinking',
   'ask_user',
   'task_complete',
-  'search_tools',
+  'tool_search',
   'activate_tool',
   'deactivate_tool',
 ] as const;
@@ -135,7 +135,7 @@ export async function initializeAgent(config: InitializationConfig = {}): Promis
   const tools = {
     ...activeTools,
     ...wrappedDeferredTools,
-    search_tools: searchTool,
+    tool_search: searchTool,
     activate_tool: activateTool,
     deactivate_tool: deactivateTool,
   };

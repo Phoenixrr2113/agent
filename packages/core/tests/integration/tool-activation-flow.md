@@ -19,7 +19,7 @@ An agent needs to:
 - `plan` - Manage implementation plans
 - `task_complete` - Mark task as complete
 - `ask_user` - Ask user questions
-- `search_tools` - Search for available tools
+- `tool_search` - Search for available tools
 - `activate_tool` - Activate deferred tools
 
 **Deferred Tools (require activation):**
@@ -32,7 +32,7 @@ An agent needs to:
 
 ### Step 2: Agent searches for a tool
 
-**Agent calls:** `search_tools`
+**Agent calls:** `tool_search`
 ```json
 {
   "query": "web search",
@@ -159,7 +159,7 @@ An agent needs to:
 
 ### Test Case 5: Search Shows Activation Status
 - **Setup:** Registry has mix of active and deferred tools
-- **Action:** Call `search_tools`
+- **Action:** Call `tool_search`
 - **Expected:** Results show `requiresActivation` and `isActivated` flags
 - **Status:** ✅ PASS
 
@@ -205,7 +205,7 @@ An agent needs to:
         - plan                  - fetch_page
         - task_complete         - memory_*
         - ask_user              - validate
-        - search_tools          - *_codebase
+        - tool_search          - *_codebase
         - activate_tool
 ```
 
@@ -237,7 +237,7 @@ This is a **breaking change** from the previous (broken) implementation:
 
 **Migration Path:**
 Agents that previously called deferred tools directly (web_search, memory_*, etc.) will now receive errors until they:
-1. Learn to search for tools using `search_tools`
+1. Learn to search for tools using `tool_search`
 2. Activate deferred tools using `activate_tool` before first use
 3. Follow the proper activation workflow
 
