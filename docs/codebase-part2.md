@@ -12,6 +12,103 @@ This file is retained for any extended topics or advanced use cases not covered 
 
 ## Extended Topics
 
+### Local Model Deployment with Ollama
+
+The platform supports running entirely locally using Ollama, eliminating cloud dependencies and API costs.
+
+#### Setup Ollama
+
+1. **Install Ollama**:
+```bash
+# macOS/Linux
+curl -fsSL https://ollama.com/install.sh | sh
+
+# Or download from https://ollama.com
+```
+
+2. **Pull Required Models**:
+```bash
+# LLM models (choose based on your hardware)
+ollama pull qwen3:4b              # Fast tier (2.5GB)
+ollama pull qwen2.5-coder:14b     # Standard/Powerful (9GB)
+ollama pull deepseek-r1:14b       # Reasoning (9GB)
+
+# Embedding model
+ollama pull nomic-embed-text      # Embeddings (274MB)
+```
+
+3. **Configure Environment**:
+```bash
+# .env
+OLLAMA_ENABLED=true
+OLLAMA_BASE_URL=http://localhost:11434/api
+
+# Optional: Customize models
+OLLAMA_FAST_MODEL=qwen3:4b
+OLLAMA_STANDARD_MODEL=qwen2.5-coder:14b
+OLLAMA_REASONING_MODEL=deepseek-r1:14b
+OLLAMA_POWERFUL_MODEL=qwen2.5-coder:14b
+OLLAMA_EMBEDDING_MODEL=nomic-embed-text
+```
+
+#### Hardware Recommendations
+
+**Minimum**:
+- RAM: 8GB
+- Storage: 15GB free
+- CPU: 4 cores
+- Models: qwen3:4b (fast tier only)
+
+**Recommended**:
+- RAM: 16GB+
+- Storage: 30GB+ free
+- CPU: 8+ cores
+- GPU: NVIDIA with 8GB+ VRAM (optional, significant speedup)
+- Models: Full model suite
+
+**GPU Acceleration**:
+```bash
+# Ollama automatically uses GPU if available
+# Verify GPU usage:
+ollama run qwen2.5-coder:14b "Hello"
+# Check logs for GPU initialization
+```
+
+#### Hybrid Mode
+
+Mix cloud and local models for optimal cost/performance:
+
+```bash
+# Use Ollama for most tasks, cloud for complex reasoning
+OLLAMA_ENABLED=true
+OLLAMA_FAST_MODEL=qwen3:4b
+OLLAMA_STANDARD_MODEL=qwen2.5-coder:14b
+
+# Override powerful tier to use Claude
+MODEL_POWERFUL=anthropic/claude-sonnet-4
+OPENROUTER_API_KEY=your_key_here
+```
+
+Modify `packages/core/src/core/agents/models.ts` to customize per-tier selection.
+
+#### Performance Comparison
+
+**Throughput** (tokens/second, 14B models):
+
+| Hardware | CPU Only | GPU (RTX 3090) |
+|----------|----------|----------------|
+| qwen2.5-coder:14b | 8-12 t/s | 45-60 t/s |
+| deepseek-r1:14b | 6-10 t/s | 40-55 t/s |
+
+**Quality** (subjective):
+
+| Task | Cloud (Claude/GPT-4) | Local (qwen2.5-coder) |
+|------|----------------------|------------------------|
+| Code generation | ★★★★★ | ★★★★☆ |
+| Code review | ★★★★★ | ★★★★☆ |
+| RAG context | ★★★★☆ | ★★★★☆ |
+| Complex reasoning | ★★★★★ | ★★★☆☆ |
+
 ### Advanced RAG Configuration
 
 #### Custom Chunking Strategies
@@ -67,27 +164,58 @@ registry.register(new CustomChunkingStrategy());
 import { createCodebaseRAG } from '@agent/core';
 
 const rag = createCodebaseRAG(workspaceRoot, {
-  // Chunking options
-  maxChunkSize: 1500,           // Max characters per chunk
-  chunkOverlap: 100,             // Overlap between chunks
-
   // Context generation
-  generateContext: true,         // Enable LLM-based context
-  contextConcurrency: 5,         // Parallel context generation
+  enableContextGeneration: true,  // Enable LLM-based context (default: true)
 
-  // Embedding options
-  embeddingModel: 'text-embedding-004',
-  embeddingBatchSize: 50,
+  // Search pipeline
+  enableBM25: true,               // Enable BM25 keyword search (default: true)
+  enableReranking: true,          // Enable Cohere reranking (default: true)
 
-  // Search options
-  vectorSearchTopK: 100,
-  bm25SearchTopK: 100,
-  rerankTopK: 20,
+  // Result configuration
+  rerankTopN: 100,                // Candidates for reranking (default: 100)
+  returnTopN: 8,                  // Initial results count (default: 8)
+  maxTokensPerSearch: 3000,       // Token budget for results (default: 3000)
 
   // Caching
-  cacheDir: '.rag-cache',
-  enableCache: true,
+  enableCache: true,              // Cache embeddings (default: true)
+
+  // Progress tracking
+  onProgress: (msg) => console.log(msg),
 });
+```
+
+**Token Budget Tuning**:
+
+The `maxTokensPerSearch` parameter controls how many tokens of context are returned. This is critical for managing context window limits:
+
+```typescript
+// Conservative (for smaller context windows or many tool calls)
+maxTokensPerSearch: 2000,
+
+// Default (balanced)
+maxTokensPerSearch: 3000,
+
+// Aggressive (for large context windows, fewer tools)
+maxTokensPerSearch: 5000,
+```
+
+Results are filtered using `gpt-tokenizer` to ensure they fit within budget, prioritizing highest-ranked chunks.
+
+**Ollama-Optimized RAG**:
+
+When using Ollama for context generation, adjust concurrency based on hardware:
+
+```typescript
+import { createCodebaseRAG } from '@agent/core';
+
+const rag = createCodebaseRAG(workspaceRoot, {
+  enableContextGeneration: true,
+  returnTopN: 6,                  // Fewer results for faster processing
+  maxTokensPerSearch: 2500,       // Conservative budget for local models
+});
+
+// Context generation uses models.fast() which respects OLLAMA_ENABLED
+// No additional configuration needed
 ```
 
 ### Advanced Memory System Usage
@@ -260,6 +388,53 @@ console.log(`Resolved Issues: ${sweScore.resolvedIssues}`);
 
 ### Performance Optimization
 
+#### Ollama Performance Tuning
+
+**CPU Optimization**:
+```bash
+# Set thread count (default: auto-detect)
+export OLLAMA_NUM_THREADS=8
+
+# Batch size (default: 512)
+export OLLAMA_BATCH_SIZE=512
+```
+
+**GPU Optimization**:
+```bash
+# Enable GPU layers (default: -1 = all)
+export OLLAMA_GPU_LAYERS=-1
+
+# Multiple GPUs
+export OLLAMA_NUM_GPU=2
+```
+
+**Memory Management**:
+```bash
+# Keep models in memory (faster subsequent calls)
+export OLLAMA_KEEP_ALIVE=5m
+
+# Context window size
+export OLLAMA_NUM_CTX=4096
+```
+
+**Concurrent Requests**:
+```bash
+# Max concurrent requests (default: auto)
+export OLLAMA_MAX_LOADED_MODELS=2
+```
+
+**Monitoring Performance**:
+```typescript
+import { logger } from '@agent/shared';
+
+// Enable debug logging to see model performance
+process.env.LOG_LEVEL = 'debug';
+
+// Look for logs like:
+// "🔌 Using Ollama model { tier: 'fast', model: 'qwen3:4b' }"
+// "⏱️ [RAG] Query embedding generated { durationMs: '45.23' }"
+```
+
 #### RAG Cache Warming
 
 Pre-cache embeddings for faster first queries:
@@ -326,6 +501,82 @@ const fileTools = await registry.searchSemantic('file system operations');
 ```
 
 ### Production Deployment Considerations
+
+#### Deploying with Ollama
+
+**Docker Deployment**:
+
+```dockerfile
+FROM node:20-slim
+
+# Install Ollama
+RUN curl -fsSL https://ollama.com/install.sh | sh
+
+# Copy application
+WORKDIR /app
+COPY . .
+RUN pnpm install && pnpm build
+
+# Pull models during build
+RUN ollama serve & \
+    sleep 5 && \
+    ollama pull qwen3:4b && \
+    ollama pull nomic-embed-text
+
+# Start both Ollama and application
+CMD ollama serve & \
+    sleep 5 && \
+    node apps/cli/dist/cli.js
+```
+
+**Environment Variables for Production**:
+```bash
+# Use Ollama in production
+OLLAMA_ENABLED=true
+OLLAMA_BASE_URL=http://localhost:11434/api
+
+# Conservative model selection for stability
+OLLAMA_FAST_MODEL=qwen3:4b
+OLLAMA_STANDARD_MODEL=qwen2.5-coder:14b
+
+# Optimize performance
+OLLAMA_NUM_THREADS=8
+OLLAMA_KEEP_ALIVE=30m
+OLLAMA_NUM_CTX=4096
+
+# Reduce RAG token budget for consistency
+MAX_TOKENS_PER_SEARCH=2000
+```
+
+**Health Checks**:
+```typescript
+import { createOllama } from 'ollama-ai-provider-v2';
+
+async function checkOllamaHealth() {
+  try {
+    const ollama = createOllama({
+      baseURL: process.env.OLLAMA_BASE_URL || 'http://localhost:11434/api',
+    });
+
+    // Test with a simple generation
+    const model = ollama('qwen3:4b');
+    const result = await generateText({
+      model,
+      prompt: 'test',
+      maxTokens: 10,
+    });
+
+    return { healthy: true, latencyMs: result.usage?.totalTime };
+  } catch (error) {
+    return { healthy: false, error: error.message };
+  }
+}
+```
+
+**Scaling Considerations**:
+- **Single Instance**: Run Ollama and app on same server (simpler)
+- **Distributed**: Run Ollama on dedicated GPU servers, app instances connect via HTTP
+- **Load Balancing**: Multiple Ollama instances behind load balancer for high throughput
 
 #### Scaling HTTP Server
 

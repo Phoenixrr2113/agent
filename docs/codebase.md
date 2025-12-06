@@ -27,6 +27,7 @@
 
 ### Key Features
 
+- **Dual LLM Support**: Cloud (OpenRouter) and local (Ollama) model providers with seamless switching
 - **Persistent Memory**: SQLite-based knowledge graph with automatic entity extraction
 - **Web Intelligence**: Search (Brave/Tavily) and page parsing (Readability)
 - **Shell Execution**: Full bash command access with safety checks
@@ -34,7 +35,7 @@
 - **Filesystem Tools**: 12 comprehensive file operations (read, write, edit, search, move, copy, etc.)
 - **Smart Tool Management**: Deferred loading with semantic search and dynamic activation
 - **Sequential Thinking**: Multi-step reasoning with branching and revision support
-- **Codebase Tools**: RAG-powered semantic search and grep functionality
+- **Codebase Tools**: RAG-powered semantic search and grep functionality with token-aware filtering
 - **Session Management**: Multiple concurrent conversations with isolated history
 - **HTTP Server**: Built-in Hono server with REST API and SSE streaming
 - **Benchmark Support**: Adapters for HAL, tau-bench, SWE-bench, and GAIA evaluations
@@ -47,8 +48,13 @@
 - **Runtime**: Node.js 20+
 - **Build System**: Turborepo + pnpm workspaces
 - **AI SDK**: Vercel AI SDK 6.0 (beta)
-- **LLM Provider**: OpenRouter (multi-provider access)
-- **Embeddings**: Google AI (text-embedding-004)
+- **LLM Providers**:
+  - OpenRouter (multi-provider cloud access)
+  - Ollama (local model support)
+- **Embeddings**:
+  - OpenAI (text-embedding-3-small)
+  - Ollama (nomic-embed-text for local)
+- **Tokenization**: gpt-tokenizer (context window management)
 - **Database**: better-sqlite3
 - **HTTP Server**: Hono
 - **Code Parsing**: code-chopper (AST-based chunking)
@@ -301,6 +307,21 @@ Initializes all agent components including tools, RAG, and registry.
 5. Generate embeddings for semantic search
 6. Set up dynamic tool loading
 
+**Core Tools** (always active):
+```typescript
+export const CORE_TOOL_NAMES = [
+  'plan',
+  'sequential_thinking',
+  'ask_user',
+  'task_complete',
+  'tool_search',
+  'activate_tool',
+  'deactivate_tool',
+] as const;
+```
+
+These tools are essential for agent operation and do not require activation.
+
 **`packages/core/src/application/orchestrator.ts`**
 
 Creates and configures agent with step handlers and context management.
@@ -318,14 +339,53 @@ Creates and configures agent with step handlers and context management.
 Model configuration and tier management.
 
 **Model Tiers**:
+
+The platform supports both cloud (OpenRouter) and local (Ollama) models:
+
 ```typescript
+// OpenRouter models (default)
 const MODEL_TIERS = {
   fast: 'deepseek/deepseek-chat-v3-0324:free',
   standard: 'google/gemini-2.0-flash-001',
   reasoning: 'deepseek/deepseek-r1:free',
   powerful: 'anthropic/claude-sonnet-4',
 };
+
+// Ollama models (when OLLAMA_ENABLED=true)
+const OLLAMA_TIERS = {
+  fast: 'qwen3:4b',
+  standard: 'qwen2.5-coder:14b',
+  reasoning: 'deepseek-r1:14b',
+  powerful: 'qwen2.5-coder:14b',
+};
 ```
+
+Models are selected dynamically based on the `OLLAMA_ENABLED` environment variable.
+
+**`packages/core/src/core/agents/embeddings.ts`**
+
+Embedding model configuration with support for both OpenAI and Ollama providers.
+
+```typescript
+export function getEmbeddingModel(): EmbeddingModel {
+  if (process.env.OLLAMA_ENABLED === 'true') {
+    const modelName = process.env.OLLAMA_EMBEDDING_MODEL || 'nomic-embed-text';
+    return ollama.textEmbeddingModel(modelName);
+  }
+  const modelName = process.env.OPENAI_EMBEDDING_MODEL || 'text-embedding-3-small';
+  return openai.embedding(modelName);
+}
+```
+
+**Ollama Integration**:
+
+The platform provides seamless switching between cloud and local models:
+
+- **Setup**: Install Ollama locally and set `OLLAMA_ENABLED=true`
+- **Models**: All tiers (fast, standard, reasoning, powerful) have Ollama defaults
+- **Embeddings**: Uses `nomic-embed-text` for local semantic search
+- **Context Generation**: RAG system uses `models.fast()` for chunk descriptions
+- **Benefits**: Privacy, cost reduction, offline operation
 
 **`packages/core/src/core/agents/roles.ts`**
 
@@ -439,8 +499,23 @@ The RAG system enables semantic code search through a multi-stage pipeline.
 
 **Search Flow**:
 ```
-Query → Embedding → Vector Search → BM25 Search → RRF Fusion → Rerank → Results
+Query → Embedding → Vector Search → BM25 Search → RRF Fusion → Rerank → Token Filter → Results
 ```
+
+**Default Configuration**:
+```typescript
+{
+  enableCache: true,
+  enableContextGeneration: true,
+  enableBM25: true,
+  enableReranking: true,
+  rerankTopN: 100,        // Candidates for reranking
+  returnTopN: 8,          // Final results returned
+  maxTokensPerSearch: 3000, // Token budget for results
+}
+```
+
+**Token Budget**: Results are filtered to fit within `maxTokensPerSearch` tokens using `gpt-tokenizer` to prevent context overflow.
 
 ##### Tool System
 
@@ -955,13 +1030,14 @@ Chunking
   ├─→ Functions/Classes (for code)
   └─→ Headings/Paragraphs (for docs)
   ↓
-Context Generation (LLM)
+Context Generation (LLM - models.fast())
   ├─→ Generate searchable description
   └─→ Extract key concepts
   ↓
 Embedding Generation
-  ├─→ Google text-embedding-004
-  └─→ 768-dimensional vectors
+  ├─→ OpenAI text-embedding-3-small (cloud)
+  ├─→ Ollama nomic-embed-text (local)
+  └─→ 1536-dimensional vectors (OpenAI) or 768 (Ollama)
   ↓
 Indexing
   ├─→ Vector Index (cosine similarity)
@@ -985,7 +1061,12 @@ Reciprocal Rank Fusion (RRF)
   ↓
 Reranking (Cohere)
   ├─→ Top 100 candidates
-  └─→ Return top 20
+  └─→ Return top 8-20 (configurable)
+  ↓
+Token Filtering (gpt-tokenizer)
+  ├─→ Count tokens for each chunk
+  ├─→ Filter to fit maxTokensPerSearch (3000)
+  └─→ Prioritize highest-ranked chunks
   ↓
 Results to Agent
 ```
@@ -1277,10 +1358,20 @@ Agent uses chunks to formulate answer
 
 ## Environment Variables Reference
 
-### Required
+### Required (Cloud Mode)
 
 - `OPENROUTER_API_KEY` - OpenRouter API key for LLM access
-- `GOOGLE_GENERATIVE_AI_API_KEY` - Google AI API key for embeddings
+- `OPENAI_API_KEY` - OpenAI API key for embeddings
+
+### Optional: Ollama (Local Mode)
+
+- `OLLAMA_ENABLED` - Enable Ollama for local models (default: `false`)
+- `OLLAMA_BASE_URL` - Ollama server URL (default: `http://localhost:11434/api`)
+- `OLLAMA_FAST_MODEL` - Fast tier model (default: `qwen3:4b`)
+- `OLLAMA_STANDARD_MODEL` - Standard tier model (default: `qwen2.5-coder:14b`)
+- `OLLAMA_REASONING_MODEL` - Reasoning tier model (default: `deepseek-r1:14b`)
+- `OLLAMA_POWERFUL_MODEL` - Powerful tier model (default: `qwen2.5-coder:14b`)
+- `OLLAMA_EMBEDDING_MODEL` - Embedding model (default: `nomic-embed-text`)
 
 ### Optional: Web Search
 
@@ -1292,13 +1383,17 @@ Agent uses chunks to formulate answer
 - `MEMORY_DB_PATH` - SQLite database path (default: `./memory.db`)
 - `GRAPHITI_URL` - Graphiti service URL (default: `http://localhost:8000`)
 
-### Optional: Models
+### Optional: Cloud Models (OpenRouter)
 
-- `MODEL_FAST` - Fast model tier (default: deepseek-chat-v3)
-- `MODEL_STANDARD` - Standard model (default: gemini-2.0-flash-001)
-- `MODEL_REASONING` - Reasoning model (default: deepseek-r1)
-- `MODEL_POWERFUL` - Powerful model (default: claude-sonnet-4)
+- `MODEL_FAST` - Fast model tier (default: `deepseek/deepseek-chat-v3-0324:free`)
+- `MODEL_STANDARD` - Standard model (default: `google/gemini-2.0-flash-001`)
+- `MODEL_REASONING` - Reasoning model (default: `deepseek/deepseek-r1:free`)
+- `MODEL_POWERFUL` - Powerful model (default: `anthropic/claude-sonnet-4`)
 - `MODEL_EXTRACTION` - Extraction model (default: inherits MODEL_STANDARD)
+
+### Optional: Embeddings
+
+- `OPENAI_EMBEDDING_MODEL` - OpenAI embedding model (default: `text-embedding-3-small`)
 
 ### Optional: Server
 
