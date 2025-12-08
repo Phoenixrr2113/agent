@@ -18,6 +18,11 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential python3
+
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
 
@@ -37,6 +42,9 @@ jobs:
         run: pnpm test
         env:
           CI: true
+          # Provide dummy API keys for tests that check for their presence
+          OPENROUTER_API_KEY: sk-or-v1-test-key-for-ci
+          GOOGLE_GENERATIVE_AI_API_KEY: test-key-for-ci
 
       - name: Check TypeScript
         run: pnpm build
