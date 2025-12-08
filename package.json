@@ -10,12 +10,16 @@
     "runtime",
     "monorepo"
   ],
-  "author": "",
+  "author": "Agent Platform Contributors",
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": ""
+    "url": "https://github.com/Phoenixrr2113/agent.git"
   },
+  "bugs": {
+    "url": "https://github.com/Phoenixrr2113/agent/issues"
+  },
+  "homepage": "https://github.com/Phoenixrr2113/agent#readme",
   "type": "module",
   "packageManager": "pnpm@10.23.0",
   "engines": {

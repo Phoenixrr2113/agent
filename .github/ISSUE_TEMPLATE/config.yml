@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Documentation
+    url: https://github.com/Phoenixrr2113/agent/blob/main/README.md
+    about: Check the documentation for usage guides and examples
+  - name: Discussions
+    url: https://github.com/Phoenixrr2113/agent/discussions
+    about: Ask questions and discuss ideas with the community
