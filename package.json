@@ -37,7 +37,7 @@
     "test-agent": "tsx scripts/test-agent.ts"
   },
   "devDependencies": {
-    "@types/node": "^20.0.0",
+    "@types/node": "^24.10.1",
     "@types/ws": "^8.18.1",
     "dotenv": "^17.2.3",
     "tsx": "^4.0.0",
