@@ -1,0 +1,66 @@
+name-template: 'v$RESOLVED_VERSION'
+tag-template: 'v$RESOLVED_VERSION'
+
+categories:
+  - title: '🚀 Features'
+    labels:
+      - 'enhancement'
+      - 'feature'
+  - title: '🐛 Bug Fixes'
+    labels:
+      - 'bug'
+      - 'fix'
+  - title: '🔒 Security'
+    labels:
+      - 'security'
+  - title: '⚡ Performance'
+    labels:
+      - 'performance'
+  - title: '📦 Dependencies'
+    labels:
+      - 'dependencies'
+      - 'automated'
+  - title: '📝 Documentation'
+    labels:
+      - 'documentation'
+  - title: '🧪 Tests'
+    labels:
+      - 'tests'
+  - title: '⚙️ CI/CD'
+    labels:
+      - 'github-actions'
+  - title: '🔨 Refactoring'
+    labels:
+      - 'refactor'
+  - title: '⚠️ Breaking Changes'
+    labels:
+      - 'breaking-change'
+
+change-template: '- $TITLE @$AUTHOR (#$NUMBER)'
+change-title-escapes: '\<*_&'
+
+version-resolver:
+  major:
+    labels:
+      - 'breaking-change'
+  minor:
+    labels:
+      - 'enhancement'
+      - 'feature'
+  patch:
+    labels:
+      - 'bug'
+      - 'fix'
+      - 'documentation'
+      - 'dependencies'
+      - 'security'
+  default: patch
+
+template: |
+  ## Changes
+
+  $CHANGES
+
+  ## Contributors
+
+  $CONTRIBUTORS

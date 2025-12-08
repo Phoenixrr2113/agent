@@ -1,5 +1,11 @@
 # AI Agent Platform
 
+[![CI](https://github.com/Phoenixrr2113/agent/actions/workflows/ci.yml/badge.svg)](https://github.com/Phoenixrr2113/agent/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Node Version](https://img.shields.io/badge/node-%3E%3D20-brightgreen)](https://nodejs.org/)
+[![pnpm](https://img.shields.io/badge/pnpm-%3E%3D8-orange)](https://pnpm.io/)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+
 A **server-side AI agent runtime** for Node.js applications built as a modern monorepo. Provides persistent memory, web search, shell execution, and codebase understanding through a modular package architecture.
 
 > **⚠️ Server-Side Only**: This platform requires Node.js 20+ and uses native modules (SQLite, child_process). It cannot run in browsers. For frontend apps, run as a backend service and connect via HTTP/WebSocket.

@@ -1,6 +1,28 @@
 # Contributing to AI Agent Platform
 
-Thank you for your interest in contributing! This document provides guidelines for developing in our monorepo.
+Thank you for your interest in contributing! We welcome contributions from everyone. This document provides guidelines for developing in our monorepo.
+
+## Code of Conduct
+
+This project adheres to the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code. Please report unacceptable behavior via GitHub issues.
+
+## How to Contribute
+
+There are many ways to contribute to AI Agent Platform:
+
+- 🐛 **Report bugs** via [GitHub Issues](https://github.com/Phoenixrr2113/agent/issues/new?template=bug_report.yml)
+- 💡 **Suggest features** via [GitHub Issues](https://github.com/Phoenixrr2113/agent/issues/new?template=feature_request.yml)
+- 📝 **Improve documentation** by submitting PRs
+- 🔧 **Fix bugs** or implement features
+- ❓ **Answer questions** in [GitHub Discussions](https://github.com/Phoenixrr2113/agent/discussions)
+- ⭐ **Star the project** to show your support
+
+## Getting Help
+
+- 📖 Read the [README](README.md) for project overview
+- 🏗️ Check [ARCHITECTURE.md](docs/ARCHITECTURE.md) for design details
+- 💬 Ask questions in [GitHub Discussions](https://github.com/Phoenixrr2113/agent/discussions)
+- 🐛 Search [existing issues](https://github.com/Phoenixrr2113/agent/issues) before creating new ones
 
 ## Prerequisites
 
@@ -10,11 +32,22 @@ Thank you for your interest in contributing! This document provides guidelines f
 
 ## Getting Started
 
-### 1. Clone and Install
+### 1. Fork and Clone
+
+For external contributors:
 
 ```bash
-git clone <repo-url>
-cd agent-platform
+# Fork the repository on GitHub first, then:
+git clone https://github.com/YOUR_USERNAME/agent.git
+cd agent
+pnpm install
+```
+
+For maintainers or direct access:
+
+```bash
+git clone https://github.com/Phoenixrr2113/agent.git
+cd agent
 pnpm install
 ```
 
