@@ -1,0 +1,134 @@
+# GitHub Labels Configuration
+# This file defines the labels used in this repository
+# Can be applied manually or via label sync tools
+
+# Type labels
+- name: bug
+  color: 'd73a4a'
+  description: Something isn't working
+
+- name: enhancement
+  color: 'a2eeef'
+  description: New feature or request
+
+- name: documentation
+  color: '0075ca'
+  description: Improvements or additions to documentation
+
+- name: question
+  color: 'd876e3'
+  description: Further information is requested
+
+# Status labels
+- name: needs-triage
+  color: 'fbca04'
+  description: Needs initial review and categorization
+
+- name: stale
+  color: 'e4e669'
+  description: No recent activity
+
+- name: blocked
+  color: 'b60205'
+  description: Blocked by dependencies or other issues
+
+- name: work-in-progress
+  color: 'fbca04'
+  description: Work in progress
+
+- name: ready-for-review
+  color: '0e8a16'
+  description: Ready for review
+
+# Priority labels
+- name: priority-critical
+  color: 'b60205'
+  description: Critical priority
+
+- name: priority-high
+  color: 'd93f0b'
+  description: High priority
+
+- name: priority-medium
+  color: 'fbca04'
+  description: Medium priority
+
+- name: priority-low
+  color: '0e8a16'
+  description: Low priority
+
+# Category labels
+- name: breaking-change
+  color: 'b60205'
+  description: Breaking changes
+
+- name: security
+  color: 'd93f0b'
+  description: Security issues
+
+- name: performance
+  color: '0e8a16'
+  description: Performance improvements
+
+- name: dependencies
+  color: '0366d6'
+  description: Dependency updates
+
+- name: automated
+  color: '0366d6'
+  description: Automated PRs (Dependabot, etc.)
+
+- name: github-actions
+  color: '000000'
+  description: GitHub Actions and CI/CD
+
+- name: tests
+  color: '1d76db'
+  description: Related to testing
+
+# Contributor labels
+- name: good first issue
+  color: '7057ff'
+  description: Good for newcomers
+
+- name: help wanted
+  color: '008672'
+  description: Extra attention is needed
+
+# Package labels
+- name: pkg-core
+  color: 'c5def5'
+  description: '@agent/core package'
+
+- name: pkg-server
+  color: 'c5def5'
+  description: '@agent/server package'
+
+- name: pkg-cli
+  color: 'c5def5'
+  description: '@agent/cli package'
+
+- name: pkg-device-use
+  color: 'c5def5'
+  description: '@agent/device-use package'
+
+- name: pkg-shared
+  color: 'c5def5'
+  description: '@agent/shared package'
+
+# Special labels
+- name: pinned
+  color: 'c2e0c6'
+  description: Pinned issue - won't be marked as stale
+
+- name: duplicate
+  color: 'cfd3d7'
+  description: This issue or pull request already exists
+
+- name: invalid
+  color: 'e4e669'
+  description: This doesn't seem right
+
+- name: wontfix
+  color: 'ffffff'
+  description: This will not be worked on

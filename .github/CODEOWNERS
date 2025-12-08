@@ -1,0 +1,42 @@
+# CODEOWNERS file
+#
+# This file defines individuals or teams that are responsible for code in this repository.
+# Code owners are automatically requested for review when someone opens a pull request
+# that modifies code that they own.
+#
+# Learn more: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owners for everything in the repo
+# These owners will be the default owners for everything in the repo unless a later match takes precedence.
+*                           @Phoenixrr2113
+
+# Documentation
+*.md                        @Phoenixrr2113
+/docs/                      @Phoenixrr2113
+
+# Configuration files
+*.json                      @Phoenixrr2113
+*.yml                       @Phoenixrr2113
+*.yaml                      @Phoenixrr2113
+.env.example                @Phoenixrr2113
+
+# GitHub specific files
+/.github/                   @Phoenixrr2113
+
+# Core packages
+/packages/core/             @Phoenixrr2113
+/packages/server/           @Phoenixrr2113
+/packages/shared/           @Phoenixrr2113
+/packages/device-use/       @Phoenixrr2113
+
+# Apps
+/apps/cli/                  @Phoenixrr2113
+
+# Build configuration
+/turbo.json                 @Phoenixrr2113
+/tsconfig.base.json         @Phoenixrr2113
+/pnpm-workspace.yaml        @Phoenixrr2113
+
+# Security-sensitive files
+/SECURITY.md                @Phoenixrr2113
+/.github/workflows/         @Phoenixrr2113
