@@ -114,10 +114,12 @@ describe('initializeAgent', () => {
       const activeTools = result.registry.getActive();
       const deferredTools = result.registry.getDeferred();
 
-      expect(Object.keys(activeTools)).toContain('shell');
+      // Active tools - always loaded
       expect(Object.keys(activeTools)).toContain('plan');
       expect(Object.keys(activeTools)).toContain('sequential_thinking');
 
+      // Deferred tools - loaded on demand
+      expect(Object.keys(deferredTools)).toContain('shell');
       expect(Object.keys(deferredTools)).toContain('read_text_file');
       expect(Object.keys(deferredTools)).toContain('write_file');
       expect(Object.keys(deferredTools)).toContain('web_search');

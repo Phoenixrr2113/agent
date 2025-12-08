@@ -4,6 +4,12 @@ import { createInMemoryStorage } from './storage.js';
 import type { StorageAdapter, Entity, Fact } from './types.js';
 import fs from 'fs/promises';
 
+// Skip tests that require real API keys in CI
+const hasRealApiKeys =
+  process.env.OPENROUTER_API_KEY &&
+  !process.env.OPENROUTER_API_KEY.includes('test') &&
+  !process.env.CI;
+
 describe('MemoryLite Provider', () => {
   let storage: StorageAdapter;
   let dbPath: string;
@@ -22,7 +28,7 @@ describe('MemoryLite Provider', () => {
   });
 
   describe('Fact Content Normalization', () => {
-    it('should detect duplicate facts with different punctuation', async () => {
+    it.skipIf(!hasRealApiKeys)('should detect duplicate facts with different punctuation', async () => {
       const provider = createMemoryLite({ storage });
 
       await provider.add({
@@ -46,7 +52,7 @@ describe('MemoryLite Provider', () => {
       expect(duplicateFacts.length).toBeLessThanOrEqual(1);
     });
 
-    it('should detect duplicate facts with different casing', async () => {
+    it.skipIf(!hasRealApiKeys)('should detect duplicate facts with different casing', async () => {
       const provider = createMemoryLite({ storage });
 
       await provider.add({
@@ -67,7 +73,7 @@ describe('MemoryLite Provider', () => {
       expect(locationFacts.length).toBeLessThanOrEqual(1);
     });
 
-    it('should handle facts with trailing whitespace', async () => {
+    it.skipIf(!hasRealApiKeys)('should handle facts with trailing whitespace', async () => {
       const provider = createMemoryLite({ storage });
 
       await provider.add({
@@ -90,7 +96,7 @@ describe('MemoryLite Provider', () => {
   });
 
   describe('Temporal Fact Supersession', () => {
-    it('should invalidate old facts when superseded', async () => {
+    it.skipIf(!hasRealApiKeys)('should invalidate old facts when superseded', async () => {
       const provider = createMemoryLite({ storage });
 
       await provider.add({
@@ -122,7 +128,7 @@ describe('MemoryLite Provider', () => {
       expect(redFact).toBeDefined();
     });
 
-    it('should maintain valid facts when no contradiction', async () => {
+    it.skipIf(!hasRealApiKeys)('should maintain valid facts when no contradiction', async () => {
       const provider = createMemoryLite({ storage });
 
       await provider.add({
@@ -143,7 +149,7 @@ describe('MemoryLite Provider', () => {
   });
 
   describe('Entity Conflict Resolution', () => {
-    it('should merge entities with same name', async () => {
+    it.skipIf(!hasRealApiKeys)('should merge entities with same name', async () => {
       const provider = createMemoryLite({ storage });
 
       await provider.add({
@@ -171,7 +177,7 @@ describe('MemoryLite Provider', () => {
   });
 
   describe('Episode Tracking', () => {
-    it('should create episodes with message index', async () => {
+    it.skipIf(!hasRealApiKeys)('should create episodes with message index', async () => {
       const provider = createMemoryLite({ storage });
 
       await provider.add({
@@ -185,7 +191,7 @@ describe('MemoryLite Provider', () => {
       expect(episodes[0].lastProcessedMessageIndex).toBe(5);
     });
 
-    it('should link facts and entities to episodes', async () => {
+    it.skipIf(!hasRealApiKeys)('should link facts and entities to episodes', async () => {
       const provider = createMemoryLite({ storage });
 
       const result = await provider.add({
