@@ -1,0 +1,133 @@
+name: Bug Report
+description: Report a bug or issue with AI Agent Platform
+title: "[Bug]: "
+labels: ["bug", "needs-triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug! Please fill out the form below.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Bug Description
+      description: A clear and concise description of what the bug is.
+      placeholder: When I try to..., the agent...
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to Reproduce
+      description: Steps to reproduce the behavior
+      placeholder: |
+        1. Run command '...'
+        2. Send message '...'
+        3. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected Behavior
+      description: What did you expect to happen?
+      placeholder: The agent should...
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual Behavior
+      description: What actually happened?
+      placeholder: Instead, the agent...
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant Logs
+      description: Please copy and paste any relevant log output (use LOG_LEVEL=debug for more details)
+      render: shell
+      placeholder: |
+        [ERROR] Something went wrong...
+
+  - type: input
+    id: version
+    attributes:
+      label: Version
+      description: What version of AI Agent Platform are you running?
+      placeholder: "0.3.0"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: package
+    attributes:
+      label: Affected Package
+      description: Which package is affected?
+      options:
+        - "@agent/core"
+        - "@agent/server"
+        - "@agent/cli"
+        - "@agent/device-use"
+        - "@agent/shared"
+        - "Not sure"
+    validations:
+      required: true
+
+  - type: input
+    id: nodejs
+    attributes:
+      label: Node.js Version
+      description: What version of Node.js are you using?
+      placeholder: "20.10.0"
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: Operating System
+      description: What OS are you using?
+      placeholder: "macOS 14.1, Ubuntu 22.04, Windows 11"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: install-method
+    attributes:
+      label: Installation Method
+      description: How did you install the agent?
+      options:
+        - "Git clone + pnpm install"
+        - "npm install (global)"
+        - "Docker"
+        - "Other"
+    validations:
+      required: true
+
+  - type: textarea
+    id: additional
+    attributes:
+      label: Additional Context
+      description: Add any other context about the problem here (API keys used, model selected, etc.)
+      placeholder: I'm using OpenRouter with...
+
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Pre-submission Checklist
+      options:
+        - label: I have searched existing issues to ensure this is not a duplicate
+          required: true
+        - label: I have included the version number
+          required: true
+        - label: I have included steps to reproduce
+          required: true
+        - label: I have included relevant logs or error messages
+          required: false
