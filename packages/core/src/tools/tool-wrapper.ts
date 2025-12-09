@@ -1,9 +1,29 @@
 import { tool, type Tool } from 'ai';
 import { z } from 'zod';
 
+export interface ToolActivationCallbacks {
+  onActivate?: (toolName: string, allActiveTools: string[]) => void | Promise<void>;
+  onDeactivate?: (toolName: string, allActiveTools: string[]) => void | Promise<void>;
+}
+
+export interface ToolActivationManagerOptions {
+  initialActiveTools?: string[];
+  callbacks?: ToolActivationCallbacks;
+}
+
 export class ToolActivationManager {
   private activeTools: Set<string> = new Set();
   private wrappedTools: Map<string, { original: Tool; wrapped: Tool }> = new Map();
+  private callbacks: ToolActivationCallbacks;
+
+  constructor(options: ToolActivationManagerOptions = {}) {
+    this.callbacks = options.callbacks || {};
+    if (options.initialActiveTools) {
+      for (const toolName of options.initialActiveTools) {
+        this.activeTools.add(toolName);
+      }
+    }
+  }
 
   isActive(toolName: string): boolean {
     return this.activeTools.has(toolName);
@@ -14,11 +34,18 @@ export class ToolActivationManager {
       return false;
     }
     this.activeTools.add(toolName);
+    if (this.callbacks.onActivate) {
+      void Promise.resolve(this.callbacks.onActivate(toolName, this.getActiveToolNames()));
+    }
     return true;
   }
 
   deactivate(toolName: string): boolean {
-    return this.activeTools.delete(toolName);
+    const wasDeleted = this.activeTools.delete(toolName);
+    if (wasDeleted && this.callbacks.onDeactivate) {
+      void Promise.resolve(this.callbacks.onDeactivate(toolName, this.getActiveToolNames()));
+    }
+    return wasDeleted;
   }
 
   getActiveToolNames(): string[] {
@@ -59,6 +86,6 @@ export class ToolActivationManager {
   }
 }
 
-export function createToolActivationManager(): ToolActivationManager {
-  return new ToolActivationManager();
+export function createToolActivationManager(options: ToolActivationManagerOptions = {}): ToolActivationManager {
+  return new ToolActivationManager(options);
 }

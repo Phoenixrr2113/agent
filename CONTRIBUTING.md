@@ -70,11 +70,8 @@ pnpm build
 ### 4. Verify Setup
 
 ```bash
-# Run interactive chat
-pnpm chat
-
-# Or start HTTP server
-pnpm server
+# Start Motia development server
+pnpm motia:dev
 ```
 
 ## Monorepo Structure
@@ -84,11 +81,15 @@ agent-platform/
 ├── packages/
 │   ├── shared/         # Base utilities (logger, performance)
 │   ├── core/           # Agent runtime engine
-│   └── server/         # HTTP API server
+│   └── device-use/     # Cross-platform device control
+├── steps/              # Motia workflow steps
+│   ├── agents/         # Agent loop event handlers
+│   ├── api/            # HTTP API endpoints
+│   └── streams/        # Real-time SSE streams
 ├── apps/
-│   └── cli/            # CLI applications
+│   └── mobile/         # React Native mobile app
 ├── pnpm-workspace.yaml
-├── turbo.json
+├── motia.config.ts
 └── package.json
 ```
 
@@ -99,9 +100,7 @@ agent-platform/
     ↓
 @agent/core (depends on: @agent/shared)
     ↓
-@agent/server (depends on: @agent/core, @agent/shared)
-    ↓
-@agent/cli (depends on: @agent/core, @agent/server, @agent/shared)
+Motia Steps (uses: @agent/core)
 ```
 
 ## Development Workflow
@@ -149,11 +148,8 @@ pnpm --filter @agent/core test --watch
 ### Running Development Servers
 
 ```bash
-# Interactive chat CLI
-pnpm chat
-
-# HTTP server (auto-restarts on changes)
-pnpm server
+# Motia development server
+pnpm motia:dev
 
 # All packages in dev mode (parallel)
 pnpm dev
@@ -442,23 +438,15 @@ pnpm test -- --exclude "**/*.integration.test.ts"
 ### @agent/core
 
 - Core business logic only
-- **No HTTP-specific** code (that goes in @agent/server)
-- **No CLI-specific** code (that goes in @agent/cli)
+- **No HTTP-specific** code (that goes in Motia steps)
 - Properly **export types** for consumers
 
-### @agent/server
+### Motia Steps
 
-- HTTP layer only
+- Event-driven workflow steps
 - Use **@agent/core** for business logic
-- Follow **REST conventions**
+- Follow **REST conventions** for API steps
 - Document **all endpoints**
-
-### @agent/cli
-
-- CLI interface only
-- Use **@agent/core** and **@agent/server** for functionality
-- Provide **clear error messages**
-- Support **--help** for all commands
 
 ## Architecture Decisions
 

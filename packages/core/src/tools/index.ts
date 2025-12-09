@@ -19,6 +19,8 @@ export {
 export {
   ToolActivationManager,
   createToolActivationManager,
+  type ToolActivationCallbacks,
+  type ToolActivationManagerOptions,
 } from './tool-wrapper.js';
 
 import { shellTool } from './shell.js';

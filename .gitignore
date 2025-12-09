@@ -11,6 +11,7 @@ memory.db-shm
 memory.db-wal
 *.log
 .turbo/
+.motia
 
 # Prevent compiled JS in source directories
 packages/**/*.js
@@ -22,3 +23,6 @@ apps/**/*.tsbuildinfo
 !apps/**/plugins/**
 packages/core/tsconfig.tsbuildinfo
 packages/shared/tsconfig.tsbuildinfo
+types.d.ts
+packages/core/test-memory-switch.db-shm
+packages/core/test-memory-switch.db-wal

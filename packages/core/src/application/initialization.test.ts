@@ -117,12 +117,13 @@ describe('initializeAgent', () => {
       // Active tools - always loaded
       expect(Object.keys(activeTools)).toContain('plan');
       expect(Object.keys(activeTools)).toContain('sequential_thinking');
+      expect(Object.keys(activeTools)).toContain('shell');
+      expect(Object.keys(activeTools)).toContain('web_search');
+      expect(Object.keys(activeTools)).toContain('fetch_page');
 
       // Deferred tools - loaded on demand
-      expect(Object.keys(deferredTools)).toContain('shell');
       expect(Object.keys(deferredTools)).toContain('read_text_file');
       expect(Object.keys(deferredTools)).toContain('write_file');
-      expect(Object.keys(deferredTools)).toContain('web_search');
 
       await cleanup(result.readline);
     });

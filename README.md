@@ -19,12 +19,16 @@ agent-platform/
 ├── packages/
 │   ├── shared/         # @agent/shared - Shared utilities & types
 │   ├── core/           # @agent/core - Agent runtime engine
-│   ├── server/         # @agent/server - HTTP API server
 │   └── device-use/     # @agent/device-use - Cross-platform device control
+├── steps/              # Motia workflow steps
+│   ├── agents/         # Agent loop event handlers
+│   ├── api/            # HTTP API endpoints
+│   ├── streams/        # Real-time SSE streams
+│   └── events/         # Background event handlers
 ├── apps/
-│   └── cli/            # @agent/cli - CLI applications
+│   └── mobile/         # React Native mobile app
 ├── pnpm-workspace.yaml
-├── turbo.json
+├── motia.config.ts
 └── package.json
 ```
 
@@ -32,9 +36,8 @@ agent-platform/
 
 - **@agent/shared** - Base utilities (logger, performance tracking)
 - **@agent/core** - Core agent runtime with memory, RAG, and tools
-- **@agent/server** - Hono-based HTTP server with REST API and SSE streaming
 - **@agent/device-use** - Cross-platform device control using nut.js (macOS, Linux X11/Wayland, Windows)
-- **@agent/cli** - Command-line interfaces (server launcher & interactive chat)
+- **Motia Steps** - Event-driven workflow steps for HTTP API, agent loop, and real-time streaming
 
 *Mobile platforms (iOS/Android) will be added in Phase 3 with React Native*
 
@@ -104,19 +107,16 @@ MODEL_EXTRACTION=google/gemini-2.0-flash-001
 
 ## Quick Start
 
-### Interactive Chat
+### Development Server (Motia)
 
 ```bash
-pnpm chat
+pnpm motia:dev
 ```
 
-### HTTP Server
-
-```bash
-pnpm server
-```
-
-Server starts on `http://localhost:3000` (or PORT env variable).
+Server starts on `http://localhost:3000` with:
+- REST API endpoints
+- Real-time SSE streams
+- Workbench UI at `http://localhost:3000`
 
 ### As a Library
 
@@ -158,9 +158,9 @@ const runtime = await createAgentRuntime({
 });
 ```
 
-## HTTP Server API
+## HTTP API (Motia)
 
-The `@agent/server` package provides a Hono-based HTTP server.
+The API is powered by Motia workflow steps.
 
 ### Endpoints
 
@@ -168,12 +168,20 @@ The `@agent/server` package provides a Hono-based HTTP server.
 |--------|------|-------------|
 | `GET` | `/health` | Health check (`{ status: 'ok' }`) |
 | `POST` | `/sessions` | Create session → `{ sessionId }` |
-| `DELETE` | `/sessions/:id` | Delete session |
-| `POST` | `/sessions/:id/chat` | Send message → `{ text, completed, ... }` |
-| `GET` | `/sessions/:id/chat/stream` | SSE streaming (query: `?message=...`) |
-| `GET` | `/sessions/:id/history` | Get message history |
-| `POST` | `/sessions/:id/clear` | Clear session history |
+| `DELETE` | `/sessions/:sessionId` | Delete session |
+| `POST` | `/sessions/:sessionId/chat` | Send message (async, returns traceId) |
+| `GET` | `/sessions/:sessionId/history` | Get message history |
+| `POST` | `/sessions/:sessionId/clear` | Clear session history |
+| `GET` | `/sessions/:sessionId/logs` | Get session logs |
 | `POST` | `/chat` | Convenience: auto-creates session |
+| `POST` | `/mobile/command` | Send command to mobile clients |
+
+### Real-time Streams
+
+| Stream | Path | Description |
+|--------|------|-------------|
+| `agent` | `/streams/agent/:sessionId` | Agent status updates (thinking, tool calls, responses) |
+| `logs` | `/streams/logs/:sessionId` | Detailed observability logs |
 
 ### Client Example
 
@@ -197,12 +205,14 @@ console.log(response.text);
 
 ```bash
 pnpm build          # Build all packages with Turborepo
-pnpm dev           # Run all packages in dev mode
-pnpm test          # Run all tests
-pnpm lint          # Lint all packages
-pnpm clean         # Clean all build artifacts
-pnpm chat          # Start interactive chat CLI
-pnpm server        # Start HTTP server
+pnpm dev            # Run all packages in dev mode
+pnpm test           # Run all tests
+pnpm test:steps     # Run Motia step tests
+pnpm lint           # Lint all packages
+pnpm clean          # Clean all build artifacts
+pnpm motia:dev      # Start Motia development server
+pnpm motia:build    # Build for production
+pnpm motia:types    # Regenerate Motia type definitions
 ```
 
 ### Per-Package Scripts
@@ -393,24 +403,26 @@ Set `GRAPHITI_URL=http://localhost:8000` and the agent auto-detects it.
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │                           CLIENTS                                    │
-├─────────────┬─────────────┬─────────────┬─────────────┬─────────────┤
-│  Web App    │ Mobile App  │ Desktop App │    CLI      │  Third-party│
-│  (Next.js)  │(React Native)│  (Tauri)   │             │  (via API)  │
-└──────┬──────┴──────┬──────┴──────┬──────┴──────┬──────┴──────┬──────┘
-       │             │             │             │             │
-       └─────────────┴─────────────┼─────────────┴─────────────┘
+├─────────────┬─────────────┬─────────────┬───────────────────────────┤
+│  Web App    │ Mobile App  │ Desktop App │       Third-party         │
+│  (Next.js)  │(React Native)│  (Tauri)   │        (via API)          │
+└──────┬──────┴──────┬──────┴──────┬──────┴──────┬────────────────────┘
+       │             │             │             │
+       └─────────────┴─────────────┼─────────────┘
                                    │
-                          HTTP/WebSocket
+                          HTTP / SSE Streams
                                    │
                     ┌──────────────▼──────────────┐
-                    │    @agent/server (Hono)     │
-                    │   Session Management API    │
+                    │      Motia Workflow         │
+                    │   Event-Driven Steps        │
+                    ├─────────────────────────────┤
+                    │  API │ Events │ Streams     │
                     └──────────────┬──────────────┘
                                    │
                     ┌──────────────▼──────────────┐
                     │      @agent/core            │
                     │    Agent Runtime Engine     │
-                    ├──────────────────────────────┤
+                    ├─────────────────────────────┤
                     │  Memory │ Tools │ Orchestrator│
                     └──────────────┬──────────────┘
                                    │
@@ -468,9 +480,7 @@ packages/
 │   │   ├── logger.ts
 │   │   ├── performance.ts
 │   │   └── index.ts
-│   ├── dist/
-│   ├── package.json
-│   └── tsconfig.json
+│   └── package.json
 │
 ├── core/
 │   ├── src/
@@ -482,26 +492,31 @@ packages/
 │   │   │   ├── rag/           # Semantic search
 │   │   │   └── search/        # Grep utilities
 │   │   ├── tools/             # Tool implementations
-│   │   ├── infrastructure/    # System prompts
-│   │   └── index.ts
-│   ├── dist/
-│   ├── package.json
-│   └── tsconfig.json
+│   │   └── infrastructure/    # System prompts
+│   └── package.json
 │
-├── server/
-│   ├── src/
-│   │   └── index.ts           # Hono server
-│   ├── dist/
-│   ├── package.json
-│   └── tsconfig.json
-│
-apps/cli/
-├── src/
-│   ├── server.ts              # Server launcher
-│   └── chat.ts                # Interactive chat
-├── dist/
-├── package.json
-└── tsconfig.json
+└── device-use/
+    ├── src/
+    │   ├── drivers/           # Platform drivers
+    │   └── index.ts
+    └── package.json
+
+steps/                         # Motia workflow steps
+├── agents/
+│   ├── think.step.ts          # Agent thinking step
+│   ├── tool-execute.step.ts   # Tool execution step
+│   └── respond.step.ts        # Response step
+├── api/
+│   ├── health.step.ts         # Health check endpoint
+│   ├── convenience-chat.step.ts
+│   ├── sessions/              # Session management endpoints
+│   └── mobile/                # Mobile command endpoints
+├── streams/
+│   ├── agent.stream.ts        # Agent status stream
+│   └── logs.stream.ts         # Observability logs stream
+└── events/
+    ├── memory-extraction.step.ts
+    └── log-persist.step.ts
 ```
 
 ## Security

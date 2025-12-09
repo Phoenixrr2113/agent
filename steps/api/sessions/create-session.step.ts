@@ -1,5 +1,4 @@
 import type { ApiRouteConfig, ApiRouteHandler } from 'motia';
-import { createSession } from '../../lib/session-store.js';
 
 export const config: ApiRouteConfig = {
   type: 'api',
@@ -13,10 +12,12 @@ export const config: ApiRouteConfig = {
 export const handler: ApiRouteHandler = async (_req, ctx) => {
   const sessionId = crypto.randomUUID();
 
-  await createSession(sessionId);
-
-  await ctx.state.set(sessionId, {
+  await ctx.state.set('sessions', sessionId, {
     createdAt: new Date().toISOString(),
+  });
+
+  await ctx.state.set('sessions', `${sessionId}:history`, {
+    messages: [],
   });
 
   await ctx.emit({ topic: 'session.created', data: { sessionId } });

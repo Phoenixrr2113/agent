@@ -1,5 +1,4 @@
 import type { ApiRouteConfig, ApiRouteHandler } from 'motia';
-import { getSession } from '../../lib/session-store.js';
 
 export const config: ApiRouteConfig = {
   type: 'api',
@@ -13,16 +12,16 @@ export const config: ApiRouteConfig = {
 export const handler: ApiRouteHandler = async (req, ctx) => {
   const { sessionId } = req.pathParams as { sessionId: string };
 
-  const session = getSession(sessionId);
+  const sessionData = await ctx.state.get<{ createdAt: string }>('sessions', sessionId);
 
-  if (!session) {
+  if (!sessionData) {
     return {
       status: 404,
       body: { error: 'Session not found' },
     };
   }
 
-  session.clearHistory();
+  await ctx.state.set('sessions', `${sessionId}:history`, { messages: [] });
 
   await ctx.emit({ topic: 'session.cleared', data: { sessionId } });
 

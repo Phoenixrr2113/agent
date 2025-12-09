@@ -1,10 +1,9 @@
-import { defineConfig } from 'motia';
+import { config } from 'motia';
+import endpointPlugin from '@motiadev/plugin-endpoint/plugin';
+import logsPlugin from '@motiadev/plugin-logs/plugin';
+import observabilityPlugin from '@motiadev/plugin-observability/plugin';
+import statesPlugin from '@motiadev/plugin-states/plugin';
 
-export default defineConfig({
-  state: {
-    adapter: 'memory',
-  },
-  streams: {
-    adapter: 'memory',
-  },
+export default config({
+  plugins: [observabilityPlugin, statesPlugin, endpointPlugin, logsPlugin],
 });

@@ -37,4 +37,9 @@ export {
   type ToolRegistrationOptions,
 } from './tools/registry.js';
 
+export { models } from './core/agents/models.js';
+export { systemPrompts, type AgentRole } from './core/agents/roles.js';
+export { initializeAgent, type InitializationConfig, type InitializationResult, CORE_TOOL_NAMES } from './application/initialization.js';
+export { getMemoryProvider } from './tools/memory.js';
+
 export type { ModelMessage } from 'ai';

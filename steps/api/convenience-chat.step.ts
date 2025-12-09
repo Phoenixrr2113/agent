@@ -1,6 +1,5 @@
 import type { ApiRouteConfig, ApiRouteHandler } from 'motia';
 import { z } from 'zod';
-import { createSession, getSession } from '../lib/session-store.js';
 
 export const config: ApiRouteConfig = {
   type: 'api',
@@ -11,69 +10,66 @@ export const config: ApiRouteConfig = {
     message: z.string().min(1, 'Message is required'),
     sessionId: z.string().optional(),
   }),
-  emits: ['session.created', 'chat.started', 'chat.completed', 'memory.extract'],
-  flows: ['chat'],
+  emits: ['session.created', 'chat.started', 'agent.think'],
+  flows: ['chat', 'agent-loop'],
 };
 
 export const handler: ApiRouteHandler = async (req, ctx) => {
-  const requestStartTime = performance.now();
   const { message, sessionId: providedSessionId } = req.body as {
     message: string;
     sessionId?: string;
   };
 
   let sessionId = providedSessionId;
-  let session = sessionId ? getSession(sessionId) : undefined;
+  let sessionData = sessionId
+    ? await ctx.state.get<{ createdAt: string }>('sessions', sessionId)
+    : null;
 
-  if (!session) {
+  if (!sessionData) {
     sessionId = crypto.randomUUID();
-    session = await createSession(sessionId);
 
-    await ctx.state.set(sessionId, {
+    await ctx.state.set('sessions', sessionId, {
       createdAt: new Date().toISOString(),
+    });
+
+    await ctx.state.set('sessions', `${sessionId}:history`, {
+      messages: [],
     });
 
     await ctx.emit({ topic: 'session.created', data: { sessionId } });
     ctx.logger.info('Session auto-created', { sessionId });
   }
 
+  const historyData = await ctx.state.get<{ messages: any[] }>('sessions', `${sessionId}:history`);
+  const existingMessages = historyData?.messages || [];
+  const messages = [...existingMessages, { role: 'user', content: message }];
+
+  await ctx.state.set('sessions', `${sessionId}:history`, { messages });
+
   await ctx.emit({
     topic: 'chat.started',
-    data: { sessionId, message },
-  });
-
-  const result = await session.send(message);
-  const requestDuration = performance.now() - requestStartTime;
-
-  await ctx.emit({
-    topic: 'chat.completed',
-    data: { sessionId, result },
+    data: { sessionId, message, traceId: ctx.traceId },
   });
 
   await ctx.emit({
-    topic: 'memory.extract',
-    data: { sessionId, messages: session.getHistory() },
+    topic: 'agent.think',
+    data: {
+      sessionId,
+      messages,
+      step: 0,
+    },
   });
 
-  ctx.logger.info('Convenience chat completed', {
-    sessionId,
-    durationMs: requestDuration.toFixed(2),
-    stepsUsed: result.stepsUsed,
-  });
+  ctx.logger.info('Convenience chat started - agent loop initiated', { sessionId, traceId: ctx.traceId });
 
   return {
-    status: 200,
+    status: 202,
     body: {
       sessionId,
-      text: result.text,
-      completed: result.completed,
-      needsInput: result.needsInput,
-      pendingQuestion: result.pendingQuestion,
-      stepsUsed: result.stepsUsed,
-      toolsUsed: result.toolsUsed,
-      _timing: {
-        totalRequestDurationMs: requestDuration.toFixed(2),
-      },
+      traceId: ctx.traceId,
+      status: 'processing',
+      message: 'Request accepted. Subscribe to stream for updates.',
+      streamUrl: `/streams/agent/${sessionId}`,
     },
   };
 };

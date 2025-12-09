@@ -11,12 +11,27 @@ importers:
       '@agent/core':
         specifier: workspace:*
         version: link:packages/core
+      '@motiadev/plugin-endpoint':
+        specifier: 0.15.5-beta.173
+        version: 0.15.5-beta.173(@motiadev/core@0.15.5-beta.173(@types/node@20.19.25)(redis@5.10.0)(typescript@5.9.3))(@motiadev/stream-client-react@0.15.5-beta.173(react@19.2.1))(@motiadev/ui@0.15.5-beta.173(@types/react@19.1.17)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)(use-sync-external-store@1.6.0(react@19.2.1)))(@types/react@19.1.17)(monaco-editor@0.55.1)(react-dom@19.2.1(react@19.2.1))(use-sync-external-store@1.6.0(react@19.2.1))
+      '@motiadev/plugin-logs':
+        specifier: 0.15.5-beta.173
+        version: 0.15.5-beta.173(@motiadev/core@0.15.5-beta.173(@types/node@20.19.25)(redis@5.10.0)(typescript@5.9.3))(@motiadev/stream-client-browser@0.15.5-beta.173)(@motiadev/ui@0.15.5-beta.173(@types/react@19.1.17)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)(use-sync-external-store@1.6.0(react@19.2.1)))(@types/react@19.1.17)(use-sync-external-store@1.6.0(react@19.2.1))
+      '@motiadev/plugin-observability':
+        specifier: 0.15.5-beta.173
+        version: 0.15.5-beta.173(@motiadev/core@0.15.5-beta.173(@types/node@20.19.25)(redis@5.10.0)(typescript@5.9.3))(@motiadev/stream-client-react@0.15.5-beta.173(react@19.2.1))(@motiadev/ui@0.15.5-beta.173(@types/react@19.1.17)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)(use-sync-external-store@1.6.0(react@19.2.1)))(@types/react@19.1.17)(react-dom@19.2.1(react@19.2.1))(use-sync-external-store@1.6.0(react@19.2.1))
+      '@motiadev/plugin-states':
+        specifier: 0.15.5-beta.173
+        version: 0.15.5-beta.173(@motiadev/core@0.15.5-beta.173(@types/node@20.19.25)(redis@5.10.0)(typescript@5.9.3))(@motiadev/ui@0.15.5-beta.173(@types/react@19.1.17)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)(use-sync-external-store@1.6.0(react@19.2.1)))(@types/react@19.1.17)(monaco-editor@0.55.1)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)(use-sync-external-store@1.6.0(react@19.2.1))
+      ai:
+        specifier: 6.0.0-beta.120
+        version: 6.0.0-beta.120(zod@4.1.13)
       motia:
         specifier: ^0.15.5-beta.173
         version: 0.15.5-beta.173(@types/node@20.19.25)(@types/react@19.1.17)(eslint@9.39.1(jiti@2.6.1))(lightningcss@1.30.2)(monaco-editor@0.55.1)(terser@5.44.1)(typescript@5.9.3)(use-sync-external-store@1.6.0(react@19.2.1))(yaml@2.8.1)
       zod:
-        specifier: ^3.24.1
-        version: 3.25.76
+        specifier: ^4.1.13
+        version: 4.1.13
     devDependencies:
       '@types/node':
         specifier: ^20.0.0
@@ -42,31 +57,6 @@ importers:
       ws:
         specifier: ^8.18.3
         version: 8.18.3
-
-  apps/cli:
-    dependencies:
-      '@agent/core':
-        specifier: workspace:*
-        version: link:../../packages/core
-      '@agent/server':
-        specifier: workspace:*
-        version: link:../../packages/server
-      '@agent/shared':
-        specifier: workspace:*
-        version: link:../../packages/shared
-      dotenv:
-        specifier: ^17.2.3
-        version: 17.2.3
-    devDependencies:
-      '@types/node':
-        specifier: ^20.0.0
-        version: 20.19.25
-      tsx:
-        specifier: ^4.0.0
-        version: 4.20.6
-      typescript:
-        specifier: ^5.0.0
-        version: 5.9.3
 
   apps/mobile:
     dependencies:
@@ -318,40 +308,6 @@ importers:
       expo-modules-core:
         specifier: ~2.0.0
         version: 2.0.6
-
-  packages/server:
-    dependencies:
-      '@agent/core':
-        specifier: workspace:*
-        version: link:../core
-      '@agent/shared':
-        specifier: workspace:*
-        version: link:../shared
-      '@hono/node-server':
-        specifier: ^1.19.6
-        version: 1.19.6(hono@4.10.7)
-      '@types/ws':
-        specifier: ^8.18.1
-        version: 8.18.1
-      dotenv:
-        specifier: ^17.2.3
-        version: 17.2.3
-      hono:
-        specifier: ^4.10.7
-        version: 4.10.7
-      ws:
-        specifier: ^8.18.3
-        version: 8.18.3
-    devDependencies:
-      '@types/node':
-        specifier: ^20.0.0
-        version: 20.19.25
-      tsx:
-        specifier: ^4.0.0
-        version: 4.20.6
-      typescript:
-        specifier: ^5.0.0
-        version: 5.9.3
 
   packages/shared:
     devDependencies:
@@ -1493,12 +1449,6 @@ packages:
   '@floating-ui/utils@0.2.10':
     resolution: {integrity: sha512-aGTxbpbg8/b5JfU1HXSrbH3wXZuLPJcNEcZQFMxLs3oSzgtVu6nFPkbbGGUvBcUjKV2YyB9Wxxabo+HEH9tcRQ==}
 
-  '@hono/node-server@1.19.6':
-    resolution: {integrity: sha512-Shz/KjlIeAhfiuE93NDKVdZ7HdBVLQAfdbaXEaoAVO3ic9ibRSLGIQGkcBbFyuLr+7/1D5ZCINM8B+6IvXeMtw==}
-    engines: {node: '>=18.14.1'}
-    peerDependencies:
-      hono: ^4
-
   '@humanfs/core@0.19.1':
     resolution: {integrity: sha512-5DyQ4+1JEUzejeK1JGICcideyfUbGixgS9jNgex5nqkW+cY7WZhxBigmieN5Qnw9ZosSNVC9KQKyb+GUaGyKUA==}
     engines: {node: '>=18.18.0'}
@@ -1801,6 +1751,33 @@ packages:
     peerDependencies:
       redis: ^5.0.0
 
+  '@motiadev/plugin-endpoint@0.15.5-beta.173':
+    resolution: {integrity: sha512-4RoY9OUK7KEz1iyGEWXkfjbhbF5zbSmzaFpIyX26nwu/oEXjAvYesiCfHlj/qzVlb5FRZ+YMegO/cHsq7u4a6w==}
+    peerDependencies:
+      '@motiadev/core': 0.15.5-beta.173
+      '@motiadev/stream-client-react': 0.15.5-beta.173
+      '@motiadev/ui': 0.15.5-beta.173
+
+  '@motiadev/plugin-logs@0.15.5-beta.173':
+    resolution: {integrity: sha512-hBioJIgpEtVHU6caBgvDrchWvdM9vafcO36OlmaNyJPGTSUORrwZpk1mArJoMzBrVnd2iV3nwL1peB4LG8zVmg==}
+    peerDependencies:
+      '@motiadev/core': 0.15.5-beta.173
+      '@motiadev/stream-client-browser': 0.15.5-beta.173
+      '@motiadev/ui': 0.15.5-beta.173
+
+  '@motiadev/plugin-observability@0.15.5-beta.173':
+    resolution: {integrity: sha512-hSPC5evCUcBh4ad6XmWuHKVMD9mZLaEs5rSoQPRdNlDf5DCzZa9wMfMCZEbPOlZLyMuIYWiY59Mo23wb0FSXeA==}
+    peerDependencies:
+      '@motiadev/core': 0.15.5-beta.173
+      '@motiadev/stream-client-react': 0.15.5-beta.173
+      '@motiadev/ui': 0.15.5-beta.173
+
+  '@motiadev/plugin-states@0.15.5-beta.173':
+    resolution: {integrity: sha512-TTCKUxYYBxYd/Eh2pAXQxzB8Agu5R3Vr4Ua5a1cc/cqajT2PjbQfuOQl+e+1N/EkmFN2XxrD2CBAGibSBHlS+g==}
+    peerDependencies:
+      '@motiadev/core': 0.15.5-beta.173
+      '@motiadev/ui': 0.15.5-beta.173
+
   '@motiadev/stream-client-browser@0.15.5-beta.173':
     resolution: {integrity: sha512-ISRedtYHyvSTw1hogMMKQ52P4YOuiy/7FqsxPKWqZTnO2foBb+YxzCoc8F+eCFJ1S8NYto1MnaFxMnCwLiZ7mg==}
 
@@ -2081,6 +2058,19 @@ packages:
 
   '@radix-ui/react-menu@2.1.16':
     resolution: {integrity: sha512-72F2T+PLlphrqLcAotYPp0uJMr5SjP5SL01wfEspJbru5Zs5vQaSHb4VB3ZMJPimgHHCHG7gMOeOB9H3Hdmtxg==}
+    peerDependencies:
+      '@types/react': '*'
+      '@types/react-dom': '*'
+      react: ^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc
+      react-dom: ^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
+      '@types/react-dom':
+        optional: true
+
+  '@radix-ui/react-popover@1.1.15':
+    resolution: {integrity: sha512-kr0X2+6Yy/vJzLYJUPCZEc8SfQcf+1COFoAqauJm74umQhta9M7lNJHP7QQS3vkvcGLQUbWpMzwrXYwrYztHKA==}
     peerDependencies:
       '@types/react': '*'
       '@types/react-dom': '*'
@@ -3808,6 +3798,9 @@ packages:
     resolution: {integrity: sha512-BS8PfmtDGnrgYdOonGZQdLZslWIeCGFP9tpan0hi1Co2Zr2NKADsvGYA8XxuG/4UWgJ6Cjtv+YJnB6MM69QGlQ==}
     engines: {node: '>= 0.4'}
 
+  date-fns@4.1.0:
+    resolution: {integrity: sha512-Ukq0owbQXxa/U3EGtsdVBkR1w7KOQ5gIBqdH2hkvknzZPYvBxb/aa6E8L7tmjFtkwZBu3UXBbjIgPo/Ez4xaNg==}
+
   debug@2.6.9:
     resolution: {integrity: sha512-bC7ElrdJaJnPbAP+1EotYvqZsb3ecl5wi6Bfi6BJTUcNowp6cvspg0jXznRTKDjm/E7AdgFBVeAPVMNcKGsHMA==}
     peerDependencies:
@@ -4734,10 +4727,6 @@ packages:
 
   hoist-non-react-statics@3.3.2:
     resolution: {integrity: sha512-/gGivxi8JPKWNm/W0jSmzcMPpfpPLc3dY/6GxhX2hQ9iGj3aDfklV4ET7NjKpSinLpJ5vafa9iiGIEZg10SfBw==}
-
-  hono@4.10.7:
-    resolution: {integrity: sha512-icXIITfw/07Q88nLSkB9aiUrd8rYzSweK681Kjo/TSggaGbOX4RRyxxm71v+3PC8C/j+4rlxGeoTRxQDkaJkUw==}
-    engines: {node: '>=16.9.0'}
 
   hosted-git-info@7.0.2:
     resolution: {integrity: sha512-puUZAUKT5m8Zzvs72XWy3HtvVbTWljRE66cP60bxJzAqf2DgICo7lYTY2IHUmLnNpjYvw5bvmoHvPc0QO2a62w==}
@@ -7628,6 +7617,17 @@ snapshots:
       - arktype
       - effect
 
+  '@ai-sdk/gateway@2.0.0-beta.64(zod@4.1.13)':
+    dependencies:
+      '@ai-sdk/provider': 3.0.0-beta.20
+      '@ai-sdk/provider-utils': 4.0.0-beta.37(zod@4.1.13)
+      '@vercel/oidc': 3.0.5
+      zod: 4.1.13
+    transitivePeerDependencies:
+      - '@valibot/to-json-schema'
+      - arktype
+      - effect
+
   '@ai-sdk/google@3.0.0-beta.59(zod@3.25.76)':
     dependencies:
       '@ai-sdk/provider': 3.0.0-beta.20
@@ -7664,6 +7664,13 @@ snapshots:
       '@standard-schema/spec': 1.0.0
       eventsource-parser: 3.0.6
       zod: 3.25.76
+
+  '@ai-sdk/provider-utils@4.0.0-beta.37(zod@4.1.13)':
+    dependencies:
+      '@ai-sdk/provider': 3.0.0-beta.20
+      '@standard-schema/spec': 1.0.0
+      eventsource-parser: 3.0.6
+      zod: 4.1.13
 
   '@ai-sdk/provider@1.1.3':
     dependencies:
@@ -8887,10 +8894,6 @@ snapshots:
 
   '@floating-ui/utils@0.2.10': {}
 
-  '@hono/node-server@1.19.6(hono@4.10.7)':
-    dependencies:
-      hono: 4.10.7
-
   '@humanfs/core@0.19.1': {}
 
   '@humanfs/node@0.16.7':
@@ -9301,6 +9304,75 @@ snapshots:
       - supports-color
       - typescript
       - utf-8-validate
+
+  '@motiadev/plugin-endpoint@0.15.5-beta.173(@motiadev/core@0.15.5-beta.173(@types/node@20.19.25)(redis@5.10.0)(typescript@5.9.3))(@motiadev/stream-client-react@0.15.5-beta.173(react@19.2.1))(@motiadev/ui@0.15.5-beta.173(@types/react@19.1.17)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)(use-sync-external-store@1.6.0(react@19.2.1)))(@types/react@19.1.17)(monaco-editor@0.55.1)(react-dom@19.2.1(react@19.2.1))(use-sync-external-store@1.6.0(react@19.2.1))':
+    dependencies:
+      '@monaco-editor/react': 4.7.0(monaco-editor@0.55.1)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
+      '@motiadev/core': 0.15.5-beta.173(@types/node@20.19.25)(redis@5.10.0)(typescript@5.9.3)
+      '@motiadev/stream-client-react': 0.15.5-beta.173(react@19.2.1)
+      '@motiadev/ui': 0.15.5-beta.173(@types/react@19.1.17)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)(use-sync-external-store@1.6.0(react@19.2.1))
+      clsx: 2.1.1
+      json-schema: 0.4.0
+      lucide-react: 0.555.0(react@19.2.1)
+      react: 19.2.1
+      react-syntax-highlighter: 16.1.0(react@19.2.1)
+      react18-json-view: 0.2.9(react@19.2.1)
+      tailwind-merge: 3.4.0
+      zustand: 5.0.9(@types/react@19.1.17)(react@19.2.1)(use-sync-external-store@1.6.0(react@19.2.1))
+    transitivePeerDependencies:
+      - '@types/react'
+      - immer
+      - monaco-editor
+      - react-dom
+      - use-sync-external-store
+
+  '@motiadev/plugin-logs@0.15.5-beta.173(@motiadev/core@0.15.5-beta.173(@types/node@20.19.25)(redis@5.10.0)(typescript@5.9.3))(@motiadev/stream-client-browser@0.15.5-beta.173)(@motiadev/ui@0.15.5-beta.173(@types/react@19.1.17)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)(use-sync-external-store@1.6.0(react@19.2.1)))(@types/react@19.1.17)(use-sync-external-store@1.6.0(react@19.2.1))':
+    dependencies:
+      '@motiadev/core': 0.15.5-beta.173(@types/node@20.19.25)(redis@5.10.0)(typescript@5.9.3)
+      '@motiadev/stream-client-browser': 0.15.5-beta.173
+      '@motiadev/ui': 0.15.5-beta.173(@types/react@19.1.17)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)(use-sync-external-store@1.6.0(react@19.2.1))
+      lucide-react: 0.555.0(react@19.2.1)
+      react: 19.2.1
+      react18-json-view: 0.2.9(react@19.2.1)
+      zustand: 5.0.9(@types/react@19.1.17)(react@19.2.1)(use-sync-external-store@1.6.0(react@19.2.1))
+    transitivePeerDependencies:
+      - '@types/react'
+      - immer
+      - use-sync-external-store
+
+  '@motiadev/plugin-observability@0.15.5-beta.173(@motiadev/core@0.15.5-beta.173(@types/node@20.19.25)(redis@5.10.0)(typescript@5.9.3))(@motiadev/stream-client-react@0.15.5-beta.173(react@19.2.1))(@motiadev/ui@0.15.5-beta.173(@types/react@19.1.17)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)(use-sync-external-store@1.6.0(react@19.2.1)))(@types/react@19.1.17)(react-dom@19.2.1(react@19.2.1))(use-sync-external-store@1.6.0(react@19.2.1))':
+    dependencies:
+      '@motiadev/core': 0.15.5-beta.173(@types/node@20.19.25)(redis@5.10.0)(typescript@5.9.3)
+      '@motiadev/stream-client-react': 0.15.5-beta.173(react@19.2.1)
+      '@motiadev/ui': 0.15.5-beta.173(@types/react@19.1.17)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)(use-sync-external-store@1.6.0(react@19.2.1))
+      '@radix-ui/react-popover': 1.1.15(@types/react@19.1.17)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
+      date-fns: 4.1.0
+      lucide-react: 0.555.0(react@19.2.1)
+      react: 19.2.1
+      react18-json-view: 0.2.9(react@19.2.1)
+      zustand: 5.0.9(@types/react@19.1.17)(react@19.2.1)(use-sync-external-store@1.6.0(react@19.2.1))
+    transitivePeerDependencies:
+      - '@types/react'
+      - '@types/react-dom'
+      - immer
+      - react-dom
+      - use-sync-external-store
+
+  '@motiadev/plugin-states@0.15.5-beta.173(@motiadev/core@0.15.5-beta.173(@types/node@20.19.25)(redis@5.10.0)(typescript@5.9.3))(@motiadev/ui@0.15.5-beta.173(@types/react@19.1.17)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)(use-sync-external-store@1.6.0(react@19.2.1)))(@types/react@19.1.17)(monaco-editor@0.55.1)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)(use-sync-external-store@1.6.0(react@19.2.1))':
+    dependencies:
+      '@monaco-editor/react': 4.7.0(monaco-editor@0.55.1)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
+      '@motiadev/core': 0.15.5-beta.173(@types/node@20.19.25)(redis@5.10.0)(typescript@5.9.3)
+      '@motiadev/ui': 0.15.5-beta.173(@types/react@19.1.17)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)(use-sync-external-store@1.6.0(react@19.2.1))
+      lucide-react: 0.555.0(react@19.2.1)
+      react18-json-view: 0.2.9(react@19.2.1)
+      zustand: 5.0.9(@types/react@19.1.17)(react@19.2.1)(use-sync-external-store@1.6.0(react@19.2.1))
+    transitivePeerDependencies:
+      - '@types/react'
+      - immer
+      - monaco-editor
+      - react
+      - react-dom
+      - use-sync-external-store
 
   '@motiadev/stream-client-browser@0.15.5-beta.173':
     dependencies:
@@ -9728,6 +9800,28 @@ snapshots:
       '@radix-ui/react-roving-focus': 1.1.11(@types/react@19.1.17)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
       '@radix-ui/react-slot': 1.2.3(@types/react@19.1.17)(react@19.2.1)
       '@radix-ui/react-use-callback-ref': 1.1.1(@types/react@19.1.17)(react@19.2.1)
+      aria-hidden: 1.2.6
+      react: 19.2.1
+      react-dom: 19.2.1(react@19.2.1)
+      react-remove-scroll: 2.7.2(@types/react@19.1.17)(react@19.2.1)
+    optionalDependencies:
+      '@types/react': 19.1.17
+
+  '@radix-ui/react-popover@1.1.15(@types/react@19.1.17)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)':
+    dependencies:
+      '@radix-ui/primitive': 1.1.3
+      '@radix-ui/react-compose-refs': 1.1.2(@types/react@19.1.17)(react@19.2.1)
+      '@radix-ui/react-context': 1.1.2(@types/react@19.1.17)(react@19.2.1)
+      '@radix-ui/react-dismissable-layer': 1.1.11(@types/react@19.1.17)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
+      '@radix-ui/react-focus-guards': 1.1.3(@types/react@19.1.17)(react@19.2.1)
+      '@radix-ui/react-focus-scope': 1.1.7(@types/react@19.1.17)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
+      '@radix-ui/react-id': 1.1.1(@types/react@19.1.17)(react@19.2.1)
+      '@radix-ui/react-popper': 1.2.8(@types/react@19.1.17)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
+      '@radix-ui/react-portal': 1.1.9(@types/react@19.1.17)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
+      '@radix-ui/react-presence': 1.1.5(@types/react@19.1.17)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
+      '@radix-ui/react-primitive': 2.1.3(@types/react@19.1.17)(react-dom@19.2.1(react@19.2.1))(react@19.2.1)
+      '@radix-ui/react-slot': 1.2.3(@types/react@19.1.17)(react@19.2.1)
+      '@radix-ui/react-use-controllable-state': 1.2.2(@types/react@19.1.17)(react@19.2.1)
       aria-hidden: 1.2.6
       react: 19.2.1
       react-dom: 19.2.1(react@19.2.1)
@@ -10921,6 +11015,18 @@ snapshots:
       - arktype
       - effect
 
+  ai@6.0.0-beta.120(zod@4.1.13):
+    dependencies:
+      '@ai-sdk/gateway': 2.0.0-beta.64(zod@4.1.13)
+      '@ai-sdk/provider': 3.0.0-beta.20
+      '@ai-sdk/provider-utils': 4.0.0-beta.37(zod@4.1.13)
+      '@opentelemetry/api': 1.9.0
+      zod: 4.1.13
+    transitivePeerDependencies:
+      - '@valibot/to-json-schema'
+      - arktype
+      - effect
+
   ajv@6.12.6:
     dependencies:
       fast-deep-equal: 3.1.3
@@ -11744,6 +11850,8 @@ snapshots:
       call-bound: 1.0.4
       es-errors: 1.3.0
       is-data-view: 1.0.2
+
+  date-fns@4.1.0: {}
 
   debug@2.6.9:
     dependencies:
@@ -12890,8 +12998,6 @@ snapshots:
   hoist-non-react-statics@3.3.2:
     dependencies:
       react-is: 16.13.1
-
-  hono@4.10.7: {}
 
   hosted-git-info@7.0.2:
     dependencies:

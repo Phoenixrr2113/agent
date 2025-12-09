@@ -23,6 +23,7 @@ import {
 } from '../tools/registry.js';
 import {
   createToolActivationManager,
+  type ToolActivationCallbacks,
 } from '../tools/tool-wrapper.js';
 
 /**
@@ -32,6 +33,9 @@ import {
 export const CORE_TOOL_NAMES = [
   'plan',
   'sequential_thinking',
+  'shell',
+  'web_search',
+  'fetch_page',
   'ask_user',
   'task_complete',
   'tool_search',
@@ -44,6 +48,8 @@ export interface InitializationConfig {
   enableReadline?: boolean;
   registry?: ToolRegistry;
   enableSemanticSearch?: boolean;
+  initialActiveTools?: string[];
+  activationCallbacks?: ToolActivationCallbacks;
 }
 
 export interface InitializationResult {
@@ -60,6 +66,8 @@ export async function initializeAgent(config: InitializationConfig = {}): Promis
     enableReadline = false,
     registry: providedRegistry,
     enableSemanticSearch = true,
+    initialActiveTools = [],
+    activationCallbacks,
   } = config;
 
   let rl: readline.Interface | null = null;
@@ -70,7 +78,10 @@ export async function initializeAgent(config: InitializationConfig = {}): Promis
   logger.info(`🤖 Initializing AI Agent`, { workspaceRoot: workspaceRoot || '(none)' });
 
   const registry = providedRegistry ?? createToolRegistry();
-  const activationManager = createToolActivationManager();
+  const activationManager = createToolActivationManager({
+    initialActiveTools,
+    callbacks: activationCallbacks,
+  });
 
   let codebaseRAG: any = null;
   if (workspaceRoot) {
@@ -94,13 +105,13 @@ export async function initializeAgent(config: InitializationConfig = {}): Promis
   const activeTools = {
     plan: planTool,
     sequential_thinking: sequentialThinkingTool,
+    shell: shellTool,
+    web_search: webSearchTool,
+    fetch_page: fetchPageTool,
     ...agentTools,
   };
 
   const deferredTools = {
-    shell: shellTool,
-    web_search: webSearchTool,
-    fetch_page: fetchPageTool,
     ...memoryTools,
     validate: validationTool,
     ...workspaceTools,

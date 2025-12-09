@@ -33,8 +33,6 @@
     "lint": "turbo run lint",
     "test": "turbo run test",
     "test:steps": "vitest run --config steps/vitest.config.ts",
-    "chat": "pnpm --filter @agent/cli chat",
-    "server": "pnpm --filter @agent/server dev",
     "test-agent": "tsx scripts/test-agent.ts",
     "motia:dev": "motia dev",
     "motia:build": "motia build",
@@ -42,8 +40,13 @@
   },
   "dependencies": {
     "@agent/core": "workspace:*",
+    "@motiadev/plugin-endpoint": "0.15.5-beta.173",
+    "@motiadev/plugin-logs": "0.15.5-beta.173",
+    "@motiadev/plugin-observability": "0.15.5-beta.173",
+    "@motiadev/plugin-states": "0.15.5-beta.173",
+    "ai": "6.0.0-beta.120",
     "motia": "^0.15.5-beta.173",
-    "zod": "^3.24.1"
+    "zod": "^4.1.13"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",

@@ -1,0 +1,15 @@
+[
+  {
+    "id": "observability",
+    "config": {
+      "steps/events/log-persist.step.ts": {
+        "x": 63,
+        "y": 0
+      },
+      "steps/api/sessions/get-logs.step.ts": {
+        "x": 0,
+        "y": 84
+      }
+    }
+  }
+]

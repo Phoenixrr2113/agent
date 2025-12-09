@@ -164,4 +164,105 @@ describe('ToolActivationManager', () => {
       expect(result).toBe('Executed with test');
     });
   });
+
+  describe('initialActiveTools', () => {
+    it('should initialize with pre-activated tools', () => {
+      const managerWithInitial = createToolActivationManager({
+        initialActiveTools: ['tool1', 'tool2'],
+      });
+
+      expect(managerWithInitial.isActive('tool1')).toBe(true);
+      expect(managerWithInitial.isActive('tool2')).toBe(true);
+      expect(managerWithInitial.isActive('tool3')).toBe(false);
+      expect(managerWithInitial.size()).toBe(2);
+    });
+
+    it('should allow deferred tool execution when pre-activated', async () => {
+      const managerWithInitial = createToolActivationManager({
+        initialActiveTools: ['web_search'],
+      });
+
+      const webSearchTool = createMockTool('Web search');
+      const wrapped = managerWithInitial.createDeferredWrapper('web_search', webSearchTool, 'Search the web');
+
+      const result = await (wrapped as any).execute({ input: 'query' });
+      expect(result).toBe('Executed with query');
+    });
+  });
+
+  describe('callbacks', () => {
+    it('should call onActivate callback when tool is activated', async () => {
+      const activatedTools: string[] = [];
+      const managerWithCallback = createToolActivationManager({
+        callbacks: {
+          onActivate: (toolName, allActiveTools) => {
+            activatedTools.push(toolName);
+          },
+        },
+      });
+
+      managerWithCallback.activate('tool1');
+      managerWithCallback.activate('tool2');
+
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      expect(activatedTools).toContain('tool1');
+      expect(activatedTools).toContain('tool2');
+    });
+
+    it('should call onDeactivate callback when tool is deactivated', async () => {
+      const deactivatedTools: string[] = [];
+      const managerWithCallback = createToolActivationManager({
+        callbacks: {
+          onDeactivate: (toolName, allActiveTools) => {
+            deactivatedTools.push(toolName);
+          },
+        },
+      });
+
+      managerWithCallback.activate('tool1');
+      managerWithCallback.activate('tool2');
+      managerWithCallback.deactivate('tool1');
+
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      expect(deactivatedTools).toEqual(['tool1']);
+    });
+
+    it('should not call onDeactivate for non-active tools', async () => {
+      const deactivatedTools: string[] = [];
+      const managerWithCallback = createToolActivationManager({
+        callbacks: {
+          onDeactivate: (toolName) => {
+            deactivatedTools.push(toolName);
+          },
+        },
+      });
+
+      managerWithCallback.deactivate('nonexistent');
+
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      expect(deactivatedTools).toEqual([]);
+    });
+
+    it('should pass all active tools to callbacks', async () => {
+      let capturedActiveTools: string[] = [];
+      const managerWithCallback = createToolActivationManager({
+        callbacks: {
+          onActivate: (_toolName, allActiveTools) => {
+            capturedActiveTools = [...allActiveTools];
+          },
+        },
+      });
+
+      managerWithCallback.activate('tool1');
+      managerWithCallback.activate('tool2');
+
+      await new Promise(resolve => setTimeout(resolve, 10));
+
+      expect(capturedActiveTools).toContain('tool1');
+      expect(capturedActiveTools).toContain('tool2');
+    });
+  });
 });

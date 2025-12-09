@@ -16,8 +16,6 @@
       "@agent/shared/*": ["./packages/shared/src/*"],
       "@agent/core": ["./packages/core/src"],
       "@agent/core/*": ["./packages/core/src/*"],
-      "@agent/server": ["./packages/server/src"],
-      "@agent/server/*": ["./packages/server/src/*"],
       "@agent/device-use": ["./packages/device-use/src"],
       "@agent/device-use/*": ["./packages/device-use/src/*"]
     }
