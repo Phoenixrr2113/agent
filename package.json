@@ -36,7 +36,9 @@
     "test-agent": "tsx scripts/test-agent.ts",
     "motia:dev": "motia dev",
     "motia:build": "motia build",
-    "motia:types": "motia generate-types"
+    "motia:types": "motia generate-types",
+    "web:dev": "pnpm --filter web dev",
+    "dev:all": "concurrently \"pnpm motia:dev\" \"pnpm web:dev\""
   },
   "dependencies": {
     "@agent/core": "workspace:*",
@@ -51,6 +53,7 @@
   "devDependencies": {
     "@types/node": "^20.0.0",
     "@types/ws": "^8.18.1",
+    "concurrently": "^9.1.2",
     "dotenv": "^17.2.3",
     "tsx": "^4.0.0",
     "turbo": "^2.0.0",
