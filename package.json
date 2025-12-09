@@ -32,9 +32,18 @@
     "clean": "turbo run clean && rm -rf node_modules",
     "lint": "turbo run lint",
     "test": "turbo run test",
+    "test:steps": "vitest run --config steps/vitest.config.ts",
     "chat": "pnpm --filter @agent/cli chat",
     "server": "pnpm --filter @agent/server dev",
-    "test-agent": "tsx scripts/test-agent.ts"
+    "test-agent": "tsx scripts/test-agent.ts",
+    "motia:dev": "motia dev",
+    "motia:build": "motia build",
+    "motia:types": "motia generate-types"
+  },
+  "dependencies": {
+    "@agent/core": "workspace:*",
+    "motia": "^0.15.5-beta.173",
+    "zod": "^3.24.1"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
