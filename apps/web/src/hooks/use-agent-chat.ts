@@ -12,6 +12,7 @@ import {
   type Message,
   type AgentStreamEvent,
   type AgentStreamStatus,
+  type FileAttachment,
 } from '@/lib/agent-api';
 
 export interface ToolCall {
@@ -29,6 +30,42 @@ export interface AgentState {
   thought?: string;
   currentStep: number;
   toolCalls: ToolCall[];
+  usage?: {
+    inputTokens: number;
+    outputTokens: number;
+    totalTokens: number;
+    reasoningTokens?: number;
+    cachedInputTokens?: number;
+  };
+  plan?: {
+    title: string;
+    description?: string;
+    steps: Array<{
+      id: string;
+      label: string;
+      status: 'pending' | 'running' | 'complete' | 'error';
+    }>;
+  };
+  checkpoints: Array<{
+    id: string;
+    label: string;
+    timestamp: string;
+  }>;
+  confirmation?: {
+    id: string;
+    toolName: string;
+    message: string;
+    state: 'pending' | 'approved' | 'rejected';
+  };
+  citations: Array<{
+    id: string;
+    text: string;
+    sources: Array<{
+      title?: string;
+      url: string;
+      description?: string;
+    }>;
+  }>;
 }
 
 export interface ChatMessage {
@@ -49,6 +86,8 @@ export function useAgentChat() {
     status: 'idle',
     currentStep: 0,
     toolCalls: [],
+    checkpoints: [],
+    citations: [],
   });
 
   const unsubscribeRef = useRef<(() => void) | null>(null);
@@ -106,6 +145,9 @@ export function useAgentChat() {
       if (event.thought) {
         newState.thought = event.thought;
       }
+      if (event.usage) {
+        newState.usage = event.usage;
+      }
 
       if (event.status === 'tool_calling' && event.toolName) {
         const existingTool = newState.toolCalls.find(
@@ -136,6 +178,22 @@ export function useAgentChat() {
               }
             : t
         );
+      }
+
+      if (event.plan) {
+        newState.plan = event.plan;
+      }
+
+      if (event.checkpoint) {
+        newState.checkpoints = [...newState.checkpoints, event.checkpoint];
+      }
+
+      if (event.confirmation) {
+        newState.confirmation = event.confirmation;
+      }
+
+      if (event.citations) {
+        newState.citations = [...newState.citations, ...event.citations];
       }
 
       return newState;
@@ -183,8 +241,8 @@ export function useAgentChat() {
   }, []);
 
   const send = useCallback(
-    async (content: string) => {
-      if (!content.trim()) return;
+    async (content: string, attachments?: FileAttachment[]) => {
+      if (!content.trim() && (!attachments || attachments.length === 0)) return;
 
       let currentSession = session;
       if (!currentSession) {
@@ -209,6 +267,8 @@ export function useAgentChat() {
         status: 'thinking',
         currentStep: 0,
         toolCalls: [],
+        checkpoints: [],
+        citations: [],
       });
 
       try {
@@ -216,23 +276,70 @@ export function useAgentChat() {
           unsubscribeRef.current();
         }
 
-        unsubscribeRef.current = subscribeToAgentStream(
-          currentSession.sessionId,
-          handleStreamEvent,
-          (err) => {
-            setError(err.message);
-            setIsLoading(false);
-          }
-        );
+        await sendMessage(currentSession.sessionId, content, attachments);
 
-        await sendMessage(currentSession.sessionId, content);
+        const pollForResponse = async () => {
+          const maxPolls = 60;
+          let polls = 0;
+
+          while (polls < maxPolls) {
+            await new Promise(resolve => setTimeout(resolve, 1000));
+            polls++;
+
+            const history = await getHistory(currentSession.sessionId);
+            const messages = history.filter(
+              (m): m is Message & { role: 'user' | 'assistant' } =>
+                m.role === 'user' || m.role === 'assistant'
+            );
+
+            const lastMessage = messages[messages.length - 1];
+            if (lastMessage && lastMessage.role === 'assistant') {
+              const responseContent = typeof lastMessage.content === 'string'
+                ? lastMessage.content
+                : JSON.stringify(lastMessage.content);
+
+              const messageId = currentMessageIdRef.current;
+              if (messageId) {
+                setMessages((prev) => {
+                  const exists = prev.some((m) => m.id === messageId);
+                  if (exists) {
+                    return prev.map((m) =>
+                      m.id === messageId
+                        ? { ...m, content: responseContent }
+                        : m
+                    );
+                  }
+                  return [
+                    ...prev,
+                    {
+                      id: messageId,
+                      role: 'assistant' as const,
+                      content: responseContent,
+                      timestamp: new Date(),
+                    },
+                  ];
+                });
+              }
+
+              setAgentState(prev => ({ ...prev, status: 'complete' }));
+              setIsLoading(false);
+              currentMessageIdRef.current = null;
+              return;
+            }
+          }
+
+          setError('Response timeout');
+          setIsLoading(false);
+        };
+
+        pollForResponse();
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Failed to send message');
         setIsLoading(false);
         currentMessageIdRef.current = null;
       }
     },
-    [session, initSession, handleStreamEvent]
+    [session, initSession]
   );
 
   const regenerate = useCallback(async () => {
@@ -259,6 +366,8 @@ export function useAgentChat() {
         status: 'idle',
         currentStep: 0,
         toolCalls: [],
+        checkpoints: [],
+        citations: [],
       });
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to clear history');
@@ -283,6 +392,8 @@ export function useAgentChat() {
       status: 'idle',
       currentStep: 0,
       toolCalls: [],
+      checkpoints: [],
+      citations: [],
     });
   }, [session]);
 

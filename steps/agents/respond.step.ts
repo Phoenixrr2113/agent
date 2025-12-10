@@ -48,7 +48,12 @@ export const handler = async (
     step,
   });
 
-  await ctx.state.set('sessions', `${sessionId}:history`, { messages });
+  const historyMessages = messages.filter((m: any) =>
+    m.role === 'user' || m.role === 'assistant'
+  );
+  historyMessages.push({ role: 'assistant', content: response });
+
+  await ctx.state.set('sessions', `${sessionId}:history`, { messages: historyMessages });
 
   await ctx.emit({
     topic: 'agent.complete',

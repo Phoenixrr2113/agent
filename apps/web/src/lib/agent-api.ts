@@ -43,6 +43,42 @@ export interface AgentStreamEvent {
   step?: number;
   error?: string;
   response?: string;
+  usage?: {
+    inputTokens: number;
+    outputTokens: number;
+    totalTokens: number;
+    reasoningTokens?: number;
+    cachedInputTokens?: number;
+  };
+  plan?: {
+    title: string;
+    description?: string;
+    steps: Array<{
+      id: string;
+      label: string;
+      status: 'pending' | 'running' | 'complete' | 'error';
+    }>;
+  };
+  checkpoint?: {
+    id: string;
+    label: string;
+    timestamp: string;
+  };
+  confirmation?: {
+    id: string;
+    toolName: string;
+    message: string;
+    state: 'pending' | 'approved' | 'rejected';
+  };
+  citations?: Array<{
+    id: string;
+    text: string;
+    sources: Array<{
+      title?: string;
+      url: string;
+      description?: string;
+    }>;
+  }>;
 }
 
 export async function createSession(): Promise<Session> {
@@ -86,13 +122,24 @@ export async function clearHistory(sessionId: string): Promise<void> {
   }
 }
 
-export async function sendMessage(sessionId: string, message: string): Promise<ChatResponse> {
+export interface FileAttachment {
+  type: 'image' | 'file';
+  name: string;
+  mimeType: string;
+  data: string;
+}
+
+export async function sendMessage(
+  sessionId: string,
+  message: string,
+  attachments?: FileAttachment[]
+): Promise<ChatResponse> {
   const res = await fetch(`${API_BASE}/sessions/${sessionId}/chat`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({ message }),
+    body: JSON.stringify({ message, attachments }),
   });
   if (!res.ok) {
     throw new Error(`Failed to send message: ${res.statusText}`);

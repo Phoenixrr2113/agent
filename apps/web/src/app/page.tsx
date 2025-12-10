@@ -36,6 +36,18 @@ import {
   ReasoningContent,
 } from '@/components/ai-elements/reasoning';
 import {
+  ChainOfThought,
+  ChainOfThoughtHeader,
+  ChainOfThoughtContent,
+  ChainOfThoughtStep,
+} from '@/components/ai-elements/chain-of-thought';
+import {
+  Task,
+  TaskTrigger,
+  TaskContent,
+  TaskItem,
+} from '@/components/ai-elements/task';
+import {
   Tool,
   ToolHeader,
   ToolContent,
@@ -45,6 +57,46 @@ import {
 import { Shimmer } from '@/components/ai-elements/shimmer';
 import { Loader } from '@/components/ai-elements/loader';
 import { Suggestions, Suggestion } from '@/components/ai-elements/suggestion';
+import {
+  Context,
+  ContextTrigger,
+  ContextContent,
+  ContextContentHeader,
+  ContextContentBody,
+  ContextInputUsage,
+  ContextOutputUsage,
+} from '@/components/ai-elements/context';
+import {
+  Plan,
+  PlanHeader,
+  PlanTitle,
+  PlanDescription,
+  PlanContent,
+  PlanTrigger,
+  PlanAction,
+} from '@/components/ai-elements/plan';
+import {
+  Checkpoint,
+  CheckpointTrigger,
+} from '@/components/ai-elements/checkpoint';
+import {
+  Confirmation,
+  ConfirmationTitle,
+  ConfirmationRequest,
+  ConfirmationActions,
+  ConfirmationAction,
+} from '@/components/ai-elements/confirmation';
+import {
+  InlineCitation,
+  InlineCitationText,
+  InlineCitationCard,
+  InlineCitationCardTrigger,
+  InlineCitationCardBody,
+  InlineCitationCarousel,
+  InlineCitationCarouselContent,
+  InlineCitationCarouselItem,
+  InlineCitationSource,
+} from '@/components/ai-elements/inline-citation';
 import { Button } from '@/components/ui/button';
 import {
   BotIcon,
@@ -179,6 +231,22 @@ export default function Home() {
         <div className="flex items-center gap-2">
           {session && (
             <>
+              {agentState.usage && (
+                <Context
+                  usedTokens={agentState.usage.totalTokens}
+                  maxTokens={128000}
+                  usage={agentState.usage}
+                >
+                  <ContextTrigger />
+                  <ContextContent>
+                    <ContextContentHeader />
+                    <ContextContentBody>
+                      <ContextInputUsage />
+                      <ContextOutputUsage />
+                    </ContextContentBody>
+                  </ContextContent>
+                </Context>
+              )}
               <span className="text-sm text-muted-foreground">
                 Session: {session.sessionId.slice(0, 8)}...
               </span>
@@ -252,11 +320,34 @@ export default function Home() {
                   {isLoading && (
                     <Message from="assistant">
                       <MessageContent>
-                        {agentState.thought && (
-                          <Reasoning isStreaming={agentState.status === 'thinking'}>
-                            <ReasoningTrigger />
-                            <ReasoningContent>{agentState.thought}</ReasoningContent>
-                          </Reasoning>
+                          {agentState.currentStep > 0 && (
+                            <Task defaultOpen>
+                              <TaskTrigger title={`Step ${agentState.currentStep}`} />
+                              <TaskContent>
+                                {agentState.thought && (
+                                  <TaskItem>{agentState.thought}</TaskItem>
+                                )}
+                                {agentState.toolCalls.map((tc) => (
+                                  <TaskItem key={tc.id}>
+                                    {tc.status === 'completed' ? '✓' : tc.status === 'running' ? '⟳' : '○'} {tc.name}
+                                  </TaskItem>
+                                ))}
+                              </TaskContent>
+                            </Task>
+                          )}
+
+                          {agentState.thought && (
+                            <ChainOfThought defaultOpen>
+                              <ChainOfThoughtHeader>Reasoning</ChainOfThoughtHeader>
+                              <ChainOfThoughtContent>
+                                <ChainOfThoughtStep
+                                  label="Agent Thought"
+                                  status={agentState.status === 'thinking' ? 'active' : 'complete'}
+                                >
+                                  {agentState.thought}
+                                </ChainOfThoughtStep>
+                              </ChainOfThoughtContent>
+                            </ChainOfThought>
                         )}
 
                         {agentState.toolCalls.map((toolCall) => (
@@ -292,6 +383,47 @@ export default function Home() {
                             <Shimmer>Thinking...</Shimmer>
                           </div>
                         )}
+
+                          {agentState.plan && (
+                            <Plan defaultOpen isStreaming={agentState.status === 'thinking'}>
+                              <PlanHeader>
+                                <div>
+                                  <PlanTitle>{agentState.plan.title}</PlanTitle>
+                                  {agentState.plan.description && (
+                                    <PlanDescription>{agentState.plan.description}</PlanDescription>
+                                  )}
+                                </div>
+                                <PlanAction>
+                                  <PlanTrigger />
+                                </PlanAction>
+                              </PlanHeader>
+                              <PlanContent>
+                                <ul className="space-y-1 text-sm">
+                                  {agentState.plan.steps.map((step) => (
+                                    <li key={step.id} className="flex items-center gap-2">
+                                      {step.status === 'complete' ? '✓' : step.status === 'running' ? '⟳' : step.status === 'error' ? '✗' : '○'}
+                                      <span className={step.status === 'running' ? 'font-medium' : ''}>{step.label}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </PlanContent>
+                            </Plan>
+                          )}
+
+                          {agentState.confirmation && agentState.confirmation.state === 'pending' && (
+                            <Confirmation state="approval-requested">
+                              <ConfirmationTitle>
+                                Approve action: {agentState.confirmation.toolName}
+                              </ConfirmationTitle>
+                              <ConfirmationRequest>
+                                <p className="text-sm text-muted-foreground">{agentState.confirmation.message}</p>
+                              </ConfirmationRequest>
+                              <ConfirmationActions>
+                                <ConfirmationAction variant="outline">Reject</ConfirmationAction>
+                                <ConfirmationAction>Approve</ConfirmationAction>
+                              </ConfirmationActions>
+                            </Confirmation>
+                          )}
 
                         {agentState.status === 'responding' && (
                           <div className="flex items-center gap-2 text-muted-foreground">
