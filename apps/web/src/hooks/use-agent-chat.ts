@@ -7,13 +7,13 @@ import {
   getHistory,
   clearHistory,
   sendMessage,
-  subscribeToAgentStream,
   type Session,
   type Message,
   type AgentStreamEvent,
   type AgentStreamStatus,
   type FileAttachment,
 } from '@/lib/agent-api';
+import { useAgentStream } from './use-agent-stream';
 
 export interface ToolCall {
   id: string;
@@ -93,7 +93,6 @@ export function useAgentChat() {
     citations: [],
   });
 
-  const unsubscribeRef = useRef<(() => void) | null>(null);
   const currentMessageIdRef = useRef<string | null>(null);
   const agentStateRef = useRef<AgentState>(agentState);
   const hasRestoredRef = useRef(false);
@@ -101,6 +100,114 @@ export function useAgentChat() {
   useEffect(() => {
     agentStateRef.current = agentState;
   }, [agentState]);
+
+  const handleStreamEvent = useCallback((event: AgentStreamEvent) => {
+    setAgentState((prev) => {
+      const newState = { ...prev };
+
+      newState.status = event.status;
+      if (event.step !== undefined) {
+        newState.currentStep = event.step;
+      }
+      if (event.thought) {
+        newState.thought = event.thought;
+      }
+      if (event.usage) {
+        newState.usage = event.usage;
+      }
+
+      if (event.status === 'tool_calling' && event.toolName) {
+        const existingTool = newState.toolCalls.find(
+          (t) => t.name === event.toolName && t.status === 'pending'
+        );
+        if (!existingTool) {
+          newState.toolCalls = [
+            ...newState.toolCalls,
+            {
+              id: `tool-${Date.now()}`,
+              name: event.toolName,
+              input: event.toolInput,
+              status: 'running',
+              startTime: Date.now(),
+            },
+          ];
+        }
+      }
+
+      if (event.status === 'tool_result' && event.toolName) {
+        newState.toolCalls = newState.toolCalls.map((t) =>
+          t.name === event.toolName && t.status === 'running'
+            ? {
+              ...t,
+              output: event.toolOutput,
+              status: 'completed' as const,
+              endTime: Date.now(),
+            }
+            : t
+        );
+      }
+
+      if (event.plan) {
+        newState.plan = event.plan;
+      }
+
+      if (event.checkpoint) {
+        newState.checkpoints = [...newState.checkpoints, event.checkpoint];
+      }
+
+      if (event.confirmation) {
+        newState.confirmation = event.confirmation;
+      }
+
+      if (event.citations) {
+        newState.citations = [...newState.citations, ...event.citations];
+      }
+
+      return newState;
+    });
+
+    if (event.status === 'complete' && event.response) {
+      const messageId = currentMessageIdRef.current;
+      if (messageId) {
+        const currentAgentState = agentStateRef.current;
+        setMessages((prev) => {
+          const exists = prev.some((m) => m.id === messageId);
+          if (exists) {
+            return prev.map((m) =>
+              m.id === messageId
+                ? {
+                  ...m,
+                  content: event.response!,
+                  agentState: { ...currentAgentState, status: 'complete' },
+                  toolCalls: currentAgentState.toolCalls,
+                }
+                : m
+            );
+          }
+          return [
+            ...prev,
+            {
+              id: messageId,
+              role: 'assistant' as const,
+              content: event.response!,
+              timestamp: new Date(),
+              toolCalls: currentAgentState.toolCalls,
+            },
+          ];
+        });
+      }
+      setIsLoading(false);
+      currentMessageIdRef.current = null;
+    }
+
+    if (event.status === 'error') {
+      setError(event.error || 'An error occurred');
+      setIsLoading(false);
+      currentMessageIdRef.current = null;
+    }
+  }, []);
+
+  useAgentStream(session?.sessionId || null, handleStreamEvent);
 
   useEffect(() => {
     if (hasRestoredRef.current) return;
@@ -179,111 +286,6 @@ export function useAgentChat() {
     }
   }, [session]);
 
-  const handleStreamEvent = useCallback((event: AgentStreamEvent) => {
-    setAgentState((prev) => {
-      const newState = { ...prev };
-
-      newState.status = event.status;
-      if (event.step !== undefined) {
-        newState.currentStep = event.step;
-      }
-      if (event.thought) {
-        newState.thought = event.thought;
-      }
-      if (event.usage) {
-        newState.usage = event.usage;
-      }
-
-      if (event.status === 'tool_calling' && event.toolName) {
-        const existingTool = newState.toolCalls.find(
-          (t) => t.name === event.toolName && t.status === 'pending'
-        );
-        if (!existingTool) {
-          newState.toolCalls = [
-            ...newState.toolCalls,
-            {
-              id: `tool-${Date.now()}`,
-              name: event.toolName,
-              input: event.toolInput,
-              status: 'running',
-              startTime: Date.now(),
-            },
-          ];
-        }
-      }
-
-      if (event.status === 'tool_result' && event.toolName) {
-        newState.toolCalls = newState.toolCalls.map((t) =>
-          t.name === event.toolName && t.status === 'running'
-            ? {
-                ...t,
-                output: event.toolOutput,
-                status: 'completed' as const,
-                endTime: Date.now(),
-              }
-            : t
-        );
-      }
-
-      if (event.plan) {
-        newState.plan = event.plan;
-      }
-
-      if (event.checkpoint) {
-        newState.checkpoints = [...newState.checkpoints, event.checkpoint];
-      }
-
-      if (event.confirmation) {
-        newState.confirmation = event.confirmation;
-      }
-
-      if (event.citations) {
-        newState.citations = [...newState.citations, ...event.citations];
-      }
-
-      return newState;
-    });
-
-    if (event.status === 'complete' && event.response) {
-      const messageId = currentMessageIdRef.current;
-      if (messageId) {
-        const currentAgentState = agentStateRef.current;
-        setMessages((prev) => {
-          const exists = prev.some((m) => m.id === messageId);
-          if (exists) {
-            return prev.map((m) =>
-              m.id === messageId
-                ? {
-                    ...m,
-                    content: event.response!,
-                    agentState: { ...currentAgentState, status: 'complete' },
-                    toolCalls: currentAgentState.toolCalls,
-                  }
-                : m
-            );
-          }
-          return [
-            ...prev,
-            {
-              id: messageId,
-              role: 'assistant' as const,
-              content: event.response!,
-              timestamp: new Date(),
-              toolCalls: currentAgentState.toolCalls,
-            },
-          ];
-        });
-      }
-      setIsLoading(false);
-      currentMessageIdRef.current = null;
-    }
-
-    if (event.status === 'error') {
-      setError(event.error || 'An error occurred');
-      setIsLoading(false);
-      currentMessageIdRef.current = null;
-    }
-  }, []);
 
   const send = useCallback(
     async (content: string, attachments?: FileAttachment[]) => {
@@ -317,67 +319,7 @@ export function useAgentChat() {
       });
 
       try {
-        if (unsubscribeRef.current) {
-          unsubscribeRef.current();
-        }
-
         await sendMessage(currentSession.sessionId, content, attachments);
-
-        const pollForResponse = async () => {
-          const maxPolls = 60;
-          let polls = 0;
-
-          while (polls < maxPolls) {
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            polls++;
-
-            const history = await getHistory(currentSession.sessionId);
-            const messages = history.filter(
-              (m): m is Message & { role: 'user' | 'assistant' } =>
-                m.role === 'user' || m.role === 'assistant'
-            );
-
-            const lastMessage = messages[messages.length - 1];
-            if (lastMessage && lastMessage.role === 'assistant') {
-              const responseContent = typeof lastMessage.content === 'string'
-                ? lastMessage.content
-                : JSON.stringify(lastMessage.content);
-
-              const messageId = currentMessageIdRef.current;
-              if (messageId) {
-                setMessages((prev) => {
-                  const exists = prev.some((m) => m.id === messageId);
-                  if (exists) {
-                    return prev.map((m) =>
-                      m.id === messageId
-                        ? { ...m, content: responseContent }
-                        : m
-                    );
-                  }
-                  return [
-                    ...prev,
-                    {
-                      id: messageId,
-                      role: 'assistant' as const,
-                      content: responseContent,
-                      timestamp: new Date(),
-                    },
-                  ];
-                });
-              }
-
-              setAgentState(prev => ({ ...prev, status: 'complete' }));
-              setIsLoading(false);
-              currentMessageIdRef.current = null;
-              return;
-            }
-          }
-
-          setError('Response timeout');
-          setIsLoading(false);
-        };
-
-        pollForResponse();
       } catch (e) {
         setError(e instanceof Error ? e.message : 'Failed to send message');
         setIsLoading(false);
@@ -420,10 +362,6 @@ export function useAgentChat() {
   }, [session]);
 
   const endSession = useCallback(async () => {
-    if (unsubscribeRef.current) {
-      unsubscribeRef.current();
-      unsubscribeRef.current = null;
-    }
     if (session) {
       try {
         await deleteSession(session.sessionId);
@@ -447,13 +385,7 @@ export function useAgentChat() {
     navigator.clipboard.writeText(content);
   }, []);
 
-  useEffect(() => {
-    return () => {
-      if (unsubscribeRef.current) {
-        unsubscribeRef.current();
-      }
-    };
-  }, []);
+
 
   return {
     session,

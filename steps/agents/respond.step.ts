@@ -38,7 +38,7 @@ export const handler = async (
 
   await ctx.streams.agent.send(
     { groupId: sessionId },
-    { type: 'complete', data: { status: 'complete', response, step } }
+    { status: 'complete', response, step }
   );
 
   await ctx.state.set('sessions', `${sessionId}:response`, {

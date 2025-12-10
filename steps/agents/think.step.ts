@@ -35,7 +35,7 @@ export const handler = async (input: { sessionId: string; messages: unknown[]; s
     ctx.logger.warn('Agent loop limit reached', { sessionId, step, maxSteps: MAX_STEPS });
     await ctx.streams.agent.send(
       { groupId: sessionId },
-      { type: 'complete', data: { status: 'complete', response: 'Maximum steps reached. Please continue the conversation.', step } }
+      { status: 'complete', response: 'Maximum steps reached. Please continue the conversation.', step }
     );
     await ctx.emit({
       topic: 'agent.response',
@@ -45,7 +45,7 @@ export const handler = async (input: { sessionId: string; messages: unknown[]; s
   }
 
   ctx.logger.info('Agent thinking', { sessionId, step, messageCount: messages.length });
-  await ctx.streams.agent.send({ groupId: sessionId }, { type: 'thinking', data: { status: 'thinking', step } });
+  await ctx.streams.agent.send({ groupId: sessionId }, { status: 'thinking', step });
 
   const tools = await getActiveTools({ sessionId, state: ctx.state });
 
@@ -66,7 +66,7 @@ export const handler = async (input: { sessionId: string; messages: unknown[]; s
       fullText += part.text;
       await ctx.streams.agent.send(
         { groupId: sessionId },
-        { type: 'text_delta', data: { status: 'text_delta', textDelta: part.text, step } }
+        { status: 'text_delta', textDelta: part.text, step }
       );
     }
 
@@ -114,7 +114,7 @@ export const handler = async (input: { sessionId: string; messages: unknown[]; s
       ctx.logger.info('Task marked complete by agent', { sessionId, step, summary });
       await ctx.streams.agent.send(
         { groupId: sessionId },
-        { type: 'complete', data: { status: 'complete', response: summary, step } }
+        { status: 'complete', response: summary, step }
       );
       await ctx.emit({
         topic: 'agent.response',
@@ -129,7 +129,7 @@ export const handler = async (input: { sessionId: string; messages: unknown[]; s
       ctx.logger.info('Agent asking user', { sessionId, step, question });
       await ctx.streams.agent.send(
         { groupId: sessionId },
-        { type: 'complete', data: { status: 'awaiting_input', response: question, step } }
+        { status: 'complete', response: question, step }
       );
       await ctx.emit({
         topic: 'agent.response',
@@ -141,7 +141,7 @@ export const handler = async (input: { sessionId: string; messages: unknown[]; s
     for (const toolCall of toolCalls) {
       await ctx.streams.agent.send(
         { groupId: sessionId },
-        { type: 'tool_calling', data: { status: 'tool_calling', toolName: toolCall.toolName, toolInput: toolCall.input, step: step + 1 } }
+        { status: 'tool_calling', toolName: toolCall.toolName, toolInput: toolCall.input, step: step + 1 }
       );
 
       await ctx.emit({
@@ -159,7 +159,7 @@ export const handler = async (input: { sessionId: string; messages: unknown[]; s
   } else {
     await ctx.streams.agent.send(
       { groupId: sessionId },
-      { type: 'responding', data: { status: 'responding', thought: fullText, step, usage: formattedUsage } }
+      { status: 'responding', thought: fullText, step, usage: formattedUsage }
     );
 
     await ctx.emit({

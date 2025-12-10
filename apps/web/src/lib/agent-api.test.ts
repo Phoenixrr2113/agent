@@ -5,7 +5,6 @@ import {
   getHistory,
   clearHistory,
   sendMessage,
-  subscribeToAgentStream,
 } from './agent-api';
 
 describe('agent-api', () => {
@@ -130,38 +129,5 @@ describe('agent-api', () => {
       );
     });
   });
-
-  describe('subscribeToAgentStream', () => {
-    it('should subscribe and handle events', () => {
-      const mockEventSource = {
-        onmessage: null as ((event: MessageEvent) => void) | null,
-        onerror: null as ((event: Event) => void) | null,
-        close: vi.fn(),
-      };
-
-      const originalEventSource = global.EventSource;
-      // @ts-expect-error - mocking EventSource
-      global.EventSource = vi.fn(() => mockEventSource);
-
-      const onEvent = vi.fn();
-      const onError = vi.fn();
-
-      const unsubscribe = subscribeToAgentStream('test-session-123', onEvent, onError);
-
-      const mockStreamEvent = {
-        status: 'thinking',
-        thought: 'Processing...',
-        step: 1,
-      };
-
-      mockEventSource.onmessage?.({ data: JSON.stringify(mockStreamEvent) } as MessageEvent);
-
-      expect(onEvent).toHaveBeenCalledWith(mockStreamEvent);
-
-      unsubscribe();
-      expect(mockEventSource.close).toHaveBeenCalled();
-
-      global.EventSource = originalEventSource;
-    });
-  });
 });
+

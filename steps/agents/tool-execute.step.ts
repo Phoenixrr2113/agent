@@ -78,7 +78,7 @@ export const handler = async (
 
   await ctx.streams.agent.send(
     { groupId: sessionId },
-    { type: 'tool_result', data: { status: 'tool_result', toolName: name, toolOutput: result, step } }
+    { status: 'tool_result', toolName: name, toolOutput: result, step }
   );
 
   await ctx.emit({

@@ -147,28 +147,3 @@ export async function sendMessage(
   return res.json();
 }
 
-export function subscribeToAgentStream(
-  sessionId: string,
-  onEvent: (event: AgentStreamEvent) => void,
-  onError?: (error: Error) => void
-): () => void {
-  const eventSource = new EventSource(`${API_BASE}/streams/agent/${sessionId}`);
-
-  eventSource.onmessage = (event) => {
-    try {
-      const data = JSON.parse(event.data);
-      onEvent(data);
-    } catch (e) {
-      console.error('Failed to parse SSE event:', e);
-    }
-  };
-
-  eventSource.onerror = (event) => {
-    console.error('SSE error:', event);
-    onError?.(new Error('Stream connection error'));
-  };
-
-  return () => {
-    eventSource.close();
-  };
-}
