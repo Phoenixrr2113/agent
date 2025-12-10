@@ -77,11 +77,14 @@ export interface ChatMessage {
   toolCalls?: ToolCall[];
 }
 
+const SESSION_STORAGE_KEY = 'agent_session_id';
+
 export function useAgentChat() {
   const [session, setSession] = useState<Session | null>(null);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [isRestoring, setIsRestoring] = useState(true);
   const [agentState, setAgentState] = useState<AgentState>({
     status: 'idle',
     currentStep: 0,
@@ -93,10 +96,51 @@ export function useAgentChat() {
   const unsubscribeRef = useRef<(() => void) | null>(null);
   const currentMessageIdRef = useRef<string | null>(null);
   const agentStateRef = useRef<AgentState>(agentState);
+  const hasRestoredRef = useRef(false);
 
   useEffect(() => {
     agentStateRef.current = agentState;
   }, [agentState]);
+
+  useEffect(() => {
+    if (hasRestoredRef.current) return;
+    hasRestoredRef.current = true;
+
+    const restoreSession = async () => {
+      const storedSessionId = localStorage.getItem(SESSION_STORAGE_KEY);
+      if (!storedSessionId) {
+        setIsRestoring(false);
+        return;
+      }
+
+      try {
+        const history = await getHistory(storedSessionId);
+        const restoredSession: Session = {
+          sessionId: storedSessionId,
+          createdAt: new Date().toISOString(),
+        };
+        setSession(restoredSession);
+
+        const chatMessages: ChatMessage[] = history
+          .filter((m): m is Message & { role: 'user' | 'assistant' } =>
+            m.role === 'user' || m.role === 'assistant'
+          )
+          .map((m, i) => ({
+            id: `history-${i}`,
+            role: m.role,
+            content: typeof m.content === 'string' ? m.content : JSON.stringify(m.content),
+            timestamp: new Date(),
+          }));
+        setMessages(chatMessages);
+      } catch {
+        localStorage.removeItem(SESSION_STORAGE_KEY);
+      } finally {
+        setIsRestoring(false);
+      }
+    };
+
+    restoreSession();
+  }, []);
 
   const initSession = useCallback(async () => {
     try {
@@ -105,6 +149,7 @@ export function useAgentChat() {
       const newSession = await createSession();
       setSession(newSession);
       setMessages([]);
+      localStorage.setItem(SESSION_STORAGE_KEY, newSession.sessionId);
       return newSession;
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to create session');
@@ -386,6 +431,7 @@ export function useAgentChat() {
         console.error('Failed to delete session:', e);
       }
     }
+    localStorage.removeItem(SESSION_STORAGE_KEY);
     setSession(null);
     setMessages([]);
     setAgentState({
@@ -413,6 +459,7 @@ export function useAgentChat() {
     session,
     messages,
     isLoading,
+    isRestoring,
     error,
     agentState,
     initSession,
