@@ -1,0 +1,113 @@
+import { embed } from 'ai';
+import { logger } from '@agent/shared';
+// Using consolidated embeddings module
+import { getEmbeddingModel, cosineSimilarity } from '../embeddings/index.js';
+import { rerankWithFallback } from './rerank.js';
+import { filterChunksToFitBudget, countTokens } from './tokens.js';
+import { mergeSearchResults, BM25Index } from './bm25.js';
+import { EmbeddedChunk, SearchOptions } from './types.js';
+
+export interface SearchState {
+  embeddedChunks: EmbeddedChunk[];
+  bm25Index: BM25Index | null;
+  chunkMap: Map<string, EmbeddedChunk>;
+}
+
+export interface SearchConfig {
+  returnTopN: number;
+  maxTokensPerSearch: number;
+  rerankTopN: number;
+  enableBM25: boolean;
+  enableReranking: boolean;
+}
+
+export async function executeSearch(
+  query: string,
+  options: SearchOptions | undefined,
+  state: SearchState,
+  config: SearchConfig
+): Promise<EmbeddedChunk[]> {
+  const startTime = performance.now();
+  logger.debug('⏱️  [RAG] Starting search', { query, options });
+
+  const finalTopK = options?.topK ?? config.returnTopN;
+  const maxTokens = options?.maxTokens ?? config.maxTokensPerSearch;
+
+  if (state.embeddedChunks.length === 0) {
+    logger.debug('⏱️  [RAG] Search completed (no chunks)');
+    return [];
+  }
+
+  const embeddingStartTime = performance.now();
+  const { embedding: queryEmbedding } = await embed({
+    model: getEmbeddingModel(),
+    value: query,
+  });
+  const embeddingDuration = performance.now() - embeddingStartTime;
+  logger.debug('⏱️  [RAG] Query embedding generated', {
+    durationMs: embeddingDuration.toFixed(2),
+  });
+
+  const embeddingResults = state.embeddedChunks
+    .map((chunk) => ({
+      id: chunk.id,
+      score: cosineSimilarity(queryEmbedding, chunk.embedding),
+    }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, config.rerankTopN)
+    .map((r, i) => ({ ...r, rank: i + 1 }));
+
+  let candidateIds: string[];
+
+  if (config.enableBM25 && state.bm25Index) {
+    const bm25Results = state.bm25Index.search(query, config.rerankTopN);
+    const merged = mergeSearchResults(embeddingResults, bm25Results);
+    candidateIds = merged.slice(0, config.rerankTopN).map((r) => r.id);
+  } else {
+    candidateIds = embeddingResults.map((r) => r.id);
+  }
+
+  let finalIds: string[];
+
+  if (config.enableReranking && candidateIds.length > 0) {
+    const docsToRerank = candidateIds
+      .map((id) => state.chunkMap.get(id))
+      .filter((c): c is EmbeddedChunk => c !== undefined)
+      .map((c) => ({ id: c.id, content: c.contextualContent }));
+
+    const reranked = await rerankWithFallback(query, docsToRerank, {
+      topN: finalTopK,
+    });
+    finalIds = reranked.map((r) => r.id);
+  } else {
+    finalIds = candidateIds.slice(0, finalTopK);
+  }
+
+  let results = finalIds
+    .map((id) => state.chunkMap.get(id))
+    .filter((c): c is EmbeddedChunk => c !== undefined);
+
+  // Filter by token budget if specified
+  if (maxTokens !== undefined && maxTokens > 0) {
+    const originalCount = results.length;
+    results = filterChunksToFitBudget(results, maxTokens);
+    if (results.length < originalCount) {
+      logger.info('⏱️  [RAG] Filtered chunks to fit token budget', {
+        original: originalCount,
+        filtered: results.length,
+        budgetTokens: maxTokens,
+        usedTokens: results.reduce((sum, c) => sum + countTokens(c.contextualContent), 0),
+      });
+    }
+  }
+
+  const duration = performance.now() - startTime;
+  logger.info('⏱️  [RAG] Search completed', {
+    query,
+    results: results.length,
+    durationMs: duration.toFixed(2),
+    durationSec: (duration / 1000).toFixed(3),
+  });
+
+  return results;
+}
