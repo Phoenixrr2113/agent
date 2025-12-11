@@ -4,6 +4,7 @@ import { createAgent } from '../application/orchestrator.js';
 import { logger, createPerformanceTimer, type PerformanceTimer } from '@agent/shared';
 import { createMemoryExtractor } from '../core/memory/extractor.js';
 import { getMemoryProvider } from '../tools/memory.js';
+import { getPersistentTaskManager } from '../tools/background-tasks-persistent.js';
 
 export interface AgentConfig {
   workspaceRoot?: string;
@@ -196,6 +197,7 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
     createSession,
     shutdown: async () => {
       logger.info('🧹 Shutting down agent runtime');
+      getPersistentTaskManager().shutdown();
       await memoryExtractor.waitForPending();
     },
   };

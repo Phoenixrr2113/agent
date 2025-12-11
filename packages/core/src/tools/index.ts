@@ -20,12 +20,19 @@ export {
   ToolActivationManager,
   createToolActivationManager,
 } from './tool-wrapper.js';
+export {
+  persistentBackgroundTaskTools,
+  getPersistentTaskManager,
+  resetPersistentTaskManager,
+  type PersistentTaskInfo,
+} from './background-tasks-persistent.js';
 
 import { shellTool } from './shell.js';
 import { webSearchTool } from './web-search.js';
 import { fetchPageTool } from './fetch-page.js';
 import { memoryTools } from './memory.js';
 import { planTool, validationTool } from './workflow.js';
+import { persistentBackgroundTaskTools } from './background-tasks-persistent.js';
 
 export const nativeTools = {
   shell: shellTool,
@@ -34,5 +41,6 @@ export const nativeTools = {
   ...memoryTools,
   plan: planTool,
   validate: validationTool,
+  ...persistentBackgroundTaskTools,
 };
 

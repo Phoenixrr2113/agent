@@ -13,6 +13,7 @@ import { createCodebaseTools } from '../tools/codebase.js';
 import { createAgentTools } from '../tools/agent.js';
 import { sequentialThinkingTool } from '../tools/sequential-thinking.js';
 import { createFilesystemTools } from '../tools/filesystem.js';
+import { persistentBackgroundTaskTools, getPersistentTaskManager } from '../tools/background-tasks-persistent.js';
 import {
   ToolRegistry,
   createToolRegistry,
@@ -102,6 +103,7 @@ export async function initializeAgent(config: InitializationConfig = {}): Promis
     fetch_page: fetchPageTool,
     ...memoryTools,
     validate: validationTool,
+    ...persistentBackgroundTaskTools,
     ...workspaceTools,
     ...filesystemTools,
   };
@@ -162,5 +164,6 @@ export async function cleanup(rl: readline.Interface | null) {
   if (rl) {
     rl.close();
   }
+  getPersistentTaskManager().shutdown();
   await closeMemory();
 }
