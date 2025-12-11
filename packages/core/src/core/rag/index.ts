@@ -399,5 +399,7 @@ function cosineSimilarity(a: number[], b: number[]): number {
     normB += b[i] * b[i];
   }
 
-  return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
+  const magnitude = Math.sqrt(normA) * Math.sqrt(normB);
+  if (magnitude === 0) return 0;
+  return dotProduct / magnitude;
 }

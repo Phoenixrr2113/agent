@@ -2,6 +2,15 @@ import Database from 'better-sqlite3';
 import type { Entity, Fact } from './types.js';
 import type { StorageAdapter } from './storage.js';
 
+function safeJsonParse<T>(json: string | null | undefined, fallback: T): T {
+  if (!json) return fallback;
+  try {
+    return JSON.parse(json);
+  } catch {
+    return fallback;
+  }
+}
+
 function cosineSimilarity(a: number[], b: number[]): number {
   let dot = 0, normA = 0, normB = 0;
   for (let i = 0; i < a.length; i++) {
@@ -9,7 +18,9 @@ function cosineSimilarity(a: number[], b: number[]): number {
     normA += a[i] * a[i];
     normB += b[i] * b[i];
   }
-  return dot / (Math.sqrt(normA) * Math.sqrt(normB));
+  const magnitude = Math.sqrt(normA) * Math.sqrt(normB);
+  if (magnitude === 0) return 0;
+  return dot / magnitude;
 }
 
 interface EntityWithScore {
@@ -78,15 +89,29 @@ const SCHEMA = `
 
 export function createSQLiteStorage(dbPath: string): StorageAdapter {
   const db = new Database(dbPath);
-  db.pragma('journal_mode = WAL');
-  db.exec(SCHEMA);
+
+  try {
+    db.pragma('journal_mode = WAL');
+    db.exec(SCHEMA);
+  } catch (error) {
+    db.close();
+    throw error;
+  }
+
+  const checkpointInterval = setInterval(() => {
+    try {
+      db.pragma('wal_checkpoint(TRUNCATE)');
+    } catch {
+      // Ignore checkpoint errors - database may be closed
+    }
+  }, 60000);
 
   const parseEntity = (row: any): Entity => ({
     id: row.id,
     name: row.name,
     type: row.type,
-    attributes: JSON.parse(row.attributes),
-    embedding: row.embedding ? JSON.parse(row.embedding) : undefined,
+    attributes: safeJsonParse(row.attributes, {}),
+    embedding: safeJsonParse(row.embedding, undefined),
     createdAt: new Date(row.created_at),
     updatedAt: new Date(row.updated_at),
   });
@@ -94,9 +119,9 @@ export function createSQLiteStorage(dbPath: string): StorageAdapter {
   const parseFact = (row: any): Fact => ({
     id: row.id,
     content: row.content,
-    embedding: JSON.parse(row.embedding),
-    entityIds: JSON.parse(row.entity_ids),
-    relationIds: JSON.parse(row.relation_ids),
+    embedding: safeJsonParse(row.embedding, []),
+    entityIds: safeJsonParse(row.entity_ids, []),
+    relationIds: safeJsonParse(row.relation_ids, []),
     validFrom: new Date(row.valid_from),
     validTo: row.valid_to ? new Date(row.valid_to) : null,
     createdAt: new Date(row.created_at),
@@ -157,26 +182,27 @@ export function createSQLiteStorage(dbPath: string): StorageAdapter {
       async get(id) {
         const row = db.prepare('SELECT * FROM relations WHERE id = ?').get(id) as any;
         return row ? { ...row, fromEntityId: row.from_entity_id, toEntityId: row.to_entity_id,
-          attributes: JSON.parse(row.attributes), createdAt: new Date(row.created_at) } : null;
+          attributes: safeJsonParse(row.attributes, {}), createdAt: new Date(row.created_at)
+        } : null;
       },
       async findByEntity(entityId) {
         return db.prepare('SELECT * FROM relations WHERE from_entity_id = ? OR to_entity_id = ?')
           .all(entityId, entityId).map((r: any) => ({
             ...r, fromEntityId: r.from_entity_id, toEntityId: r.to_entity_id,
-            attributes: JSON.parse(r.attributes), createdAt: new Date(r.created_at)
+            attributes: safeJsonParse(r.attributes, {}), createdAt: new Date(r.created_at)
           }));
       },
       async findBetween(fromId, toId) {
         return db.prepare('SELECT * FROM relations WHERE from_entity_id = ? AND to_entity_id = ?')
           .all(fromId, toId).map((r: any) => ({
             ...r, fromEntityId: r.from_entity_id, toEntityId: r.to_entity_id,
-            attributes: JSON.parse(r.attributes), createdAt: new Date(r.created_at)
+            attributes: safeJsonParse(r.attributes, {}), createdAt: new Date(r.created_at)
           }));
       },
       async all() {
         return db.prepare('SELECT * FROM relations').all().map((r: any) => ({
           ...r, fromEntityId: r.from_entity_id, toEntityId: r.to_entity_id,
-          attributes: JSON.parse(r.attributes), createdAt: new Date(r.created_at)
+          attributes: safeJsonParse(r.attributes, {}), createdAt: new Date(r.created_at)
         }));
       },
     },
@@ -234,8 +260,8 @@ export function createSQLiteStorage(dbPath: string): StorageAdapter {
         return row ? {
           ...row,
           groupId: row.group_id,
-          factIds: JSON.parse(row.fact_ids),
-          entityIds: JSON.parse(row.entity_ids),
+          factIds: safeJsonParse(row.fact_ids, []),
+          entityIds: safeJsonParse(row.entity_ids, []),
           timestamp: new Date(row.timestamp),
           lastProcessedMessageIndex: row.last_processed_message_index
         } : null;
@@ -245,8 +271,8 @@ export function createSQLiteStorage(dbPath: string): StorageAdapter {
           .all(groupId, limit).map((r: any) => ({
             ...r,
             groupId: r.group_id,
-            factIds: JSON.parse(r.fact_ids),
-            entityIds: JSON.parse(r.entity_ids),
+            factIds: safeJsonParse(r.fact_ids, []),
+            entityIds: safeJsonParse(r.entity_ids, []),
             timestamp: new Date(r.timestamp),
             lastProcessedMessageIndex: r.last_processed_message_index
           }));
@@ -264,7 +290,15 @@ export function createSQLiteStorage(dbPath: string): StorageAdapter {
         throw e;
       }
     },
-    async close() { db.close(); },
+    async close() {
+      clearInterval(checkpointInterval);
+      try {
+        db.pragma('wal_checkpoint(TRUNCATE)');
+      } catch {
+        // Ignore if already closed
+      }
+      db.close();
+    },
   };
 }
 

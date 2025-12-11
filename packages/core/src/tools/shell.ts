@@ -45,6 +45,13 @@ export async function executeShell(
     const timer = setTimeout(() => {
       killed = true;
       proc.kill('SIGTERM');
+
+      setTimeout(() => {
+        try {
+          proc.kill('SIGKILL');
+        } catch {
+        }
+      }, 5000);
     }, timeout);
 
     proc.stdout.on('data', (data) => {

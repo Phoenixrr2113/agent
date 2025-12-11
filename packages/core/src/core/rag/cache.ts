@@ -7,15 +7,16 @@ interface CacheEntry<T> {
   data: T;
   timestamp: number;
   hash: string;
+  modelVersion?: string;
 }
 
 export interface Cache<T> {
   get: (key: string) => Promise<T | null>;
-  set: (key: string, value: T, contentHash?: string) => Promise<void>;
+  set: (key: string, value: T, contentHash?: string, modelVersion?: string) => Promise<void>;
   has: (key: string) => Promise<boolean>;
   delete: (key: string) => Promise<void>;
   clear: () => Promise<void>;
-  isValid: (key: string, contentHash: string) => Promise<boolean>;
+  isValid: (key: string, contentHash: string, modelVersion?: string) => Promise<boolean>;
 }
 
 export function createFileCache<T>(cacheDir: string): Cache<T> {
@@ -45,13 +46,14 @@ export function createFileCache<T>(cacheDir: string): Cache<T> {
       }
     },
 
-    set: async (key: string, value: T, contentHash?: string): Promise<void> => {
+    set: async (key: string, value: T, contentHash?: string, modelVersion?: string): Promise<void> => {
       await ensureCacheDir();
       const cachePath = getCachePath(key);
       const entry: CacheEntry<T> = {
         data: value,
         timestamp: Date.now(),
         hash: contentHash || '',
+        modelVersion,
       };
       await fs.writeFile(cachePath, JSON.stringify(entry), 'utf-8');
     },
@@ -86,12 +88,14 @@ export function createFileCache<T>(cacheDir: string): Cache<T> {
       }
     },
 
-    isValid: async (key: string, contentHash: string): Promise<boolean> => {
+    isValid: async (key: string, contentHash: string, modelVersion?: string): Promise<boolean> => {
       try {
         const cachePath = getCachePath(key);
         const content = await fs.readFile(cachePath, 'utf-8');
         const entry: CacheEntry<T> = JSON.parse(content);
-        return entry.hash === contentHash;
+        const hashMatch = entry.hash === contentHash;
+        const modelMatch = !modelVersion || entry.modelVersion === modelVersion;
+        return hashMatch && modelMatch;
       } catch {
         return false;
       }

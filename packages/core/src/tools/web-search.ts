@@ -1,6 +1,16 @@
 import { tool } from 'ai';
 import { z } from 'zod';
 
+const DEFAULT_TIMEOUT = 30000;
+
+function fetchWithTimeout(url: string, options: RequestInit = {}, timeout = DEFAULT_TIMEOUT): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+  return fetch(url, { ...options, signal: controller.signal })
+    .finally(() => clearTimeout(timeoutId));
+}
+
 interface BraveSearchResult {
   title: string;
   url: string;
@@ -18,7 +28,7 @@ async function braveSearch(query: string, count: number = 5): Promise<BraveSearc
   const apiKey = process.env.BRAVE_API_KEY;
   if (!apiKey) throw new Error('BRAVE_API_KEY not set');
 
-  const response = await fetch(
+  const response = await fetchWithTimeout(
     `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=${count}`,
     {
       headers: {
@@ -49,7 +59,7 @@ async function tavilySearch(
 
   const { maxResults = 5, searchDepth = 'basic' } = options;
 
-  const response = await fetch('https://api.tavily.com/search', {
+  const response = await fetchWithTimeout('https://api.tavily.com/search', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -84,7 +94,7 @@ export const webSearchTool = tool({
   inputSchema: z.object({
     query: z.string().describe('Search query'),
     engine: z.enum(['brave', 'tavily', 'both']).default('tavily').describe('Search engine'),
-    maxResults: z.number().optional().default(5).describe('Max results (default: 5)'),
+    maxResults: z.number().min(1).max(50).optional().default(5).describe('Max results (1-50, default: 5)'),
     deep: z.boolean().optional().describe('Deep search for tavily (slower, more thorough)'),
   }),
   execute: async ({ query, engine = 'tavily', maxResults = 5, deep }: { query: string; engine?: string; maxResults?: number; deep?: boolean }) => {

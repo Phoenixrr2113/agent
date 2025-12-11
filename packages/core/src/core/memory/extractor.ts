@@ -61,12 +61,17 @@ export function createMemoryExtractor(config: MemoryExtractorConfig): MemoryExtr
   const { memoryProvider, groupId = 'default' } = config;
   const pendingExtractions: Promise<void>[] = [];
   let lastProcessedIndex = -1;
+  let lastAttemptedIndex = -1;
+  let consecutiveFailures = 0;
+  const MAX_CONSECUTIVE_FAILURES = 3;
 
   async function doExtraction(dialogueText: string, messageCount: number): Promise<void> {
     if (!dialogueText.trim()) {
       logger.debug('No dialogue text to extract memories from');
       return;
     }
+
+    lastAttemptedIndex = messageCount - 1;
 
     try {
       logger.info('Extracting memories from conversation...', {
@@ -87,8 +92,19 @@ export function createMemoryExtractor(config: MemoryExtractorConfig): MemoryExtr
       });
 
       lastProcessedIndex = messageCount - 1;
+      consecutiveFailures = 0;
     } catch (error) {
       logger.error('Memory extraction failed', { error: String(error) });
+      consecutiveFailures++;
+
+      if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+        logger.warn('Skipping failed messages after max retries', {
+          skippedUpTo: lastAttemptedIndex,
+          consecutiveFailures,
+        });
+        lastProcessedIndex = lastAttemptedIndex;
+        consecutiveFailures = 0;
+      }
     }
   }
 

@@ -13,6 +13,16 @@ interface ParsedPage {
 
 let JSDOM: typeof import('jsdom').JSDOM;
 
+const DEFAULT_TIMEOUT = 30000;
+
+function fetchWithTimeout(url: string, options: RequestInit = {}, timeout = DEFAULT_TIMEOUT): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+  return fetch(url, { ...options, signal: controller.signal })
+    .finally(() => clearTimeout(timeoutId));
+}
+
 async function getJSDOM() {
   if (!JSDOM) {
     const jsdom = await import('jsdom');
@@ -22,7 +32,7 @@ async function getJSDOM() {
 }
 
 async function fetchAndParse(url: string): Promise<ParsedPage> {
-  const response = await fetch(url, {
+  const response = await fetchWithTimeout(url, {
     headers: {
       'User-Agent': 'Mozilla/5.0 (compatible; AIAgent/1.0)',
       'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
@@ -36,26 +46,31 @@ async function fetchAndParse(url: string): Promise<ParsedPage> {
   const html = await response.text();
   const JSDOMClass = await getJSDOM();
   const dom = new JSDOMClass(html, { url });
-  const reader = new Readability(dom.window.document);
-  const article = reader.parse();
 
-  if (!article) {
-    const textContent = dom.window.document.body?.textContent || '';
+  try {
+    const reader = new Readability(dom.window.document);
+    const article = reader.parse();
+
+    if (!article) {
+      const textContent = dom.window.document.body?.textContent || '';
+      return {
+        title: dom.window.document.title || url,
+        content: textContent.substring(0, 5000).trim(),
+        length: textContent.length,
+      };
+    }
+
     return {
-      title: dom.window.document.title || url,
-      content: textContent.substring(0, 5000).trim(),
-      length: textContent.length,
+      title: article.title || url,
+      content: (article.textContent || '').trim(),
+      excerpt: article.excerpt || undefined,
+      byline: article.byline || undefined,
+      siteName: article.siteName || undefined,
+      length: (article.textContent || '').length,
     };
+  } finally {
+    dom.window.close();
   }
-
-  return {
-    title: article.title || url,
-    content: (article.textContent || '').trim(),
-    excerpt: article.excerpt || undefined,
-    byline: article.byline || undefined,
-    siteName: article.siteName || undefined,
-    length: (article.textContent || '').length,
-  };
 }
 
 export const fetchPageTool = tool({

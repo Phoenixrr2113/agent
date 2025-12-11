@@ -87,7 +87,7 @@ export class ToolRegistry {
 
   getAll(): Record<string, Tool> {
     const result: Record<string, Tool> = {};
-    for (const [name, { tool }] of this.tools) {
+    for (const [name, { tool }] of Array.from(this.tools)) {
       result[name] = tool;
     }
     return result;
@@ -95,7 +95,7 @@ export class ToolRegistry {
 
   getActive(): Record<string, Tool> {
     const result: Record<string, Tool> = {};
-    for (const [name, { tool, metadata }] of this.tools) {
+    for (const [name, { tool, metadata }] of Array.from(this.tools)) {
       if (!metadata.deferLoading) {
         result[name] = tool;
       }
@@ -105,7 +105,7 @@ export class ToolRegistry {
 
   getDeferred(): Record<string, Tool> {
     const result: Record<string, Tool> = {};
-    for (const [name, { tool, metadata }] of this.tools) {
+    for (const [name, { tool, metadata }] of Array.from(this.tools)) {
       if (metadata.deferLoading) {
         result[name] = tool;
       }
@@ -120,7 +120,7 @@ export class ToolRegistry {
 
     const scored: Array<{ metadata: ToolMetadata; score: number }> = [];
 
-    for (const [, { metadata }] of this.tools) {
+    for (const [, { metadata }] of Array.from(this.tools)) {
       if (!includeDeferred && metadata.deferLoading) continue;
 
       let score = 0;
@@ -163,7 +163,7 @@ export class ToolRegistry {
 
     const scored: Array<{ metadata: ToolMetadata; score: number }> = [];
 
-    for (const [, registered] of this.tools) {
+    for (const [, registered] of Array.from(this.tools)) {
       if (!includeDeferred && registered.metadata.deferLoading) continue;
       if (!registered.embedding) continue;
 
@@ -182,7 +182,7 @@ export class ToolRegistry {
   async generateEmbeddings(): Promise<void> {
     const embeddingModel = getEmbeddingModel();
 
-    for (const [name, registered] of this.tools) {
+    for (const [name, registered] of Array.from(this.tools)) {
       if (registered.embedding) continue;
 
       const parts: string[] = [
@@ -216,7 +216,7 @@ export class ToolRegistry {
   }
 
   hasEmbeddings(): boolean {
-    for (const [, registered] of this.tools) {
+    for (const [, registered] of Array.from(this.tools)) {
       if (!registered.embedding) return false;
     }
     return this.tools.size > 0;
@@ -243,7 +243,9 @@ function cosineSimilarity(a: number[], b: number[]): number {
     normA += a[i] * a[i];
     normB += b[i] * b[i];
   }
-  return dot / (Math.sqrt(normA) * Math.sqrt(normB));
+  const magnitude = Math.sqrt(normA) * Math.sqrt(normB);
+  if (magnitude === 0) return 0;
+  return dot / magnitude;
 }
 
 export function createToolRegistry(): ToolRegistry {

@@ -96,3 +96,7 @@ export function getSequentialThinkingEngine(): SequentialThinkingEngine {
   return globalEngine;
 }
 
+export function resetSequentialThinkingEngine(): void {
+  globalEngine.reset();
+}
+

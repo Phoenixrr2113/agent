@@ -3,18 +3,18 @@ import { z } from 'zod';
 import type { MemoryProvider } from '../core/memory/types.js';
 import { createAutoMemoryProvider } from '../core/memory/factory.js';
 
-let memoryProvider: MemoryProvider | null = null;
+let memoryProviderPromise: Promise<MemoryProvider> | null = null;
 
-async function getProvider(): Promise<MemoryProvider> {
-  if (!memoryProvider) {
-    memoryProvider = await createAutoMemoryProvider({
+function getProvider(): Promise<MemoryProvider> {
+  if (!memoryProviderPromise) {
+    memoryProviderPromise = createAutoMemoryProvider({
       storagePath: process.env.MEMORY_DB_PATH || './memory.db',
       graphitiUrl: process.env.GRAPHITI_URL,
       embeddingModel: process.env.MEMORY_EMBEDDING_MODEL,
       extractionModel: process.env.MEMORY_EXTRACTION_MODEL,
     });
   }
-  return memoryProvider;
+  return memoryProviderPromise;
 }
 
 export const memoryAddTool = tool({
@@ -187,9 +187,10 @@ export async function getMemoryProvider(): Promise<MemoryProvider> {
 }
 
 export async function closeMemory(): Promise<void> {
-  if (memoryProvider) {
-    await memoryProvider.close();
-    memoryProvider = null;
+  if (memoryProviderPromise) {
+    const provider = await memoryProviderPromise;
+    await provider.close();
+    memoryProviderPromise = null;
   }
 }
 

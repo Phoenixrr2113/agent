@@ -257,7 +257,10 @@ async function readMediaFile(filePath: string): Promise<{ data: string; mimeType
       const mimeType = mimeTypes[ext] || 'application/octet-stream';
       resolve({ data: base64, mimeType });
     });
-    stream.on('error', reject);
+    stream.on('error', (err) => {
+      stream.destroy();
+      reject(err);
+    });
   });
 }
 
