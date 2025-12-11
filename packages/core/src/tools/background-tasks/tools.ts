@@ -1,0 +1,317 @@
+import { tool } from 'ai';
+import { z } from 'zod';
+import { join } from 'path';
+import { randomBytes } from 'crypto';
+import { writeFileSync } from 'fs';
+import { getPersistentTaskManager } from './task-manager.js';
+import type { TaskStatus } from './types.js';
+import { success, error } from '../utils/tool-result.js';
+
+export const startBackgroundTaskTool = tool({
+  description: 'Start a long-running command in the background. Task runs detached and persists across agent restarts. Perfect for: builds (hours), tests (hours), training jobs (days), monitoring scripts (weeks). Returns task ID for tracking.',
+  inputSchema: z.object({
+    command: z.string().describe('Bash command to execute in background'),
+    cwd: z.string().optional().describe('Working directory (default: project root)'),
+  }),
+  execute: async ({ command, cwd }: { command: string; cwd?: string }) => {
+    try {
+      const taskManager = getPersistentTaskManager();
+      const taskId = taskManager.startTask(command, cwd);
+
+      return success({
+        taskId,
+        message: 'Task started in detached background process',
+        command: command.substring(0, 100),
+        status: 'running',
+        persistent: true,
+        instructions:
+          'Task will continue running even if agent restarts. Use check_task_status to monitor and get_task_output to retrieve logs.',
+      });
+    } catch (err) {
+      return error(err instanceof Error ? err : String(err), {
+        context: 'Failed to start background task',
+      });
+    }
+  },
+});
+
+export const checkTaskStatusTool = tool({
+  description: 'Check status of a persistent background task. Returns: running, completed, failed, cancelled, or orphaned. Works across agent restarts.',
+  inputSchema: z.object({
+    taskId: z.string().describe('Task ID from start_background_task'),
+  }),
+  execute: async ({ taskId }: { taskId: string }) => {
+    const taskManager = getPersistentTaskManager();
+    const task = taskManager.getTask(taskId);
+
+    if (!task) {
+      return error('Task not found', { taskId });
+    }
+
+    const durationMs = task.endTime ? task.endTime - task.startTime : Date.now() - task.startTime;
+    const durationDays = durationMs / (1000 * 60 * 60 * 24);
+
+    return success({
+      taskId: task.id,
+      status: task.status,
+      command: task.command.substring(0, 100),
+      pid: task.pid,
+      durationMs,
+      durationSec: (durationMs / 1000).toFixed(2),
+      durationDays: durationDays.toFixed(2),
+      exitCode: task.exitCode,
+      persistent: true,
+    });
+  },
+});
+
+export const getTaskOutputTool = tool({
+  description: 'Retrieve output from a persistent background task. Can fetch stdout or stderr, from beginning or end of log. Logs persist across agent restarts.',
+  inputSchema: z.object({
+    taskId: z.string().describe('Task ID from start_background_task'),
+    maxBytes: z.number().optional().describe('Maximum bytes to return (default: 100000)'),
+    fromEnd: z.boolean().optional().describe('Read from end of log instead of beginning (default: true)'),
+    stderr: z.boolean().optional().describe('Get stderr instead of stdout (default: false)'),
+  }),
+  execute: async ({
+    taskId,
+    maxBytes = 100000,
+    fromEnd = true,
+    stderr = false,
+  }: {
+    taskId: string;
+    maxBytes?: number;
+    fromEnd?: boolean;
+    stderr?: boolean;
+  }) => {
+    try {
+      const taskManager = getPersistentTaskManager();
+      const task = taskManager.getTask(taskId);
+
+      if (!task) {
+        return error('Task not found', { taskId });
+      }
+
+      const output = taskManager.getTaskOutput(taskId, {
+        maxBytes,
+        fromEnd,
+        stderr,
+      });
+
+      return success({
+        taskId: task.id,
+        command: task.command,
+        status: task.status,
+        exitCode: task.exitCode,
+        output: output.content,
+        outputSize: output.size,
+        outputTruncated: output.truncated,
+        outputType: stderr ? 'stderr' : 'stdout',
+        fromEnd,
+      });
+    } catch (err) {
+      return error(err instanceof Error ? err : String(err), {
+        context: 'Failed to get task output',
+        taskId,
+      });
+    }
+  },
+});
+
+export const cancelTaskTool = tool({
+  description: 'Cancel a running persistent background task. Sends SIGTERM to the process.',
+  inputSchema: z.object({
+    taskId: z.string().describe('Task ID from start_background_task'),
+  }),
+  execute: async ({ taskId }: { taskId: string }) => {
+    const taskManager = getPersistentTaskManager();
+    const task = taskManager.getTask(taskId);
+
+    if (!task) {
+      return error('Task not found', { taskId });
+    }
+
+    if (task.status !== 'running') {
+      return error('Task is not running', { taskId, status: task.status });
+    }
+
+    const cancelled = taskManager.cancelTask(taskId);
+
+    if (cancelled) {
+      return success({
+        message: 'Task cancelled successfully',
+        taskId,
+      });
+    } else {
+      return error('Failed to cancel task', { taskId });
+    }
+  },
+});
+
+export const listTasksTool = tool({
+  description: 'List persistent background tasks. Shows tasks across agent restarts. Filter by status.',
+  inputSchema: z.object({
+    status: z
+      .enum(['running', 'completed', 'failed', 'cancelled', 'orphaned', 'all'])
+      .optional()
+      .describe('Filter by status (default: all)'),
+    limit: z.number().optional().describe('Maximum tasks to return (default: 50)'),
+  }),
+  execute: async ({
+    status = 'all',
+    limit = 50,
+  }: {
+    status?: 'running' | 'completed' | 'failed' | 'cancelled' | 'orphaned' | 'all';
+    limit?: number;
+  }) => {
+    const taskManager = getPersistentTaskManager();
+
+    const filter: { status?: TaskStatus; limit: number } = { limit };
+    if (status !== 'all') {
+      filter.status = status as TaskStatus;
+    }
+
+    const tasks = taskManager.getAllTasks(filter);
+
+    const summary = tasks.map(task => ({
+      taskId: task.id,
+      command: task.command.substring(0, 50),
+      status: task.status,
+      pid: task.pid,
+      durationMs: task.endTime
+        ? task.endTime - task.startTime
+        : Date.now() - task.startTime,
+      exitCode: task.exitCode,
+    }));
+
+    return success({
+      total: tasks.length,
+      running: tasks.filter(t => t.status === 'running').length,
+      completed: tasks.filter(t => t.status === 'completed').length,
+      failed: tasks.filter(t => t.status === 'failed').length,
+      cancelled: tasks.filter(t => t.status === 'cancelled').length,
+      orphaned: tasks.filter(t => t.status === 'orphaned').length,
+      tasks: summary,
+      persistent: true,
+    });
+  },
+});
+
+export const cleanupOldTasksTool = tool({
+  description: 'Clean up old completed/failed tasks and their logs. Useful for freeing disk space.',
+  inputSchema: z.object({
+    olderThanDays: z.number().describe('Delete tasks older than this many days'),
+  }),
+  execute: async ({ olderThanDays }: { olderThanDays: number }) => {
+    const taskManager = getPersistentTaskManager();
+    const olderThanMs = olderThanDays * 24 * 60 * 60 * 1000;
+
+    const count = taskManager.cleanupOldTasks(olderThanMs);
+
+    return success({
+      message: `Cleaned up ${count} old tasks`,
+      count,
+      olderThanDays,
+    });
+  },
+});
+
+export const startAgentTaskTool = tool({
+  description: 'Start an autonomous agent session as a background task. The agent will work on the given task independently, using all available tools. Perfect for: complex research, multi-step builds, code generation, testing workflows. The agent runs until task completion or max steps.',
+  inputSchema: z.object({
+    task: z.string().describe('The task for the agent to complete autonomously'),
+    workspaceRoot: z.string().optional().describe('Workspace root directory (default: current)'),
+    maxSteps: z.number().optional().describe('Maximum number of steps (default: 50)'),
+  }),
+  execute: async ({
+    task,
+    workspaceRoot,
+    maxSteps = 50,
+  }: {
+    task: string;
+    workspaceRoot?: string;
+    maxSteps?: number;
+  }) => {
+    try {
+      const taskManager = getPersistentTaskManager();
+
+      const taskJson = JSON.stringify(task);
+      const workspaceRootJson = workspaceRoot ? JSON.stringify(workspaceRoot) : 'process.cwd()';
+
+      const agentScript = `
+const { createAgentRuntime } = require('@agent/core');
+
+async function runAgentTask() {
+  const TASK = ${taskJson};
+  const runtime = await createAgentRuntime({
+    workspaceRoot: ${workspaceRootJson},
+    maxSteps: ${maxSteps},
+    disableAgentSpawning: true,
+    role: 'spawned_agent',
+  });
+
+  try {
+    const session = runtime.createSession();
+
+    console.log('🤖 Agent starting autonomous task...');
+    console.log('Task:', TASK);
+    console.log('Max steps: ${maxSteps}');
+    console.log('');
+
+    const result = await session.runTask({
+      prompt: TASK,
+    });
+
+    console.log('');
+    console.log('✅ Agent completed task');
+    console.log('Steps used:', result.stepsUsed, '/ ${maxSteps}');
+    console.log('Tools used:', result.toolsUsed.join(', '));
+    console.log('Completed:', result.completed);
+    console.log('');
+    console.log('Result:');
+    console.log(result.text);
+
+    process.exit(result.completed ? 0 : 1);
+  } catch (error) {
+    console.error('❌ Agent task failed:', error.message);
+    process.exit(1);
+  } finally {
+    await runtime.shutdown();
+  }
+}
+
+runAgentTask();
+      `.trim();
+
+      const scriptPath = join(process.cwd(), '.agent', `agent-task-${randomBytes(4).toString('hex')}.js`);
+      writeFileSync(scriptPath, agentScript);
+
+      const command = `node "${scriptPath}" && rm "${scriptPath}"`;
+      const taskId = taskManager.startTask(command, workspaceRoot);
+
+      return success({
+        taskId,
+        message: 'Autonomous agent task started',
+        task: task.substring(0, 100),
+        status: 'running',
+        autonomous: true,
+        instructions:
+          'Agent will work independently. Use check_task_status and get_task_output to monitor progress.',
+      });
+    } catch (err) {
+      return error(err instanceof Error ? err : String(err), {
+        context: 'Failed to start agent task',
+      });
+    }
+  },
+});
+
+export const persistentBackgroundTaskTools = {
+  start_background_task: startBackgroundTaskTool,
+  start_agent_task: startAgentTaskTool,
+  check_task_status: checkTaskStatusTool,
+  get_task_output: getTaskOutputTool,
+  cancel_task: cancelTaskTool,
+  list_tasks: listTasksTool,
+  cleanup_old_tasks: cleanupOldTasksTool,
+};

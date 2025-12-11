@@ -1,9 +1,7 @@
 import { tool } from 'ai';
 import { z } from 'zod';
-import { exec } from 'child_process';
-import { promisify } from 'util';
-
-const execAsync = promisify(exec);
+import { executeCommand } from './utils/shell.js';
+import { success, error } from './utils/tool-result.js';
 
 interface PlanStep {
   name: string;
@@ -35,7 +33,7 @@ export const planTool = tool({
     switch (action) {
       case 'create':
         if (!title || !steps) {
-          return JSON.stringify({ error: 'Title and steps required for create action' });
+          return error('Title and steps required for create action');
         }
         currentPlan = {
           title,
@@ -43,63 +41,63 @@ export const planTool = tool({
           createdAt: Date.now(),
           updatedAt: Date.now(),
         };
-        return JSON.stringify({
+        return success({
           message: `Plan created: "${title}" with ${steps.length} steps`,
           plan: currentPlan,
         });
 
       case 'view':
         if (!currentPlan) {
-          return JSON.stringify({ message: 'No active plan' });
+          return success({ message: 'No active plan' });
         }
         const completed = currentPlan.steps.filter(s => s.status === 'completed').length;
         const total = currentPlan.steps.length;
-        return JSON.stringify({
+        return success({
           plan: currentPlan,
           progress: `${completed}/${total} steps completed (${Math.round((completed / total) * 100)}%)`,
         });
 
       case 'update_status':
         if (!currentPlan || !stepName || !status) {
-          return JSON.stringify({ error: 'Active plan, stepName, and status required' });
+          return error('Active plan, stepName, and status required');
         }
         const step = currentPlan.steps.find(s => s.name === stepName);
         if (!step) {
-          return JSON.stringify({ error: `Step not found: ${stepName}` });
+          return error(`Step not found: ${stepName}`);
         }
         step.status = status;
         currentPlan.updatedAt = Date.now();
         const completedCount = currentPlan.steps.filter(s => s.status === 'completed').length;
-        return JSON.stringify({
+        return success({
           message: `Updated "${stepName}" to ${status}`,
           progress: `${completedCount}/${currentPlan.steps.length} completed`,
         });
 
       case 'add_note':
         if (!currentPlan || !stepName || !note) {
-          return JSON.stringify({ error: 'Active plan, stepName, and note required' });
+          return error('Active plan, stepName, and note required');
         }
         const noteStep = currentPlan.steps.find(s => s.name === stepName);
         if (!noteStep) {
-          return JSON.stringify({ error: `Step not found: ${stepName}` });
+          return error(`Step not found: ${stepName}`);
         }
         noteStep.notes = note;
         currentPlan.updatedAt = Date.now();
-        return JSON.stringify({ message: `Note added to "${stepName}"` });
+        return success({ message: `Note added to "${stepName}"` });
 
       case 'add_step':
         if (!currentPlan || !stepName) {
-          return JSON.stringify({ error: 'Active plan and stepName required' });
+          return error('Active plan and stepName required');
         }
         currentPlan.steps.push({ name: stepName, status: 'pending' });
         currentPlan.updatedAt = Date.now();
-        return JSON.stringify({
+        return success({
           message: `Added step: "${stepName}"`,
           totalSteps: currentPlan.steps.length,
         });
 
       default:
-        return JSON.stringify({ error: 'Invalid action' });
+        return error('Invalid action');
     }
   },
 });
@@ -116,20 +114,20 @@ export const validationTool = tool({
     let allPassed = true;
 
     if (checkTypes) {
-      try {
-        const { stdout, stderr } = await execAsync('pnpm exec tsc --noEmit', {
-          timeout: 30000,
-          maxBuffer: 10 * 1024 * 1024,
-        });
-        const output = stdout || stderr || '';
+      const result = await executeCommand('pnpm exec tsc --noEmit', {
+        timeout: 30000,
+        maxBuffer: 10 * 1024 * 1024,
+      });
+      if (result.exitCode === 0) {
+        const output = result.stdout || result.stderr || '';
         results.push({
           check: 'TypeScript type check',
           passed: true,
           details: output ? output.substring(0, 500) : 'No type errors found'
         });
-      } catch (error: any) {
+      } else {
         allPassed = false;
-        const errorOutput = error.stderr || error.stdout || error.message;
+        const errorOutput = result.stderr || result.stdout || result.error || '';
         results.push({
           check: 'TypeScript type check',
           passed: false,
@@ -139,20 +137,20 @@ export const validationTool = tool({
     }
 
     if (runTests) {
-      try {
-        const { stdout } = await execAsync('pnpm test', {
-          timeout: 60000,
-          maxBuffer: 10 * 1024 * 1024,
-        });
-        const testSummary = stdout.split('\n').slice(-10).join('\n');
+      const result = await executeCommand('pnpm test', {
+        timeout: 60000,
+        maxBuffer: 10 * 1024 * 1024,
+      });
+      if (result.exitCode === 0) {
+        const testSummary = result.stdout.split('\n').slice(-10).join('\n');
         results.push({
           check: 'Test suite',
           passed: true,
           details: testSummary || 'All tests passed'
         });
-      } catch (error: any) {
+      } else {
         allPassed = false;
-        const errorOutput = error.stderr || error.stdout || error.message;
+        const errorOutput = result.stderr || result.stdout || result.error || '';
         results.push({
           check: 'Test suite',
           passed: false,
@@ -161,7 +159,7 @@ export const validationTool = tool({
       }
     }
 
-    return JSON.stringify({
+    return success({
       allPassed,
       results,
       filesChanged,

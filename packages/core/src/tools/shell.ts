@@ -1,18 +1,11 @@
 import { tool } from 'ai';
 import { z } from 'zod';
-import { spawn } from 'child_process';
-
-const DANGEROUS_PATTERNS = [
-  /rm\s+(-rf?|--recursive)?\s*[\/~]/i,
-  />\s*\/dev\/sd[a-z]/i,
-  /mkfs\./i,
-  /dd\s+if=/i,
-  /:(){ :|:& };:/,
-];
-
-function isDangerous(command: string): boolean {
-  return DANGEROUS_PATTERNS.some(pattern => pattern.test(command));
-}
+import {
+  executeCommand,
+  isDangerousCommand,
+  type ShellResult as UtilShellResult,
+} from './utils/shell.js';
+import { error, success } from './utils/tool-result.js';
 
 export interface ShellResult {
   stdout: string;
@@ -30,65 +23,14 @@ export async function executeShell(
     maxBuffer?: number;
   } = {}
 ): Promise<ShellResult> {
-  const { cwd = process.cwd(), timeout = 30000, maxBuffer = 1024 * 1024 } = options;
-
-  return new Promise((resolve) => {
-    let stdout = '';
-    let stderr = '';
-    let killed = false;
-
-    const proc = spawn('bash', ['-c', command], {
-      cwd,
-      env: { ...process.env, TERM: 'dumb' },
-    });
-
-    const timer = setTimeout(() => {
-      killed = true;
-      proc.kill('SIGTERM');
-
-      setTimeout(() => {
-        try {
-          proc.kill('SIGKILL');
-        } catch {
-        }
-      }, 5000);
-    }, timeout);
-
-    proc.stdout.on('data', (data) => {
-      const chunk = data.toString();
-      if (stdout.length + chunk.length <= maxBuffer) {
-        stdout += chunk;
-      }
-    });
-
-    proc.stderr.on('data', (data) => {
-      const chunk = data.toString();
-      if (stderr.length + chunk.length <= maxBuffer) {
-        stderr += chunk;
-      }
-    });
-
-    proc.on('close', (code) => {
-      clearTimeout(timer);
-      resolve({
-        stdout: stdout.trim(),
-        stderr: stderr.trim(),
-        exitCode: code ?? 1,
-        killed,
-      });
-    });
-
-    proc.on('error', (err) => {
-      clearTimeout(timer);
-      resolve({
-        stdout: '',
-        stderr: '',
-        exitCode: 1,
-        killed: false,
-        error: err.message,
-      });
-    });
-  });
+  const result = await executeCommand(command, options);
+  return {
+    stdout: result.stdout,
+    stderr: result.stderr,
+    exitCode: result.exitCode,
+    killed: result.killed,
+    error: result.error,
+  };
 }
 
 export const shellTool = tool({
@@ -99,33 +41,30 @@ export const shellTool = tool({
     timeout: z.number().optional().describe('Timeout in ms (default: 30000)'),
   }),
   execute: async ({ command, cwd, timeout }: { command: string; cwd?: string; timeout?: number }) => {
-    if (isDangerous(command)) {
-      return JSON.stringify({
-        error: 'Command blocked for safety',
+    if (isDangerousCommand(command)) {
+      return error('Command blocked for safety', {
         command,
         suggestion: 'This command pattern is potentially destructive. Please be more specific.',
       });
     }
 
-    const result = await executeShell(command, { cwd, timeout });
+    const result = await executeCommand(command, { cwd, timeout });
 
     if (result.error) {
-      return JSON.stringify({ error: result.error, command });
+      return error(result.error, { command });
     }
 
     if (result.killed) {
-      return JSON.stringify({
-        error: 'Command timed out',
+      return error('Command timed out', {
         stdout: result.stdout.substring(0, 500),
         stderr: result.stderr.substring(0, 500),
       });
     }
 
-    return JSON.stringify({
+    return success({
       stdout: result.stdout,
       stderr: result.stderr,
       exitCode: result.exitCode,
-      success: result.exitCode === 0,
     });
   },
 });
