@@ -10,6 +10,7 @@ export interface AgentConfig {
   workspaceRoot?: string;
   askUserHandler?: AskUserHandler;
   maxSteps?: number;
+  disableAgentSpawning?: boolean;
 }
 
 export interface TaskInput {
@@ -137,6 +138,11 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
         return 'yes';
       },
     };
+  }
+
+  if (config.disableAgentSpawning) {
+    delete tools.start_agent_task;
+    logger.info('🚫 Agent spawning disabled (prevents recursion)');
   }
 
   const agent = createAgent(tools, {

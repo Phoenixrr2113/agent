@@ -772,6 +772,7 @@ async function runAgentTask() {
   const runtime = await createAgentRuntime({
     workspaceRoot: ${workspaceRoot ? `'${workspaceRoot}'` : 'process.cwd()'},
     maxSteps: ${maxSteps},
+    disableAgentSpawning: true,
   });
 
   try {
