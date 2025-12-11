@@ -1,9 +1,9 @@
-import type { MemoryProvider, MemoryConfig } from './types.js';
+import type { MemoryProvider, MemoryConfig, MemoryConfigInput, LiteMemoryConfig } from './types.js';
 import { createMemoryLite } from './index.js';
 import { createGraphitiProvider } from './provider-graphiti.js';
 
 export { BaseMemoryProvider } from './provider-base.js';
-export type { MemoryProvider, MemoryConfig } from './types.js';
+export type { MemoryProvider, MemoryConfig, MemoryConfigInput, LiteMemoryConfig, GraphitiMemoryConfig } from './types.js';
 
 export function createMemoryProvider(config: MemoryConfig): MemoryProvider {
   if (config.provider === 'graphiti') {
@@ -18,11 +18,13 @@ export function createMemoryProvider(config: MemoryConfig): MemoryProvider {
   });
 }
 
-export async function detectAvailableProvider(): Promise<'graphiti' | 'lite'> {
-  const graphitiUrl = process.env.GRAPHITI_URL || 'http://localhost:8000';
+export async function detectAvailableProvider(
+  graphitiUrl?: string
+): Promise<'graphiti' | 'lite'> {
+  const url = graphitiUrl || process.env.GRAPHITI_URL || 'http://localhost:8000';
 
   try {
-    const response = await fetch(`${graphitiUrl}/health`, {
+    const response = await fetch(`${url}/healthcheck`, {
       method: 'GET',
       signal: AbortSignal.timeout(2000),
     });
@@ -36,14 +38,22 @@ export async function detectAvailableProvider(): Promise<'graphiti' | 'lite'> {
 }
 
 export async function createAutoMemoryProvider(
-  config: Omit<MemoryConfig, 'provider'>
+  config: MemoryConfigInput
 ): Promise<MemoryProvider> {
-  const provider = await detectAvailableProvider();
+  const provider = await detectAvailableProvider(config.graphitiUrl);
   console.log(`Memory provider: ${provider}`);
 
+  if (provider === 'graphiti') {
+    return createMemoryProvider({
+      provider: 'graphiti',
+      graphitiUrl: config.graphitiUrl,
+    });
+  }
+
   return createMemoryProvider({
-    ...config,
-    provider,
+    provider: 'lite',
+    embeddingModel: config.embeddingModel,
+    extractionModel: config.extractionModel,
+    storagePath: config.storagePath,
   });
 }
-

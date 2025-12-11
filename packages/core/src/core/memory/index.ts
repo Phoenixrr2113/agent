@@ -9,7 +9,7 @@ import type {
   Entity,
   Fact,
   Episode,
-  MemoryConfig,
+  LiteMemoryConfig,
 } from './types.js';
 import { createInMemoryStorage, type StorageAdapter } from './storage.js';
 import { createSQLiteStorage } from './storage-sqlite.js';
@@ -37,13 +37,13 @@ export { BaseMemoryProvider } from './provider-base.js';
 
 const DEFAULT_EXTRACTION_MODEL = process.env.MODEL_EXTRACTION || process.env.MODEL_STANDARD || 'google/gemini-2.0-flash-001';
 
-export function createMemoryLite(config: Omit<MemoryConfig, 'provider'>): MemoryProvider {
+export function createMemoryLite(config: Omit<LiteMemoryConfig, 'provider'>): MemoryProvider {
   const storage: StorageAdapter = config.storagePath
     ? createSQLiteStorage(config.storagePath)
     : createInMemoryStorage();
 
   const openrouter = createOpenRouter();
-  const embeddingModel = getEmbeddingModel();
+  const embeddingModel = getEmbeddingModel(config.embeddingModel);
   const extractionModel = openrouter(config.extractionModel || DEFAULT_EXTRACTION_MODEL);
 
   async function getEmbedding(text: string): Promise<number[]> {

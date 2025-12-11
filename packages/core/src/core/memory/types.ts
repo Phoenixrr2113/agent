@@ -94,11 +94,23 @@ export interface ExtractionResult {
   }>;
 }
 
-export interface MemoryConfig {
-  provider: 'lite' | 'graphiti';
+export interface LiteMemoryConfig {
+  provider: 'lite';
+  embeddingModel?: string;
+  extractionModel?: string;
+  storagePath?: string;
+}
+
+export interface GraphitiMemoryConfig {
+  provider: 'graphiti';
+  graphitiUrl?: string;
+}
+
+export type MemoryConfig = LiteMemoryConfig | GraphitiMemoryConfig;
+
+export interface MemoryConfigInput {
   embeddingModel?: string;
   extractionModel?: string;
   storagePath?: string;
   graphitiUrl?: string;
 }
-

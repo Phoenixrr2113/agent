@@ -9,6 +9,9 @@ async function getProvider(): Promise<MemoryProvider> {
   if (!memoryProvider) {
     memoryProvider = await createAutoMemoryProvider({
       storagePath: process.env.MEMORY_DB_PATH || './memory.db',
+      graphitiUrl: process.env.GRAPHITI_URL,
+      embeddingModel: process.env.MEMORY_EMBEDDING_MODEL,
+      extractionModel: process.env.MEMORY_EXTRACTION_MODEL,
     });
   }
   return memoryProvider;
