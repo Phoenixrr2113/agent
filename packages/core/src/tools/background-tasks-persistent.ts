@@ -2,7 +2,7 @@ import { tool } from 'ai';
 import { z } from 'zod';
 import { spawn, type ChildProcess } from 'child_process';
 import { randomBytes } from 'crypto';
-import { existsSync, mkdirSync, createWriteStream, createReadStream, unlinkSync, statSync } from 'fs';
+import { existsSync, mkdirSync, unlinkSync, statSync, readFileSync, openSync, closeSync, readSync } from 'fs';
 import { join } from 'path';
 import Database from 'better-sqlite3';
 import { logger } from '@agent/shared';
@@ -55,6 +55,7 @@ class PersistentTaskManager {
   private maxLogSize = 100 * 1024 * 1024;
   private monitorCallback: TaskMonitorCallback | null = null;
   private lastKnownStates: Map<string, TaskStatus> = new Map();
+  private readonly MAX_CONCURRENT_TASKS = 50;
 
   constructor(workspaceRoot?: string) {
     const baseDir = workspaceRoot || process.cwd();
@@ -123,6 +124,50 @@ class PersistentTaskManager {
           .run('orphaned', Date.now(), new Date().toISOString(), task.id);
       }
     }
+
+    this.truncateOversizedLogs();
+  }
+
+  private truncateOversizedLogs(): void {
+    const allTasks = this.db
+      .prepare('SELECT * FROM tasks WHERE status = ?')
+      .all('running') as any[];
+
+    for (const task of allTasks) {
+      this.truncateLogIfNeeded(task.log_file);
+      this.truncateLogIfNeeded(task.error_log_file);
+    }
+  }
+
+  private truncateLogIfNeeded(logFile: string | null): void {
+    if (!logFile || !existsSync(logFile)) return;
+
+    try {
+      const stats = statSync(logFile);
+      if (stats.size <= this.maxLogSize) return;
+
+      const keepBytes = Math.floor(this.maxLogSize * 0.9);
+      const buffer = Buffer.alloc(keepBytes);
+      const fd = openSync(logFile, 'r');
+
+      try {
+        const position = stats.size - keepBytes;
+        readSync(fd, buffer, 0, keepBytes, position);
+      } finally {
+        closeSync(fd);
+      }
+
+      const { writeFileSync } = require('fs');
+      writeFileSync(logFile, buffer);
+
+      logger.info('Truncated oversized log file', {
+        logFile,
+        originalSize: stats.size,
+        newSize: keepBytes,
+      });
+    } catch (err) {
+      logger.debug('Could not truncate log file', { logFile, error: String(err) });
+    }
   }
 
   private isProcessRunning(pid: number | null | undefined): boolean {
@@ -141,6 +186,11 @@ class PersistentTaskManager {
   }
 
   startTask(command: string, cwd?: string): string {
+    const running = this.getAllTasks({ status: 'running' });
+    if (running.length >= this.MAX_CONCURRENT_TASKS) {
+      throw new Error(`Maximum concurrent tasks (${this.MAX_CONCURRENT_TASKS}) reached`);
+    }
+
     const taskId = this.generateTaskId();
     const now = Date.now();
     const isoNow = new Date().toISOString();
@@ -148,15 +198,18 @@ class PersistentTaskManager {
     const logFile = join(this.logsDir, `${taskId}.log`);
     const errorLogFile = join(this.logsDir, `${taskId}.error.log`);
 
-    const stdout = createWriteStream(logFile, { flags: 'a' });
-    const stderr = createWriteStream(errorLogFile, { flags: 'a' });
+    const stdoutFd = openSync(logFile, 'a');
+    const stderrFd = openSync(errorLogFile, 'a');
 
     const proc = spawn('bash', ['-c', command], {
       cwd: cwd || process.cwd(),
       env: { ...process.env, TERM: 'dumb' },
       detached: true,
-      stdio: ['ignore', stdout, stderr],
+      stdio: ['ignore', stdoutFd, stderrFd],
     });
+
+    closeSync(stdoutFd);
+    closeSync(stderrFd);
 
     const pid = proc.pid;
 
@@ -182,20 +235,27 @@ class PersistentTaskManager {
 
     this.activeProcesses.set(taskId, proc);
 
+    proc.on('error', (err) => {
+      logger.error('Process error', { taskId, error: String(err) });
+    });
+
     proc.on('exit', (code: number | null) => {
       const exitCode = code ?? 1;
       const status = exitCode === 0 ? 'completed' : 'failed';
 
-      this.db
-        .prepare(
-          'UPDATE tasks SET status = ?, exit_code = ?, end_time = ?, updated_at = ? WHERE id = ?'
-        )
-        .run(status, exitCode, Date.now(), new Date().toISOString(), taskId);
+      try {
+        if (this.db.open) {
+          this.db
+            .prepare(
+              'UPDATE tasks SET status = ?, exit_code = ?, end_time = ?, updated_at = ? WHERE id = ?'
+            )
+            .run(status, exitCode, Date.now(), new Date().toISOString(), taskId);
+        }
+      } catch (err) {
+        logger.debug('Could not update task status on exit', { taskId, error: String(err) });
+      }
 
       this.activeProcesses.delete(taskId);
-
-      stdout.end();
-      stderr.end();
 
       logger.info('Background task completed', {
         taskId,
@@ -299,27 +359,27 @@ class PersistentTaskManager {
     }
 
     if (fileSize <= maxBytes) {
-      const content = require('fs').readFileSync(logFile, 'utf8');
+      const content = readFileSync(logFile, 'utf8');
       return { content, size: fileSize, truncated: false };
     }
 
     const buffer = Buffer.alloc(maxBytes);
-    const fd = require('fs').openSync(logFile, 'r');
+    const fd = openSync(logFile, 'r');
 
     try {
       let bytesRead: number;
 
       if (options.fromEnd) {
         const position = Math.max(0, fileSize - maxBytes);
-        bytesRead = require('fs').readSync(fd, buffer, 0, maxBytes, position);
+        bytesRead = readSync(fd, buffer, 0, maxBytes, position);
       } else {
-        bytesRead = require('fs').readSync(fd, buffer, 0, maxBytes, 0);
+        bytesRead = readSync(fd, buffer, 0, maxBytes, 0);
       }
 
       const content = buffer.toString('utf8', 0, bytesRead);
       return { content, size: fileSize, truncated: true };
     } finally {
-      require('fs').closeSync(fd);
+      closeSync(fd);
     }
   }
 
@@ -339,7 +399,7 @@ class PersistentTaskManager {
     }
 
     try {
-      process.kill(task.pid, 'SIGTERM');
+      process.kill(-task.pid, 'SIGTERM');
 
       this.db
         .prepare('UPDATE tasks SET status = ?, end_time = ?, updated_at = ? WHERE id = ?')
@@ -473,12 +533,16 @@ class PersistentTaskManager {
       const lastState = this.lastKnownStates.get(task.id);
 
       if (lastState === 'running' && task.status !== 'running') {
-        if (task.status === 'completed') {
-          this.monitorCallback('task_completed', task);
-        } else if (task.status === 'failed') {
-          this.monitorCallback('task_failed', task);
-        } else if (task.status === 'orphaned') {
-          this.monitorCallback('task_orphaned', task);
+        try {
+          if (task.status === 'completed') {
+            this.monitorCallback('task_completed', task);
+          } else if (task.status === 'failed') {
+            this.monitorCallback('task_failed', task);
+          } else if (task.status === 'orphaned') {
+            this.monitorCallback('task_orphaned', task);
+          }
+        } catch (err) {
+          logger.error('Monitoring callback error', { error: String(err), taskId: task.id });
         }
       }
 
@@ -765,12 +829,16 @@ export const startAgentTaskTool = tool({
     try {
       const taskManager = getPersistentTaskManager();
 
+      const taskJson = JSON.stringify(task);
+      const workspaceRootJson = workspaceRoot ? JSON.stringify(workspaceRoot) : 'process.cwd()';
+
       const agentScript = `
 const { createAgentRuntime } = require('@agent/core');
 
 async function runAgentTask() {
+  const TASK = ${taskJson};
   const runtime = await createAgentRuntime({
-    workspaceRoot: ${workspaceRoot ? `'${workspaceRoot}'` : 'process.cwd()'},
+    workspaceRoot: ${workspaceRootJson},
     maxSteps: ${maxSteps},
     disableAgentSpawning: true,
     role: 'spawned_agent',
@@ -780,12 +848,12 @@ async function runAgentTask() {
     const session = runtime.createSession();
 
     console.log('🤖 Agent starting autonomous task...');
-    console.log('Task: ${task.replace(/'/g, "\\'")}');
+    console.log('Task:', TASK);
     console.log('Max steps: ${maxSteps}');
     console.log('');
 
     const result = await session.runTask({
-      prompt: '${task.replace(/'/g, "\\'")}',
+      prompt: TASK,
     });
 
     console.log('');
@@ -809,13 +877,12 @@ async function runAgentTask() {
 runAgentTask();
       `.trim();
 
-      const scriptPath = join(process.cwd(), '.agent', 'temp-agent-task.js');
-      require('fs').writeFileSync(scriptPath, agentScript);
+      const scriptPath = join(process.cwd(), '.agent', `agent-task-${randomBytes(4).toString('hex')}.js`);
+      const { writeFileSync } = require('fs');
+      writeFileSync(scriptPath, agentScript);
 
-      const command = `node "${scriptPath}"`;
+      const command = `node "${scriptPath}" && rm "${scriptPath}"`;
       const taskId = taskManager.startTask(command, workspaceRoot);
-
-      require('fs').unlinkSync(scriptPath);
 
       return JSON.stringify({
         taskId,

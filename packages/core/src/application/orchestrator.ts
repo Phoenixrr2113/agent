@@ -1,5 +1,5 @@
 import { stepCountIs, type StepResult, type PrepareStepFunction } from 'ai';
-import { createAgentWithRole } from '../core/agents/factory.js';
+import { createAgentWithRole, type AgentRole } from '../core/agents/factory.js';
 import { logger } from '@agent/shared';
 import { CORE_TOOL_NAMES } from './initialization.js';
 
@@ -113,7 +113,7 @@ export function createStepFinishHandler() {
 
 export function createAgent(
   tools: Record<string, any>,
-  options: { maxSteps?: number; activationManager?: any; role?: 'generic' | 'researcher' | 'coder' | 'analyst' | 'spawned_agent' } = {}
+  options: { maxSteps?: number; activationManager?: any; role?: AgentRole } = {}
 ) {
   const { maxSteps = 50, activationManager, role = 'generic' } = options;
 
