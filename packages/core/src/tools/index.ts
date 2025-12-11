@@ -27,20 +27,17 @@ export {
   type PersistentTaskInfo,
 } from './background-tasks-persistent.js';
 
-import { shellTool } from './shell.js';
-import { webSearchTool } from './web-search.js';
-import { fetchPageTool } from './fetch-page.js';
-import { memoryTools } from './memory.js';
-import { planTool, validationTool } from './workflow.js';
-import { persistentBackgroundTaskTools } from './background-tasks-persistent.js';
+export * from './factory.js';
+import { defaultToolFactory } from './factory.js';
+import { createAgentTools } from './agent.js';
+import { createFilesystemTools } from './filesystem.js';
+import { createCodebaseTools } from './codebase.js';
 
-export const nativeTools = {
-  shell: shellTool,
-  web_search: webSearchTool,
-  fetch_page: fetchPageTool,
-  ...memoryTools,
-  plan: planTool,
-  validate: validationTool,
-  ...persistentBackgroundTaskTools,
-};
+defaultToolFactory.register('agent', (deps) => createAgentTools(deps.rl ?? null));
+defaultToolFactory.register('filesystem', (deps) =>
+  createFilesystemTools(deps.workspaceRoot ?? process.cwd())
+);
+defaultToolFactory.register('codebase', (deps) =>
+  deps.codebaseRAG ? createCodebaseTools(deps.codebaseRAG) : {}
+);
 

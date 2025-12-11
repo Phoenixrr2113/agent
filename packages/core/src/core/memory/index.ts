@@ -1,6 +1,9 @@
 export * from './types.js';
-export { createInMemoryStorage } from './storage.js';
-export { createSQLiteStorage } from './storage-sqlite.js';
+export {
+  createInMemoryStorage,
+  createSQLiteStorage,
+  type StorageAdapter
+} from './storage/index.js';
 export { BaseMemoryProvider } from './provider-base.js';
 export { createMemoryLite } from './memory-lite.js';
 

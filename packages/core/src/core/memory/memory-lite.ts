@@ -11,8 +11,11 @@ import type {
   Episode,
   LiteMemoryConfig,
 } from './types.js';
-import { createInMemoryStorage, type StorageAdapter } from './storage.js';
-import { createSQLiteStorage } from './storage-sqlite.js';
+import {
+  createInMemoryStorage,
+  type StorageAdapter,
+  createSQLiteStorage
+} from './storage/index.js';
 import { extractFromText, detectContradictionsBatch, resolveEntityConflicts } from './extraction.js';
 import { logger } from '@agent/shared';
 import { BaseMemoryProvider } from './provider-base.js';
