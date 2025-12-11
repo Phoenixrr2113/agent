@@ -21,7 +21,7 @@ interface Plan {
 let currentPlan: Plan | null = null;
 
 export const planTool = tool({
-  description: 'Track implementation work with a multi-step plan. Use for coding tasks with clear steps: fixing bugs, adding features, refactoring. Create a plan with specific actions, mark each in_progress when starting, completed when done. Different from sequential_thinking which is for analysis/reasoning.',
+  description: 'Create and track a task checklist. Use when you have concrete steps to execute (build X, fix Y, deploy Z). Actions: create (title + steps), update_status (pending/in_progress/completed/blocked), add_step, add_note, view. NOT for reasoning—use sequential_thinking for that.',
   inputSchema: z.object({
     action: z.enum(['create', 'update_status', 'add_note', 'add_step', 'view']).describe('What to do: create, update_status, add_note, add_step, or view'),
     title: z.string().optional().describe('Plan title (when creating)'),

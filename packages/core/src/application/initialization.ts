@@ -1,7 +1,6 @@
 import * as readline from 'readline/promises';
 import { stdin as input, stdout as output } from 'process';
 import { createCodebaseRAG } from '../core/rag/index.js';
-import { grepWorkspace } from '../core/search/grep.js';
 import { logger } from '@agent/shared';
 import { instrumentTools } from '../core/tool-instrumentation.js';
 
@@ -84,7 +83,7 @@ export async function initializeAgent(config: InitializationConfig = {}): Promis
   }
 
   const workspaceTools = codebaseRAG && workspaceRoot
-    ? createCodebaseTools(codebaseRAG, grepWorkspace, workspaceRoot)
+    ? createCodebaseTools(codebaseRAG)
     : {};
   const filesystemTools = workspaceRoot
     ? createFilesystemTools(workspaceRoot)
