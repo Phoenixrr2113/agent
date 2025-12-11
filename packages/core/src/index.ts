@@ -37,4 +37,11 @@ export {
   type ToolRegistrationOptions,
 } from './tools/registry.js';
 
+export {
+  getPersistentTaskManager,
+  resetPersistentTaskManager,
+  type PersistentTaskInfo,
+  type TaskStatus,
+} from './tools/background-tasks-persistent.js';
+
 export type { ModelMessage } from 'ai';
