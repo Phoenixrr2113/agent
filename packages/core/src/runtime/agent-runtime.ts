@@ -161,6 +161,13 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
         hasMessages: !!input.messages,
       });
 
+      if (config.disableAgentSpawning && conversationHistory.length === 0) {
+        conversationHistory.push({
+          role: 'system',
+          content: 'NOTE: You are running as a spawned background agent. The start_agent_task tool is disabled to prevent recursive agent spawning. You can still use start_background_task for shell commands.',
+        });
+      }
+
       if (input.prompt) {
         conversationHistory.push({ role: 'user', content: input.prompt });
       } else if (input.messages) {
