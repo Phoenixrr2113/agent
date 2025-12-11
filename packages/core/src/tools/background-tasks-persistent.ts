@@ -41,13 +41,20 @@ const TASK_DB_SCHEMA = `
   CREATE INDEX IF NOT EXISTS idx_tasks_pid ON tasks(pid);
 `;
 
+export interface TaskMonitorCallback {
+  (event: 'task_completed' | 'task_failed' | 'task_orphaned', task: PersistentTaskInfo): void;
+}
+
 class PersistentTaskManager {
   private db: Database.Database;
   private activeProcesses: Map<string, ChildProcess> = new Map();
   private logsDir: string;
   private dbPath: string;
   private checkInterval: NodeJS.Timeout;
+  private monitorInterval: NodeJS.Timeout | null = null;
   private maxLogSize = 100 * 1024 * 1024;
+  private monitorCallback: TaskMonitorCallback | null = null;
+  private lastKnownStates: Map<string, TaskStatus> = new Map();
 
   constructor(workspaceRoot?: string) {
     const baseDir = workspaceRoot || process.cwd();
@@ -383,8 +390,108 @@ class PersistentTaskManager {
     return result.changes;
   }
 
+  getStartupSummary(): {
+    running: PersistentTaskInfo[];
+    recentlyCompleted: PersistentTaskInfo[];
+    recentlyFailed: PersistentTaskInfo[];
+  } {
+    const running = this.getAllTasks({ status: 'running' });
+
+    const oneDayAgo = Date.now() - (24 * 60 * 60 * 1000);
+    const recentCompleted = this.db
+      .prepare('SELECT * FROM tasks WHERE status = ? AND end_time > ? ORDER BY end_time DESC LIMIT 5')
+      .all('completed', oneDayAgo) as any[];
+
+    const recentFailed = this.db
+      .prepare('SELECT * FROM tasks WHERE status IN (?, ?) AND end_time > ? ORDER BY end_time DESC LIMIT 5')
+      .all('failed', 'orphaned', oneDayAgo) as any[];
+
+    return {
+      running,
+      recentlyCompleted: recentCompleted.map(row => ({
+        id: row.id,
+        command: row.command,
+        status: row.status as TaskStatus,
+        pid: row.pid,
+        startTime: row.start_time,
+        endTime: row.end_time,
+        exitCode: row.exit_code,
+        cwd: row.cwd,
+        logFile: row.log_file,
+        errorLogFile: row.error_log_file,
+      })),
+      recentlyFailed: recentFailed.map(row => ({
+        id: row.id,
+        command: row.command,
+        status: row.status as TaskStatus,
+        pid: row.pid,
+        startTime: row.start_time,
+        endTime: row.end_time,
+        exitCode: row.exit_code,
+        cwd: row.cwd,
+        logFile: row.log_file,
+        errorLogFile: row.error_log_file,
+      })),
+    };
+  }
+
+  startMonitoring(callback: TaskMonitorCallback, intervalMs: number = 60000): void {
+    if (this.monitorInterval) {
+      clearInterval(this.monitorInterval);
+    }
+
+    this.monitorCallback = callback;
+
+    const runningTasks = this.getAllTasks({ status: 'running' });
+    for (const task of runningTasks) {
+      this.lastKnownStates.set(task.id, task.status);
+    }
+
+    this.monitorInterval = setInterval(() => {
+      this.checkTaskStateChanges();
+    }, intervalMs);
+
+    logger.info('Started task monitoring', { intervalMs });
+  }
+
+  stopMonitoring(): void {
+    if (this.monitorInterval) {
+      clearInterval(this.monitorInterval);
+      this.monitorInterval = null;
+    }
+    this.monitorCallback = null;
+    this.lastKnownStates.clear();
+    logger.info('Stopped task monitoring');
+  }
+
+  private checkTaskStateChanges(): void {
+    if (!this.monitorCallback) return;
+
+    const allTasks = this.getAllTasks();
+
+    for (const task of allTasks) {
+      const lastState = this.lastKnownStates.get(task.id);
+
+      if (lastState === 'running' && task.status !== 'running') {
+        if (task.status === 'completed') {
+          this.monitorCallback('task_completed', task);
+        } else if (task.status === 'failed') {
+          this.monitorCallback('task_failed', task);
+        } else if (task.status === 'orphaned') {
+          this.monitorCallback('task_orphaned', task);
+        }
+      }
+
+      this.lastKnownStates.set(task.id, task.status);
+    }
+  }
+
   shutdown(): void {
     clearInterval(this.checkInterval);
+
+    if (this.monitorInterval) {
+      clearInterval(this.monitorInterval);
+    }
 
     for (const [taskId, proc] of this.activeProcesses.entries()) {
       logger.info('Detaching from task on shutdown', { taskId });
@@ -639,8 +746,93 @@ export const cleanupOldTasksTool = tool({
   },
 });
 
+export const startAgentTaskTool = tool({
+  description: 'Start an autonomous agent session as a background task. The agent will work on the given task independently, using all available tools. Perfect for: complex research, multi-step builds, code generation, testing workflows. The agent runs until task completion or max steps.',
+  inputSchema: z.object({
+    task: z.string().describe('The task for the agent to complete autonomously'),
+    workspaceRoot: z.string().optional().describe('Workspace root directory (default: current)'),
+    maxSteps: z.number().optional().describe('Maximum number of steps (default: 50)'),
+  }),
+  execute: async ({
+    task,
+    workspaceRoot,
+    maxSteps = 50,
+  }: {
+    task: string;
+    workspaceRoot?: string;
+    maxSteps?: number;
+  }) => {
+    try {
+      const taskManager = getPersistentTaskManager();
+
+      const agentScript = `
+const { createAgentRuntime } = require('@agent/core');
+
+async function runAgentTask() {
+  const runtime = await createAgentRuntime({
+    workspaceRoot: ${workspaceRoot ? `'${workspaceRoot}'` : 'process.cwd()'},
+  });
+
+  try {
+    const session = runtime.createSession();
+
+    console.log('🤖 Agent starting autonomous task...');
+    console.log('Task: ${task.replace(/'/g, "\\'")}');
+    console.log('');
+
+    const result = await session.runTask({
+      prompt: '${task.replace(/'/g, "\\'")}',
+    });
+
+    console.log('');
+    console.log('✅ Agent completed task');
+    console.log('Steps used:', result.stepsUsed);
+    console.log('Tools used:', result.toolsUsed.join(', '));
+    console.log('');
+    console.log('Result:');
+    console.log(result.text);
+
+    process.exit(result.completed ? 0 : 1);
+  } catch (error) {
+    console.error('❌ Agent task failed:', error.message);
+    process.exit(1);
+  } finally {
+    await runtime.shutdown();
+  }
+}
+
+runAgentTask();
+      `.trim();
+
+      const scriptPath = join(process.cwd(), '.agent', 'temp-agent-task.js');
+      require('fs').writeFileSync(scriptPath, agentScript);
+
+      const command = `node "${scriptPath}"`;
+      const taskId = taskManager.startTask(command, workspaceRoot);
+
+      require('fs').unlinkSync(scriptPath);
+
+      return JSON.stringify({
+        taskId,
+        message: 'Autonomous agent task started',
+        task: task.substring(0, 100),
+        status: 'running',
+        autonomous: true,
+        instructions:
+          'Agent will work independently. Use check_task_status and get_task_output to monitor progress.',
+      });
+    } catch (err) {
+      return JSON.stringify({
+        error: 'Failed to start agent task',
+        message: err instanceof Error ? err.message : String(err),
+      });
+    }
+  },
+});
+
 export const persistentBackgroundTaskTools = {
   start_background_task: startBackgroundTaskTool,
+  start_agent_task: startAgentTaskTool,
   check_task_status: checkTaskStatusTool,
   get_task_output: getTaskOutputTool,
   cancel_task: cancelTaskTool,
