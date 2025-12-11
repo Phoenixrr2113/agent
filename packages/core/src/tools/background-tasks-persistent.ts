@@ -771,6 +771,7 @@ const { createAgentRuntime } = require('@agent/core');
 async function runAgentTask() {
   const runtime = await createAgentRuntime({
     workspaceRoot: ${workspaceRoot ? `'${workspaceRoot}'` : 'process.cwd()'},
+    maxSteps: ${maxSteps},
   });
 
   try {
@@ -778,6 +779,7 @@ async function runAgentTask() {
 
     console.log('🤖 Agent starting autonomous task...');
     console.log('Task: ${task.replace(/'/g, "\\'")}');
+    console.log('Max steps: ${maxSteps}');
     console.log('');
 
     const result = await session.runTask({
@@ -786,8 +788,9 @@ async function runAgentTask() {
 
     console.log('');
     console.log('✅ Agent completed task');
-    console.log('Steps used:', result.stepsUsed);
+    console.log('Steps used:', result.stepsUsed, '/ ${maxSteps}');
     console.log('Tools used:', result.toolsUsed.join(', '));
+    console.log('Completed:', result.completed);
     console.log('');
     console.log('Result:');
     console.log(result.text);

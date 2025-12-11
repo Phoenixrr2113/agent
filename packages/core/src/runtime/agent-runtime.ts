@@ -9,6 +9,7 @@ import { getPersistentTaskManager } from '../tools/background-tasks-persistent.j
 export interface AgentConfig {
   workspaceRoot?: string;
   askUserHandler?: AskUserHandler;
+  maxSteps?: number;
 }
 
 export interface TaskInput {
@@ -138,7 +139,10 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
     };
   }
 
-  const agent = createAgent(tools, { activationManager });
+  const agent = createAgent(tools, {
+    activationManager,
+    maxSteps: config.maxSteps || 50,
+  });
 
   const createSession = (): AgentSession => {
     let conversationHistory: ModelMessage[] = [];
