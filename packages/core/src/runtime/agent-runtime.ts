@@ -4,10 +4,14 @@ import { createAgent } from '../application/orchestrator.js';
 import { logger, createPerformanceTimer, type PerformanceTimer } from '@agent/shared';
 import { createMemoryExtractor } from '../core/memory/extractor.js';
 import { getMemoryProvider } from '../tools/memory.js';
+import { getPersistentTaskManager } from '../tools/background-tasks-persistent.js';
 
 export interface AgentConfig {
   workspaceRoot?: string;
   askUserHandler?: AskUserHandler;
+  maxSteps?: number;
+  disableAgentSpawning?: boolean;
+  role?: 'generic' | 'researcher' | 'coder' | 'analyst' | 'spawned_agent';
 }
 
 export interface TaskInput {
@@ -57,6 +61,67 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
   const memoryProvider = await getMemoryProvider();
   const memoryExtractor = createMemoryExtractor({ memoryProvider });
 
+  const taskManager = getPersistentTaskManager(config.workspaceRoot);
+
+  const startupSummary = taskManager.getStartupSummary();
+  if (startupSummary.running.length > 0) {
+    logger.info('📋 Background tasks detected at startup', {
+      running: startupSummary.running.length,
+      recentlyCompleted: startupSummary.recentlyCompleted.length,
+      recentlyFailed: startupSummary.recentlyFailed.length,
+    });
+
+    for (const task of startupSummary.running) {
+      const durationMs = Date.now() - task.startTime;
+      const durationHours = (durationMs / (1000 * 60 * 60)).toFixed(1);
+      logger.info(`  ⚙️  Running: ${task.command.substring(0, 60)}`, {
+        taskId: task.id,
+        durationHours,
+      });
+    }
+
+    for (const task of startupSummary.recentlyCompleted.slice(0, 3)) {
+      logger.info(`  ✅ Completed: ${task.command.substring(0, 60)}`, {
+        taskId: task.id,
+      });
+    }
+
+    for (const task of startupSummary.recentlyFailed.slice(0, 3)) {
+      logger.info(`  ❌ Failed: ${task.command.substring(0, 60)}`, {
+        taskId: task.id,
+        exitCode: task.exitCode,
+      });
+    }
+  }
+
+  taskManager.startMonitoring((event, task) => {
+    const durationMs = task.endTime ? task.endTime - task.startTime : 0;
+    const durationStr = durationMs > 3600000
+      ? `${(durationMs / (1000 * 60 * 60)).toFixed(1)}h`
+      : `${(durationMs / (1000 * 60)).toFixed(1)}m`;
+
+    if (event === 'task_completed') {
+      logger.info('🎉 Background task completed', {
+        taskId: task.id,
+        command: task.command.substring(0, 60),
+        duration: durationStr,
+        exitCode: task.exitCode,
+      });
+    } else if (event === 'task_failed') {
+      logger.warn('⚠️  Background task failed', {
+        taskId: task.id,
+        command: task.command.substring(0, 60),
+        duration: durationStr,
+        exitCode: task.exitCode,
+      });
+    } else if (event === 'task_orphaned') {
+      logger.warn('👻 Background task orphaned (process died)', {
+        taskId: task.id,
+        command: task.command.substring(0, 60),
+      });
+    }
+  }, 60000);
+
   if (config.askUserHandler) {
     const askUserHandler = config.askUserHandler;
     tools.ask_user = {
@@ -76,7 +141,16 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
     };
   }
 
-  const agent = createAgent(tools, { activationManager });
+  if (config.disableAgentSpawning) {
+    delete tools.start_agent_task;
+    logger.info('🚫 Agent spawning disabled (prevents recursion)');
+  }
+
+  const agent = createAgent(tools, {
+    activationManager,
+    maxSteps: config.maxSteps || 50,
+    role: config.role || 'generic',
+  });
 
   const createSession = (): AgentSession => {
     let conversationHistory: ModelMessage[] = [];
@@ -196,6 +270,8 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
     createSession,
     shutdown: async () => {
       logger.info('🧹 Shutting down agent runtime');
+      taskManager.stopMonitoring();
+      taskManager.shutdown();
       await memoryExtractor.waitForPending();
     },
   };
