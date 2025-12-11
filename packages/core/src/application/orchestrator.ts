@@ -113,9 +113,9 @@ export function createStepFinishHandler() {
 
 export function createAgent(
   tools: Record<string, any>,
-  options: { maxSteps?: number; activationManager?: any } = {}
+  options: { maxSteps?: number; activationManager?: any; role?: 'generic' | 'researcher' | 'coder' | 'analyst' | 'spawned_agent' } = {}
 ) {
-  const { maxSteps = 50, activationManager } = options;
+  const { maxSteps = 50, activationManager, role = 'generic' } = options;
 
   // Create custom stop condition that checks for task_complete
   const stopWhen = ({ steps }: { steps: StepResult<any>[] }) => {
@@ -133,7 +133,7 @@ export function createAgent(
     return stepCountIs(maxSteps)({ steps });
   };
 
-  return createAgentWithRole('generic', tools, {
+  return createAgentWithRole(role, tools, {
     modelType: 'standard',
     stopWhen,
     prepareStep: createPrepareStep(activationManager),

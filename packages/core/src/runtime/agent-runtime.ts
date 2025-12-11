@@ -11,6 +11,7 @@ export interface AgentConfig {
   askUserHandler?: AskUserHandler;
   maxSteps?: number;
   disableAgentSpawning?: boolean;
+  role?: 'generic' | 'researcher' | 'coder' | 'analyst' | 'spawned_agent';
 }
 
 export interface TaskInput {
@@ -148,6 +149,7 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
   const agent = createAgent(tools, {
     activationManager,
     maxSteps: config.maxSteps || 50,
+    role: config.role || 'generic',
   });
 
   const createSession = (): AgentSession => {
@@ -160,13 +162,6 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
         hasPrompt: !!input.prompt,
         hasMessages: !!input.messages,
       });
-
-      if (config.disableAgentSpawning && conversationHistory.length === 0) {
-        conversationHistory.push({
-          role: 'system',
-          content: 'NOTE: You are running as a spawned background agent. The start_agent_task tool is disabled to prevent recursive agent spawning. You can still use start_background_task for shell commands.',
-        });
-      }
 
       if (input.prompt) {
         conversationHistory.push({ role: 'user', content: input.prompt });

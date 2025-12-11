@@ -773,6 +773,7 @@ async function runAgentTask() {
     workspaceRoot: ${workspaceRoot ? `'${workspaceRoot}'` : 'process.cwd()'},
     maxSteps: ${maxSteps},
     disableAgentSpawning: true,
+    role: 'spawned_agent',
   });
 
   try {
