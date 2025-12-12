@@ -21,7 +21,7 @@ const MAX_PLAN_STEPS = 100;
 let currentPlan: Plan | null = null;
 
 export const planTool = tool({
-  description: 'Create and track a task checklist. Use when you have concrete steps to execute (build X, fix Y, deploy Z). Actions: create (title + steps), update_status (pending/in_progress/completed/blocked), add_step, add_note, view. NOT for reasoning—use sequential_thinking for that. LIMIT: Maximum 100 steps per plan.',
+  description: `Create and track a task checklist. Use when you have concrete steps to execute (build X, fix Y, deploy Z). Actions: create (title + steps), update_status (pending/in_progress/completed/blocked), add_step, add_note, view. NOT for reasoning—use sequential_thinking for that. LIMIT: Maximum ${MAX_PLAN_STEPS} steps per plan.`,
   inputSchema: z.object({
     action: z.enum(['create', 'update_status', 'add_note', 'add_step', 'view']).describe('What to do: create, update_status, add_note, add_step, or view'),
     title: z.string().optional().describe('Plan title (when creating)'),

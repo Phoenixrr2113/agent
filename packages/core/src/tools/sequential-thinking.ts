@@ -92,7 +92,7 @@ export class SequentialThinkingEngine {
 const globalEngine = new SequentialThinkingEngine();
 
 export const sequentialThinkingTool = tool({
-  description: 'Think through complex problems step-by-step. Use when you need to analyze, debug, or understand something before acting. Call repeatedly with: thought (your reasoning), thoughtNumber (1,2,3...), totalThoughts (estimate), nextThoughtNeeded (false when done). You can use other tools between thoughts to gather information. Supports revising earlier thoughts or branching into alternatives. NOT for task tracking—use plan for that. LIMITS: Keeps last 1000 thoughts in main history, 100 thoughts per branch (older thoughts auto-removed).',
+  description: `Think through complex problems step-by-step. Use when you need to analyze, debug, or understand something before acting. Call repeatedly with: thought (your reasoning), thoughtNumber (1,2,3...), totalThoughts (estimate), nextThoughtNeeded (false when done). You can use other tools between thoughts to gather information. Supports revising earlier thoughts or branching into alternatives. NOT for task tracking—use plan for that. LIMITS: Keeps last ${DEFAULT_MAX_HISTORY} thoughts in main history, ${DEFAULT_MAX_BRANCH_SIZE} thoughts per branch (older thoughts auto-removed).`,
   inputSchema: z.object({
     thought: z.string().describe('Your current reasoning step - one clear idea or observation'),
     nextThoughtNeeded: z.boolean().describe('True if you need more reasoning steps, false when done'),
