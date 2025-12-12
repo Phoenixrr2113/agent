@@ -42,3 +42,15 @@
 ## Critical
 NO deviations from plan, feature isolation
 - We are solving for the future, not the past. no backwards compatibility hacks/changes
+
+Need to track state that changes over time?
+├─ Yes: Is state complex (multiple interdependent pieces)?
+│   ├─ Yes → Use a class
+│   │   Examples: SessionManager, TaskManager, ThinkingEngine
+│   └─ No → Use closure (factory function returning object)
+│       Examples: createBM25Index, createEventBus
+└─ No: Is it a collection of related operations?
+    ├─ Yes → Return object literal from factory function
+    │   Examples: createMemoryStore, createSearchEngine
+    └─ No → Just export plain functions
+        Examples: validatePath, cosineSimilarity, loadConfig

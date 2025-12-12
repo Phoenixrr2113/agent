@@ -1,16 +1,89 @@
+// {
+//   "compilerOptions": {
+//     "target": "ES2022",
+//     "module": "ES2022",
+//     "moduleResolution": "bundler",
+//     "strict": true,
+//     "esModuleInterop": true,
+//     "skipLibCheck": true,
+//     "forceConsistentCasingInFileNames": true,
+//     "resolveJsonModule": true,
+//     "isolatedModules": true,
+//     "incremental": true,
+//     "baseUrl": ".",
+//     "paths": {
+//       "@agent/shared": ["./packages/shared/src"],
+//       "@agent/shared/*": ["./packages/shared/src/*"],
+//       "@agent/core": ["./packages/core/src"],
+//       "@agent/core/*": ["./packages/core/src/*"],
+//       "@agent/server": ["./packages/server/src"],
+//       "@agent/server/*": ["./packages/server/src/*"],
+//       "@agent/device-use": ["./packages/device-use/src"],
+//       "@agent/device-use/*": ["./packages/device-use/src/*"]
+//     }
+//   }
+// }
+
 {
+  "$schema": "https://json.schemastore.org/tsconfig",
   "compilerOptions": {
+    // ============================================
+    // BASE OPTIONS
+    // ============================================
     "target": "ES2022",
-    "module": "ES2022",
-    "moduleResolution": "bundler",
-    "strict": true,
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "lib": ["ES2022"],
     "esModuleInterop": true,
-    "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true,
+    "allowSyntheticDefaultImports": true,
     "resolveJsonModule": true,
     "isolatedModules": true,
+    "verbatimModuleSyntax": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
     "incremental": true,
     "baseUrl": ".",
+
+    // ============================================
+    // STRICT TYPE CHECKING (Essential)
+    // ============================================
+    "strict": true,
+    // Explicit strict flags (redundant but explicit for clarity)
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "strictFunctionTypes": true,
+    "strictBindCallApply": true,
+    "strictPropertyInitialization": true,
+    "noImplicitThis": true,
+    "alwaysStrict": true,
+    "useUnknownInCatchVariables": true,
+
+    // ============================================
+    // ADDITIONAL STRICTNESS (Beyond "strict")
+    // Catches more issues, highly recommended
+    // ============================================
+    
+    // Prevents accessing array/object without checking if defined
+    // Essential for catching runtime errors
+    "noUncheckedIndexedAccess": true,
+    
+    // Requires 'override' keyword when overriding methods
+    "noImplicitOverride": true,
+    
+    // Stricter handling of optional properties
+    // Setting undefined is not the same as not setting at all
+    "exactOptionalPropertyTypes": true,
+    
+    // All code paths must explicitly return a value
+    "noImplicitReturns": true,
+    
+    // Prevents accidental fall-through in switch statements
+    "noFallthroughCasesInSwitch": true,
+    
+    // Forces bracket notation for index signatures
+    // Catches typos in property access
+    "noPropertyAccessFromIndexSignature": true,
+
     "paths": {
       "@agent/shared": ["./packages/shared/src"],
       "@agent/shared/*": ["./packages/shared/src/*"],
@@ -20,6 +93,13 @@
       "@agent/server/*": ["./packages/server/src/*"],
       "@agent/device-use": ["./packages/device-use/src"],
       "@agent/device-use/*": ["./packages/device-use/src/*"]
-    }
-  }
+    },
+
+    // ============================================
+    // MODULE INTEROP
+    // ============================================
+    // Ensures side-effect imports actually exist
+    "noUncheckedSideEffectImports": true
+  },
+  "exclude": ["node_modules", "dist", "**/*.test.ts", "**/*.spec.ts"]
 }
