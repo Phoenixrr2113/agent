@@ -6,6 +6,10 @@ const DANGEROUS_PATTERNS = [
   /mkfs\./i,
   /dd\s+if=/i,
   /:(){ :|:& };:/,
+  /\b(sudo|su)\b/i,
+  /\b(shutdown|reboot|halt|poweroff)\b/i,
+  /\b(curl|wget)\b.*\|\s*(bash|sh|zsh)\b/i,
+  /\beval\b/i,
 ];
 
 export function isDangerousCommand(command: string): boolean {

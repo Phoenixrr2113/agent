@@ -20,7 +20,7 @@ export function expandHome(filepath: string): string {
 }
 
 export function normalizePath(p: string): string {
-  let cleaned = p.trim().replace(/^["']|["']$/g, '');
+  let cleaned = p.normalize('NFC').trim().replace(/^["']|["']$/g, '');
 
   if (cleaned.startsWith('/mnt/')) {
     return cleaned;
@@ -58,6 +58,11 @@ export function isPathWithinAllowedDirectories(targetPath: string): boolean {
     throw new Error('Path contains null bytes');
   }
 
+  // Windows ADS check (Issue 55)
+  if (process.platform === 'win32' && targetPath.includes('::$')) {
+    throw new Error('Path contains Windows Alternate Data Stream pattern');
+  }
+
   for (const dir of allowedDirectories) {
     if (dir.includes('\x00')) {
       throw new Error('Allowed directory contains null bytes');
@@ -75,6 +80,9 @@ export function isPathWithinAllowedDirectories(targetPath: string): boolean {
     throw new Error(`Path is not absolute after normalization: ${targetPath}`);
   }
 
+  // Case sensitivity check (Issue 56)
+  const isCaseInsensitive = process.platform === 'win32' || process.platform === 'darwin';
+
   for (const allowedDir of allowedDirectories) {
     let normalizedAllowedDir: string;
     try {
@@ -83,26 +91,39 @@ export function isPathWithinAllowedDirectories(targetPath: string): boolean {
       continue;
     }
 
-    if (normalizedPath === normalizedAllowedDir) {
+    let pPath = normalizedPath;
+    let aDir = normalizedAllowedDir;
+
+    if (isCaseInsensitive) {
+      pPath = pPath.toLowerCase();
+      aDir = aDir.toLowerCase();
+    }
+
+    if (pPath === aDir) {
       return true;
     }
 
-    if (normalizedAllowedDir === path.sep) {
+    if (aDir === path.sep) {
       return true;
     }
 
     if (process.platform === 'win32' && /^[A-Z]:\\?$/.test(normalizedAllowedDir)) {
-      const pathDrive = normalizedPath.substring(0, 2);
-      const allowedDrive = normalizedAllowedDir.substring(0, 2);
+      const pathDrive = normalizedPath.substring(0, 2).toLowerCase();
+      const allowedDrive = normalizedAllowedDir.substring(0, 2).toLowerCase();
       if (pathDrive === allowedDrive) {
         return true;
       }
     }
 
-    const separator = normalizedAllowedDir.endsWith(path.sep)
-      ? ''
-      : path.sep;
-    if (normalizedPath.startsWith(normalizedAllowedDir + separator)) {
+    const separator = isCaseInsensitive
+      ? (aDir.endsWith(path.sep) ? '' : path.sep)
+      : (normalizedAllowedDir.endsWith(path.sep) ? '' : path.sep);
+
+    // For case-insensitive logic, we used lowercase aDir. So use proper separator check.
+    // Actually simpler:
+    const sep = path.sep;
+    const suffix = aDir.endsWith(sep) ? '' : sep;
+    if (pPath.startsWith(aDir + suffix)) {
       return true;
     }
   }

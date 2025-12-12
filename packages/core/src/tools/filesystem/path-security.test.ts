@@ -84,4 +84,35 @@ describe('Path Security', () => {
           }
       });
   });
+
+  describe('Security Hardening', () => {
+    it('should normalize unicode to NFC', () => {
+      const nfd = 'cafe\u0301';
+      const nfc = 'caf\u00e9';
+      expect(normalizePath(nfd)).toBe(nfc);
+    });
+
+    it('should handle case insensitivity on supported platforms', () => {
+      const isCaseInsensitive = process.platform === 'win32' || process.platform === 'darwin';
+      if (isCaseInsensitive) {
+        const mockRoot = process.platform === 'win32' ? 'C:\\Current' : '/Current';
+        setAllowedDirectories([mockRoot]);
+        const target = path.join(mockRoot.toLowerCase(), 'SubDir', 'File.txt');
+        // We expect this to pass if logic is correct
+        // But note: isPathWithinAllowedDirectories resolves absolute path using process.cwd() if relative?
+        // No, target is absolute here.
+        // Wait, validatePath uses fs.realpath. isPathWithinAllowedDirectories does NOT.
+        // But we assume the paths provided are valid absolute paths for the test logic.
+        // However, path.resolve(target) ensures it.
+
+        // Assuming normalizedPath matches normalizedAllowedDir logic
+        expect(isPathWithinAllowedDirectories(target)).toBe(true);
+      }
+    });
+
+    it('should detect null bytes', () => {
+      setAllowedDirectories([process.cwd()]);
+      expect(() => isPathWithinAllowedDirectories('foo\0bar')).toThrow('Path contains null bytes');
+    });
+  });
 });
