@@ -33,6 +33,7 @@ export class PersistentTaskManager {
   private checkInterval: NodeJS.Timeout;
   private monitorInterval: NodeJS.Timeout | null = null;
   private maxLogSize = 100 * 1024 * 1024;
+  private readonly MAX_GLOBAL_LOG_SIZE = 2 * 1024 * 1024 * 1024;
   private monitorCallback: TaskMonitorCallback | null = null;
   private lastKnownStates: Map<string, TaskStatus> = new Map();
   private readonly MAX_CONCURRENT_TASKS = 50;
@@ -164,10 +165,36 @@ export class PersistentTaskManager {
     return `task_${randomBytes(8).toString('hex')}`;
   }
 
+  private getTotalLogSize(): number {
+    try {
+      let totalSize = 0;
+      const files = require('fs').readdirSync(this.logsDir);
+      for (const file of files) {
+        const filePath = join(this.logsDir, file);
+        try {
+          const stats = statSync(filePath);
+          totalSize += stats.size;
+        } catch {
+          continue;
+        }
+      }
+      return totalSize;
+    } catch {
+      return 0;
+    }
+  }
+
   startTask(command: string, cwd?: string): string {
     const running = this.getAllTasks({ status: 'running' });
     if (running.length >= this.MAX_CONCURRENT_TASKS) {
       throw new Error(`Maximum concurrent tasks (${this.MAX_CONCURRENT_TASKS}) reached`);
+    }
+
+    const totalLogSize = this.getTotalLogSize();
+    if (totalLogSize >= this.MAX_GLOBAL_LOG_SIZE) {
+      throw new Error(
+        `Global log size limit exceeded (${(totalLogSize / (1024 * 1024 * 1024)).toFixed(2)}GB / ${(this.MAX_GLOBAL_LOG_SIZE / (1024 * 1024 * 1024)).toFixed(2)}GB). Clean up old tasks first.`
+      );
     }
 
     const taskId = this.generateTaskId();

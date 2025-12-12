@@ -39,11 +39,22 @@ export async function readMediaFile(filePath: string): Promise<{ data: string; m
   return new Promise((resolve, reject) => {
     const chunks: Buffer[] = [];
     const stream = createReadStream(filePath);
+    let isCleanedUp = false;
+
+    const cleanup = () => {
+      if (!isCleanedUp) {
+        isCleanedUp = true;
+        if (!stream.destroyed) {
+          stream.destroy();
+        }
+      }
+    };
 
     stream.on('data', (chunk: string | Buffer) => {
       const buffer = typeof chunk === 'string' ? Buffer.from(chunk) : chunk;
       chunks.push(buffer);
     });
+
     stream.on('end', () => {
       const buffer = Buffer.concat(chunks);
       const base64 = buffer.toString('base64');
@@ -64,10 +75,12 @@ export async function readMediaFile(filePath: string): Promise<{ data: string; m
       };
 
       const mimeType = mimeTypes[ext] || 'application/octet-stream';
+      cleanup();
       resolve({ data: base64, mimeType });
     });
+
     stream.on('error', (err) => {
-      stream.destroy();
+      cleanup();
       reject(err);
     });
   });

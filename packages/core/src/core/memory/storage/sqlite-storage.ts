@@ -74,6 +74,7 @@ const SCHEMA = `
     last_processed_message_index INTEGER NOT NULL DEFAULT 0
   );
   CREATE INDEX IF NOT EXISTS idx_episodes_group ON episodes(group_id, timestamp);
+  CREATE INDEX IF NOT EXISTS idx_episodes_group_id ON episodes(group_id);
 `;
 
 export function createSQLiteStorage(dbPath: string): StorageAdapter {

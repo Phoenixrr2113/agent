@@ -10,6 +10,15 @@ export async function searchFilesWithValidation(
   pattern: string,
   excludePatterns?: string[]
 ): Promise<SearchResult[]> {
+  const globDepth = (pattern.match(/\*\*/g) || []).length;
+  if (globDepth > 5) {
+    throw new Error(`Glob pattern exceeds maximum depth of 5 (got ${globDepth} levels). Use simpler patterns.`);
+  }
+
+  if (pattern.length > 500) {
+    throw new Error(`Glob pattern exceeds maximum length of 500 characters (got ${pattern.length})`);
+  }
+
   const validPath = await validatePath(searchPath);
   const files = await glob(pattern, {
     cwd: validPath,
