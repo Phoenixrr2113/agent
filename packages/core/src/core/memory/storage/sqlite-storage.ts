@@ -78,22 +78,26 @@ const SCHEMA = `
 
 export function createSQLiteStorage(dbPath: string): StorageAdapter {
   const db = new Database(dbPath);
+  let checkpointInterval: NodeJS.Timeout | null = null;
 
   try {
     db.pragma('journal_mode = WAL');
     db.exec(SCHEMA);
+
+    checkpointInterval = setInterval(() => {
+      try {
+        db.pragma('wal_checkpoint(TRUNCATE)');
+      } catch {
+        // Ignore checkpoint errors - database may be closed
+      }
+    }, 60000);
   } catch (error) {
+    if (checkpointInterval) {
+      clearInterval(checkpointInterval);
+    }
     db.close();
     throw error;
   }
-
-  const checkpointInterval = setInterval(() => {
-    try {
-      db.pragma('wal_checkpoint(TRUNCATE)');
-    } catch {
-      // Ignore checkpoint errors - database may be closed
-    }
-  }, 60000);
 
   const parseEntity = (row: any): Entity => ({
     id: row.id,
@@ -280,7 +284,10 @@ export function createSQLiteStorage(dbPath: string): StorageAdapter {
       }
     },
     async close() {
-      clearInterval(checkpointInterval);
+      if (checkpointInterval) {
+        clearInterval(checkpointInterval);
+        checkpointInterval = null;
+      }
       try {
         db.pragma('wal_checkpoint(TRUNCATE)');
       } catch {

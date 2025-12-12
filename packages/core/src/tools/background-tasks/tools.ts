@@ -7,6 +7,9 @@ import { getPersistentTaskManager } from './task-manager.js';
 import type { TaskStatus } from './types.js';
 import { success, error } from '../utils/tool-result.js';
 
+const MAX_CONCURRENT_AGENT_TASKS = 5;
+const AGENT_TASK_PREFIX = 'agent-task-';
+
 export const startBackgroundTaskTool = tool({
   description: 'Start a long-running command in the background. Task runs detached and persists across agent restarts. Perfect for: builds (hours), tests (hours), training jobs (days), monitoring scripts (weeks). Returns task ID for tracking.',
   inputSchema: z.object({
@@ -235,6 +238,20 @@ export const startAgentTaskTool = tool({
     try {
       const taskManager = getPersistentTaskManager();
 
+      const runningAgentTasks = taskManager
+        .getAllTasks({ status: 'running', limit: 100 })
+        .filter(t => t.command.includes(AGENT_TASK_PREFIX));
+
+      if (runningAgentTasks.length >= MAX_CONCURRENT_AGENT_TASKS) {
+        return error(
+          `Maximum concurrent agent tasks reached (${MAX_CONCURRENT_AGENT_TASKS}). Wait for existing agents to complete or cancel them.`,
+          {
+            runningAgents: runningAgentTasks.length,
+            maxAllowed: MAX_CONCURRENT_AGENT_TASKS,
+          }
+        );
+      }
+
       const taskJson = JSON.stringify(task);
       const workspaceRootJson = workspaceRoot ? JSON.stringify(workspaceRoot) : 'process.cwd()';
 
@@ -283,7 +300,7 @@ async function runAgentTask() {
 runAgentTask();
       `.trim();
 
-      const scriptPath = join(process.cwd(), '.agent', `agent-task-${randomBytes(4).toString('hex')}.js`);
+      const scriptPath = join(process.cwd(), '.agent', `${AGENT_TASK_PREFIX}${randomBytes(4).toString('hex')}.js`);
       writeFileSync(scriptPath, agentScript);
 
       const command = `node "${scriptPath}" && rm "${scriptPath}"`;

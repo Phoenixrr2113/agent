@@ -189,3 +189,20 @@ export async function validateNewPath(targetPath: string): Promise<string> {
 
   return resolvedPath;
 }
+
+export async function validateAfterOperation(targetPath: string): Promise<void> {
+  try {
+    const realPath = await fs.realpath(targetPath);
+    if (!isPathWithinAllowedDirectories(realPath)) {
+      await fs.unlink(targetPath).catch(() => {});
+      throw new Error(
+        `Security violation: created path resolves outside allowed directories. Path has been removed.`
+      );
+    }
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('Security violation')) {
+      throw error;
+    }
+    throw new Error(`Post-operation validation failed: ${error}`);
+  }
+}

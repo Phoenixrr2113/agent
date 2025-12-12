@@ -14,9 +14,19 @@ export interface ThoughtData {
   nextThoughtNeeded: boolean;
 }
 
+const DEFAULT_MAX_HISTORY = 1000;
+const DEFAULT_MAX_BRANCH_SIZE = 100;
+
 export class SequentialThinkingEngine {
   private thoughtHistory: ThoughtData[] = [];
   private branches: Record<string, ThoughtData[]> = {};
+  private maxHistorySize: number;
+  private maxBranchSize: number;
+
+  constructor(options: { maxHistorySize?: number; maxBranchSize?: number } = {}) {
+    this.maxHistorySize = options.maxHistorySize ?? DEFAULT_MAX_HISTORY;
+    this.maxBranchSize = options.maxBranchSize ?? DEFAULT_MAX_BRANCH_SIZE;
+  }
 
   processThought(input: ThoughtData): {
     thoughtNumber: number;
@@ -31,11 +41,19 @@ export class SequentialThinkingEngine {
 
     this.thoughtHistory.push(input);
 
+    if (this.thoughtHistory.length > this.maxHistorySize) {
+      this.thoughtHistory.shift();
+    }
+
     if (input.branchFromThought && input.branchId) {
       if (!this.branches[input.branchId]) {
         this.branches[input.branchId] = [];
       }
       this.branches[input.branchId].push(input);
+
+      if (this.branches[input.branchId].length > this.maxBranchSize) {
+        this.branches[input.branchId].shift();
+      }
     }
 
     const prefix = input.isRevision

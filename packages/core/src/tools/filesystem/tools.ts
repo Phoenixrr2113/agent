@@ -7,6 +7,7 @@ import {
   setAllowedDirectories,
   validatePath,
   validateNewPath,
+  validateAfterOperation,
 } from './path-security.js';
 
 import {
@@ -125,6 +126,7 @@ export function createFilesystemTools(workspaceRoot: string) {
         try {
           const validPath = await validateNewPath(filePath);
           await writeFileContent(validPath, content);
+          await validateAfterOperation(validPath);
 
           return success({
             path: filePath,
@@ -172,6 +174,7 @@ export function createFilesystemTools(workspaceRoot: string) {
         try {
           const validPath = await validateNewPath(dirPath);
           await fs.mkdir(validPath, { recursive: true });
+          await validateAfterOperation(validPath);
 
           return success({
             path: dirPath,
@@ -359,6 +362,7 @@ export function createFilesystemTools(workspaceRoot: string) {
           }
 
           await fs.rename(validSource, validDest);
+          await validateAfterOperation(validDest);
 
           return success({
             source,

@@ -16,6 +16,8 @@ interface Plan {
   updatedAt: number;
 }
 
+const MAX_PLAN_STEPS = 100;
+
 let currentPlan: Plan | null = null;
 
 export const planTool = tool({
@@ -34,6 +36,9 @@ export const planTool = tool({
       case 'create':
         if (!title || !steps) {
           return error('Title and steps required for create action');
+        }
+        if (steps.length > MAX_PLAN_STEPS) {
+          return error(`Too many steps. Maximum allowed: ${MAX_PLAN_STEPS}, provided: ${steps.length}`);
         }
         currentPlan = {
           title,
@@ -88,6 +93,9 @@ export const planTool = tool({
       case 'add_step':
         if (!currentPlan || !stepName) {
           return error('Active plan and stepName required');
+        }
+        if (currentPlan.steps.length >= MAX_PLAN_STEPS) {
+          return error(`Cannot add more steps. Maximum allowed: ${MAX_PLAN_STEPS}`);
         }
         currentPlan.steps.push({ name: stepName, status: 'pending' });
         currentPlan.updatedAt = Date.now();
