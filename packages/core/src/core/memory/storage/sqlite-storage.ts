@@ -82,6 +82,7 @@ export function createSQLiteStorage(dbPath: string): StorageAdapter {
 
   try {
     db.pragma('journal_mode = WAL');
+    db.pragma('busy_timeout = 5000');
     db.exec(SCHEMA);
 
     checkpointInterval = setInterval(() => {
@@ -132,8 +133,16 @@ export function createSQLiteStorage(dbPath: string): StorageAdapter {
         );
       },
       async update(id, updates) {
+        const ALLOWED_COLUMNS = ['name', 'attributes', 'embedding'] as const;
         const sets: string[] = [];
         const vals: any[] = [];
+
+        for (const key of Object.keys(updates)) {
+          if (!ALLOWED_COLUMNS.includes(key as any)) {
+            throw new Error(`Invalid column name for entity update: ${key}`);
+          }
+        }
+
         if (updates.name) { sets.push('name = ?'); vals.push(updates.name); }
         if (updates.attributes) { sets.push('attributes = ?'); vals.push(JSON.stringify(updates.attributes)); }
         if (updates.embedding) { sets.push('embedding = ?'); vals.push(JSON.stringify(updates.embedding)); }
@@ -209,6 +218,14 @@ export function createSQLiteStorage(dbPath: string): StorageAdapter {
         );
       },
       async update(id, updates) {
+        const ALLOWED_COLUMNS = ['validTo'] as const;
+
+        for (const key of Object.keys(updates)) {
+          if (!ALLOWED_COLUMNS.includes(key as any)) {
+            throw new Error(`Invalid column name for fact update: ${key}`);
+          }
+        }
+
         if (updates.validTo) {
           db.prepare('UPDATE facts SET valid_to = ? WHERE id = ?').run(updates.validTo.toISOString(), id);
         }

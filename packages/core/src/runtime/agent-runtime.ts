@@ -152,6 +152,28 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
     role: config.role || 'generic',
   });
 
+  let shutdownInProgress = false;
+  const handleShutdown = async (signal: string) => {
+    if (shutdownInProgress) return;
+    shutdownInProgress = true;
+
+    logger.info(`Received ${signal}, shutting down gracefully...`);
+    try {
+      logger.info('🧹 Shutting down agent runtime');
+      taskManager.stopMonitoring();
+      taskManager.shutdown();
+      await memoryExtractor.waitForPending();
+      logger.info('✅ Shutdown complete');
+      process.exit(0);
+    } catch (error) {
+      logger.error('Error during shutdown', { error: String(error) });
+      process.exit(1);
+    }
+  };
+
+  process.on('SIGTERM', () => handleShutdown('SIGTERM'));
+  process.on('SIGINT', () => handleShutdown('SIGINT'));
+
   const createSession = (): AgentSession => {
     let conversationHistory: ModelMessage[] = [];
     const performanceTimer = createPerformanceTimer();
@@ -200,9 +222,11 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
 
       conversationHistory.push(...result.response.messages);
 
-      memoryExtractor.extractFromConversation(conversationHistory).catch(error => {
-        logger.error('Background memory extraction failed', { error: String(error) });
-      });
+      Promise.resolve()
+        .then(() => memoryExtractor.extractFromConversation(conversationHistory))
+        .catch(error => {
+          logger.error('Background memory extraction failed', { error: String(error) });
+        });
 
       let codebaseIndexingMs: number | undefined;
       if (codebaseRAG) {

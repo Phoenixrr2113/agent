@@ -1,5 +1,6 @@
 import { rerank } from 'ai';
 import { cohere } from '@ai-sdk/cohere';
+import { logger } from '@agent/shared';
 
 export interface RerankDocument {
   id: string;
@@ -57,7 +58,12 @@ export async function rerankWithFallback(
 ): Promise<RerankResult[]> {
   try {
     return await rerankDocuments(query, documents, options);
-  } catch {
+  } catch (error) {
+    logger.warn('Rerank failed, falling back to simple ordering', {
+      error: String(error),
+      documentCount: documents.length,
+      topN: options.topN || 20,
+    });
     return documents.slice(0, options.topN || 20).map((doc, index) => ({
       id: doc.id,
       score: 1 - index / documents.length,

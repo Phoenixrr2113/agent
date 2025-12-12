@@ -29,7 +29,7 @@ export function createFileCache<T>(cacheDir: string): Cache<T> {
   };
 
   const getCachePath = (key: string): string => {
-    const hash = crypto.createHash('md5').update(key).digest('hex');
+    const hash = crypto.createHash('sha256').update(key).digest('hex');
     return path.join(cacheDir, `${hash}.json`);
   };
 
