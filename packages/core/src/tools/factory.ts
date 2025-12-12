@@ -1,5 +1,6 @@
 import * as readline from 'readline/promises';
 import { CodebaseRAG } from '../core/rag/types.js';
+import { logger } from '@agent/shared';
 
 export interface ToolDependencies {
   rl?: readline.Interface;
@@ -26,8 +27,10 @@ export class ToolFactory {
         const tools = creator(deps);
         Object.assign(allTools, tools);
       } catch (e) {
-        // In a real app we'd use a logger, but we don't want to enforce it as a dependency here just yet
-        // or we can expect logger in deps
+        logger.error(`Failed to create tool set "${name}"`, {
+          error: String(e),
+          toolSet: name,
+        });
       }
     }
     return allTools;

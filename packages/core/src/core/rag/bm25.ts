@@ -22,6 +22,8 @@ export interface BM25Index {
   serialize: () => string;
 }
 
+const MAX_DOCUMENT_SIZE = 1_000_000;
+
 export function createBM25Index(): BM25Index {
   const engine = bm25();
   let documentCount = 0;
@@ -49,6 +51,11 @@ export function createBM25Index(): BM25Index {
     addDocument(doc: BM25Document): void {
       if (isConsolidated) {
         throw new Error('Cannot add documents after consolidation');
+      }
+      if (doc.content.length > MAX_DOCUMENT_SIZE) {
+        throw new Error(
+          `Document content exceeds maximum size of ${MAX_DOCUMENT_SIZE} bytes (got ${doc.content.length})`
+        );
       }
       engine.addDoc(
         {

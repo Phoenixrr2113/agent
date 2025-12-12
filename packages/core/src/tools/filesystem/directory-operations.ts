@@ -41,15 +41,27 @@ export async function searchFilesWithValidation(
   return results;
 }
 
+const MAX_DIRECTORY_DEPTH = 50;
+
 export async function buildDirectoryTree(
   dirPath: string,
-  excludePatterns?: string[]
+  excludePatterns?: string[],
+  maxDepth: number = MAX_DIRECTORY_DEPTH,
+  currentDepth: number = 0
 ): Promise<DirectoryTree> {
   const stats = await fs.stat(dirPath);
   const name = path.basename(dirPath);
 
   if (!stats.isDirectory()) {
     return { name, type: 'file' };
+  }
+
+  if (currentDepth >= maxDepth) {
+    return {
+      name,
+      type: 'directory',
+      children: [],
+    };
   }
 
   const entries = await fs.readdir(dirPath);
@@ -64,7 +76,7 @@ export async function buildDirectoryTree(
     }
 
     try {
-      const child = await buildDirectoryTree(fullPath, excludePatterns);
+      const child = await buildDirectoryTree(fullPath, excludePatterns, maxDepth, currentDepth + 1);
       children.push(child);
     } catch {
       continue;
