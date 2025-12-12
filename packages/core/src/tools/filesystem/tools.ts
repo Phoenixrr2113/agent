@@ -35,7 +35,7 @@ export function createFilesystemTools(workspaceRoot: string) {
     read_text_file: tool({
       description: 'Read complete file contents as text, with optional head/tail parameters to read first/last N lines',
       inputSchema: z.object({
-        path: z.string().describe('Path to the file to read'),
+        path: z.string().max(4096).describe('Path to the file to read'),
         head: z.number().optional().describe('Number of lines from start'),
         tail: z.number().optional().describe('Number of lines from end'),
       }),
@@ -69,7 +69,7 @@ export function createFilesystemTools(workspaceRoot: string) {
     read_media_file: tool({
       description: 'Returns base64-encoded binary data with MIME type for images and audio files',
       inputSchema: z.object({
-        path: z.string().describe('Path to the media file'),
+        path: z.string().max(4096).describe('Path to the media file'),
       }),
       execute: async ({ path: filePath }) => {
         try {
@@ -119,7 +119,7 @@ export function createFilesystemTools(workspaceRoot: string) {
     write_file: tool({
       description: 'Create or overwrite file with text content. Uses atomic write for safety. Security: Validates path after creation to prevent symlink attacks - files resolving outside allowed directories are auto-removed.',
       inputSchema: z.object({
-        path: z.string().describe('Path to the file'),
+        path: z.string().max(4096).describe('Path to the file'),
         content: z.string().describe('Content to write'),
       }),
       execute: async ({ path: filePath, content }) => {
@@ -141,7 +141,7 @@ export function createFilesystemTools(workspaceRoot: string) {
     edit_file: tool({
       description: 'Line-based text replacement with git-style diff output. Supports dry-run previews.',
       inputSchema: z.object({
-        path: z.string().describe('Path to the file'),
+        path: z.string().max(4096).describe('Path to the file'),
         edits: z.array(z.object({
           oldText: z.string(),
           newText: z.string(),
@@ -168,7 +168,7 @@ export function createFilesystemTools(workspaceRoot: string) {
     create_directory: tool({
       description: 'Create directories recursively. Idempotent (succeeds silently if exists). Security: Validates path after creation to prevent symlink attacks - directories resolving outside allowed paths are auto-removed.',
       inputSchema: z.object({
-        path: z.string().describe('Path to the directory'),
+        path: z.string().max(4096).describe('Path to the directory'),
       }),
       execute: async ({ path: dirPath }) => {
         try {
@@ -189,7 +189,7 @@ export function createFilesystemTools(workspaceRoot: string) {
     list_directory: tool({
       description: 'List directory contents with [FILE] and [DIR] prefixes',
       inputSchema: z.object({
-        path: z.string().describe('Path to the directory'),
+        path: z.string().max(4096).describe('Path to the directory'),
       }),
       execute: async ({ path: dirPath }) => {
         try {
@@ -229,7 +229,7 @@ export function createFilesystemTools(workspaceRoot: string) {
     list_directory_with_sizes: tool({
       description: 'List directory with file sizes and sorting options',
       inputSchema: z.object({
-        path: z.string().describe('Path to the directory'),
+        path: z.string().max(4096).describe('Path to the directory'),
         sortBy: z.enum(['name', 'size']).optional().default('name').describe('Sort by name or size'),
       }),
       execute: async ({ path: dirPath, sortBy = 'name' }) => {
@@ -279,7 +279,7 @@ export function createFilesystemTools(workspaceRoot: string) {
     directory_tree: tool({
       description: 'Returns recursive JSON structure with name, type, and children',
       inputSchema: z.object({
-        path: z.string().describe('Path to the directory'),
+        path: z.string().max(4096).describe('Path to the directory'),
         excludePatterns: z.array(z.string()).optional().describe('Glob patterns to exclude'),
       }),
       execute: async ({ path: dirPath, excludePatterns }) => {
@@ -323,7 +323,7 @@ export function createFilesystemTools(workspaceRoot: string) {
     get_file_info: tool({
       description: 'Returns metadata including size, timestamps, permissions, and type',
       inputSchema: z.object({
-        path: z.string().describe('Path to the file'),
+        path: z.string().max(4096).describe('Path to the file'),
       }),
       execute: async ({ path: filePath }) => {
         try {

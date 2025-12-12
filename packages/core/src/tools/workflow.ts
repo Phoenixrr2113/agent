@@ -30,8 +30,7 @@ export const planTool = tool({
     status: z.enum(['pending', 'in_progress', 'completed', 'blocked']).optional().describe('New status for the step'),
     note: z.string().optional().describe('Note to attach to a step'),
   }),
-  // eslint-disable-next-line @typescript-eslint/require-await
-  execute: async ({ action, title, steps, stepName, status, note }) => {
+  execute: ({ action, title, steps, stepName, status, note }) => {
     switch (action) {
       case 'create':
         if (!title || !steps) {

@@ -6,6 +6,7 @@ import {
   type ParserFactory,
 } from 'code-chopper';
 import { BaseChunkingStrategy, type Chunk } from './base.js';
+import { logger } from '@agent/shared';
 
 const LANGUAGE_MAP: Record<string, string> = {
   '.ts': 'typescript',
@@ -128,7 +129,11 @@ export class CodeChunkingStrategy extends BaseChunkingStrategy {
       }
 
       return chunks;
-    } catch {
+    } catch (error) {
+      logger.warn('AST parsing failed, falling back to simple chunking', {
+        filePath,
+        error: String(error),
+      });
       return this.chunkFallback(content, filePath);
     }
   }

@@ -15,9 +15,20 @@ export class DocumentChunkingStrategy extends BaseChunkingStrategy {
 
   constructor(options: DocumentChunkingOptions = {}) {
     super();
+
+    const maxChunkSize = options.maxChunkSize ?? 1000;
+    if (maxChunkSize < 100 || maxChunkSize > 100000) {
+      throw new Error(`maxChunkSize must be between 100 and 100000, got ${maxChunkSize}`);
+    }
+
+    const chunkOverlap = options.chunkOverlap ?? 200;
+    if (chunkOverlap < 0 || chunkOverlap >= maxChunkSize) {
+      throw new Error(`chunkOverlap must be between 0 and maxChunkSize, got ${chunkOverlap}`);
+    }
+
     this.options = {
-      maxChunkSize: options.maxChunkSize ?? 1000,
-      chunkOverlap: options.chunkOverlap ?? 200,
+      maxChunkSize,
+      chunkOverlap,
       splitByParagraph: options.splitByParagraph ?? true,
       splitByHeading: options.splitByHeading ?? true,
     };

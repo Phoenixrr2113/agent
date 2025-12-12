@@ -10,6 +10,15 @@ export async function searchFilesWithValidation(
   pattern: string,
   excludePatterns?: string[]
 ): Promise<SearchResult[]> {
+  const globDepth = (pattern.match(/\*\*/g) || []).length;
+  if (globDepth > 5) {
+    throw new Error(`Glob pattern exceeds maximum depth of 5 (got ${globDepth} levels). Use simpler patterns.`);
+  }
+
+  if (pattern.length > 500) {
+    throw new Error(`Glob pattern exceeds maximum length of 500 characters (got ${pattern.length})`);
+  }
+
   const validPath = await validatePath(searchPath);
   const files = await glob(pattern, {
     cwd: validPath,
@@ -41,15 +50,27 @@ export async function searchFilesWithValidation(
   return results;
 }
 
+const MAX_DIRECTORY_DEPTH = 50;
+
 export async function buildDirectoryTree(
   dirPath: string,
-  excludePatterns?: string[]
+  excludePatterns?: string[],
+  maxDepth: number = MAX_DIRECTORY_DEPTH,
+  currentDepth: number = 0
 ): Promise<DirectoryTree> {
   const stats = await fs.stat(dirPath);
   const name = path.basename(dirPath);
 
   if (!stats.isDirectory()) {
     return { name, type: 'file' };
+  }
+
+  if (currentDepth >= maxDepth) {
+    return {
+      name,
+      type: 'directory',
+      children: [],
+    };
   }
 
   const entries = await fs.readdir(dirPath);
@@ -64,7 +85,7 @@ export async function buildDirectoryTree(
     }
 
     try {
-      const child = await buildDirectoryTree(fullPath, excludePatterns);
+      const child = await buildDirectoryTree(fullPath, excludePatterns, maxDepth, currentDepth + 1);
       children.push(child);
     } catch {
       continue;

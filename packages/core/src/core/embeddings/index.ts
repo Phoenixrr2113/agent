@@ -19,7 +19,18 @@ export function getEmbeddingModel(modelOverride?: string): EmbeddingModel {
 }
 
 export function cosineSimilarity(a: number[], b: number[]): number {
-  if (a.length !== b.length || a.length === 0) return 0;
+  if (a.length === 0 || b.length === 0) {
+    logger.warn('Cosine similarity called with empty embedding vector');
+    return 0;
+  }
+
+  if (a.length !== b.length) {
+    logger.warn('Embedding dimension mismatch - vectors have different lengths', {
+      lengthA: a.length,
+      lengthB: b.length,
+    });
+    return 0;
+  }
 
   let dotProduct = 0;
   let normA = 0;

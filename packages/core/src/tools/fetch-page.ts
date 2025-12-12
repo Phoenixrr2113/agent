@@ -43,6 +43,11 @@ async function fetchAndParse(url: string): Promise<ParsedPage> {
     throw new Error(`Failed to fetch: ${response.status} ${response.statusText}`);
   }
 
+  const contentType = response.headers.get('content-type') || '';
+  if (!contentType.includes('text/html') && !contentType.includes('application/xhtml')) {
+    throw new Error(`Expected HTML content, got: ${contentType}`);
+  }
+
   const html = await response.text();
   const JSDOMClass = await getJSDOM();
   const dom = new JSDOMClass(html, { url });

@@ -4,14 +4,22 @@ import { z } from 'zod';
 export class ToolActivationManager {
   private activeTools: Set<string> = new Set();
   private wrappedTools: Map<string, { original: Tool; wrapped: Tool }> = new Map();
+  private availableTools: Set<string> = new Set();
 
   isActive(toolName: string): boolean {
     return this.activeTools.has(toolName);
   }
 
+  setAvailableTools(toolNames: string[]): void {
+    this.availableTools = new Set(toolNames);
+  }
+
   activate(toolName: string): boolean {
     if (this.activeTools.has(toolName)) {
       return false;
+    }
+    if (this.availableTools.size > 0 && !this.availableTools.has(toolName)) {
+      throw new Error(`Cannot activate unknown tool: "${toolName}". Tool not found in registry.`);
     }
     this.activeTools.add(toolName);
     return true;

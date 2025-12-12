@@ -1,6 +1,7 @@
 import fs from 'fs/promises';
 import path from 'path';
 import { StrategyRegistry, Chunk } from './strategies/index.js';
+import { logger } from '@agent/shared';
 
 export async function scanWorkspace(
   workspaceRoot: string,
@@ -66,7 +67,13 @@ export async function scanWorkspace(
               const fileChunks = await registry.chunkFile(content, fullPath);
               chunks.push(...fileChunks);
             } catch (error) {
-              log(`Failed to chunk file ${fullPath}: ${error}`);
+              const errorMessage = error instanceof Error ? error.message : String(error);
+              log(`Failed to chunk file ${fullPath}: ${errorMessage}`);
+              logger.warn('Workspace scanner: file chunking failed', {
+                filePath: fullPath,
+                error: errorMessage,
+                errorStack: error instanceof Error ? error.stack : undefined,
+              });
             }
           }
         }
