@@ -4,8 +4,12 @@ import type { MemoryProvider } from '../core/memory/types.js';
 import { createAutoMemoryProvider } from '../core/memory/factory.js';
 
 let memoryProviderPromise: Promise<MemoryProvider> | null = null;
+let isClosing = false;
 
 function getProvider(): Promise<MemoryProvider> {
+  if (isClosing) {
+    throw new Error('Memory provider is shutting down');
+  }
   if (!memoryProviderPromise) {
     memoryProviderPromise = createAutoMemoryProvider({
       storagePath: process.env.MEMORY_DB_PATH || './memory.db',
@@ -188,9 +192,14 @@ export async function getMemoryProvider(): Promise<MemoryProvider> {
 
 export async function closeMemory(): Promise<void> {
   if (memoryProviderPromise) {
-    const provider = await memoryProviderPromise;
-    await provider.close();
-    memoryProviderPromise = null;
+    isClosing = true;
+    try {
+      const provider = await memoryProviderPromise;
+      await provider.close();
+    } finally {
+      memoryProviderPromise = null;
+      isClosing = false;
+    }
   }
 }
 

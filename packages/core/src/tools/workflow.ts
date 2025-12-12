@@ -16,10 +16,12 @@ interface Plan {
   updatedAt: number;
 }
 
+const MAX_PLAN_STEPS = 100;
+
 let currentPlan: Plan | null = null;
 
 export const planTool = tool({
-  description: 'Create and track a task checklist. Use when you have concrete steps to execute (build X, fix Y, deploy Z). Actions: create (title + steps), update_status (pending/in_progress/completed/blocked), add_step, add_note, view. NOT for reasoning—use sequential_thinking for that.',
+  description: `Create and track a task checklist. Use when you have concrete steps to execute (build X, fix Y, deploy Z). Actions: create (title + steps), update_status (pending/in_progress/completed/blocked), add_step, add_note, view. NOT for reasoning—use sequential_thinking for that. LIMIT: Maximum ${MAX_PLAN_STEPS} steps per plan.`,
   inputSchema: z.object({
     action: z.enum(['create', 'update_status', 'add_note', 'add_step', 'view']).describe('What to do: create, update_status, add_note, add_step, or view'),
     title: z.string().optional().describe('Plan title (when creating)'),
@@ -34,6 +36,9 @@ export const planTool = tool({
       case 'create':
         if (!title || !steps) {
           return error('Title and steps required for create action');
+        }
+        if (steps.length > MAX_PLAN_STEPS) {
+          return error(`Too many steps. Maximum allowed: ${MAX_PLAN_STEPS}, provided: ${steps.length}`);
         }
         currentPlan = {
           title,
@@ -88,6 +93,9 @@ export const planTool = tool({
       case 'add_step':
         if (!currentPlan || !stepName) {
           return error('Active plan and stepName required');
+        }
+        if (currentPlan.steps.length >= MAX_PLAN_STEPS) {
+          return error(`Cannot add more steps. Maximum allowed: ${MAX_PLAN_STEPS}`);
         }
         currentPlan.steps.push({ name: stepName, status: 'pending' });
         currentPlan.updatedAt = Date.now();

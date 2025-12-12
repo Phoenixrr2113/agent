@@ -159,7 +159,10 @@ export async function initializeAgent(config: InitializationConfig = {}): Promis
   };
 }
 
-export async function cleanup(rl: readline.Interface | null) {
+export async function cleanup(
+  rl: readline.Interface | null,
+  codebaseRAG?: any
+) {
   logger.info('🧹 Cleaning up...');
   if (rl) {
     rl.close();
@@ -167,4 +170,7 @@ export async function cleanup(rl: readline.Interface | null) {
   getPersistentTaskManager().shutdown();
   resetSequentialThinkingEngine();
   await closeMemory();
+  if (codebaseRAG && typeof codebaseRAG.dispose === 'function') {
+    codebaseRAG.dispose();
+  }
 }

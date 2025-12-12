@@ -7,6 +7,7 @@ import {
   setAllowedDirectories,
   validatePath,
   validateNewPath,
+  validateAfterOperation,
 } from './path-security.js';
 
 import {
@@ -116,7 +117,7 @@ export function createFilesystemTools(workspaceRoot: string) {
     }),
 
     write_file: tool({
-      description: 'Create or overwrite file with text content. Uses atomic write for safety.',
+      description: 'Create or overwrite file with text content. Uses atomic write for safety. Security: Validates path after creation to prevent symlink attacks - files resolving outside allowed directories are auto-removed.',
       inputSchema: z.object({
         path: z.string().describe('Path to the file'),
         content: z.string().describe('Content to write'),
@@ -125,6 +126,7 @@ export function createFilesystemTools(workspaceRoot: string) {
         try {
           const validPath = await validateNewPath(filePath);
           await writeFileContent(validPath, content);
+          await validateAfterOperation(validPath);
 
           return success({
             path: filePath,
@@ -164,7 +166,7 @@ export function createFilesystemTools(workspaceRoot: string) {
     }),
 
     create_directory: tool({
-      description: 'Create directories recursively. Idempotent (succeeds silently if exists).',
+      description: 'Create directories recursively. Idempotent (succeeds silently if exists). Security: Validates path after creation to prevent symlink attacks - directories resolving outside allowed paths are auto-removed.',
       inputSchema: z.object({
         path: z.string().describe('Path to the directory'),
       }),
@@ -172,6 +174,7 @@ export function createFilesystemTools(workspaceRoot: string) {
         try {
           const validPath = await validateNewPath(dirPath);
           await fs.mkdir(validPath, { recursive: true });
+          await validateAfterOperation(validPath);
 
           return success({
             path: dirPath,
@@ -341,7 +344,7 @@ export function createFilesystemTools(workspaceRoot: string) {
     }),
 
     move_file: tool({
-      description: 'Rename or move files/directories. Fails if destination exists.',
+      description: 'Rename or move files/directories. Fails if destination exists. Security: Validates destination path after move to prevent symlink attacks - files resolving outside allowed directories are auto-removed.',
       inputSchema: z.object({
         source: z.string().describe('Source path'),
         destination: z.string().describe('Destination path'),
@@ -359,6 +362,7 @@ export function createFilesystemTools(workspaceRoot: string) {
           }
 
           await fs.rename(validSource, validDest);
+          await validateAfterOperation(validDest);
 
           return success({
             source,
