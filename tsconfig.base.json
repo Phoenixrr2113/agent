@@ -31,8 +31,8 @@
     // BASE OPTIONS
     // ============================================
     "target": "ES2022",
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
+    "module": "ES2022",
+    "moduleResolution": "bundler",
     "lib": ["ES2022"],
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,

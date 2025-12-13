@@ -6,7 +6,7 @@ import { createBM25Index, type BM25Index } from './bm25.js';
 import { createFileCache, computeHash, type Cache } from './cache.js';
 import { processChunks } from './chunk-processor.js';
 import { executeSearch } from './search-engine.js';
-import { createDefaultRegistry, type Chunk } from "./strategies";
+import { createDefaultRegistry, type Chunk } from "./strategies/index.js";
 import {
   type CodebaseRAG,
   type RAGOptions,

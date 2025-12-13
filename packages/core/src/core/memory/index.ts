@@ -3,7 +3,6 @@ export {
   createInMemoryStorage,
   createSQLiteStorage,
   type StorageAdapter
-} from "./storage/";
+} from "./storage/index.js";
 export { BaseMemoryProvider } from './provider-base.js';
 export { createMemoryLite } from './memory-lite.js';
-

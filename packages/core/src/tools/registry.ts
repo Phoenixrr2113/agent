@@ -7,5 +7,5 @@ export {
   createToolSearchTool,
   createActivateToolTool,
   createDeactivateToolTool,
-} from "./registry/";
+} from "./registry/index.js";
 

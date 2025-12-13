@@ -5,4 +5,4 @@ export {
   setAllowedDirectories,
   getAllowedDirectories,
   createFilesystemTools,
-} from "./filesystem/";
+} from "./filesystem/index.js";

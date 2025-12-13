@@ -1,4 +1,4 @@
-import { cosineSimilarity } from "../../embeddings";
+import { cosineSimilarity } from "../../embeddings/index.js";
 
 import type { Entity, Relation, Fact, Episode } from '../types.js';
 import type { StorageAdapter } from './types.js';

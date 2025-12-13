@@ -5,10 +5,10 @@ import {
   createContextualChunkWithoutLLM,
   type ContextualChunk,
 } from './context.js';
-import { type Chunk } from "./strategies";
+import { type Chunk } from "./strategies/index.js";
 import { type EmbeddedChunk } from './types.js';
 // Using consolidated embeddings module
-import { getEmbeddingModel } from "../embeddings";
+import { getEmbeddingModel } from "../embeddings/index.js";
 
 export async function processChunks(
   chunks: Chunk[],

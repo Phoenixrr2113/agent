@@ -1,6 +1,6 @@
 import Database from 'better-sqlite3';
 
-import { cosineSimilarity } from "../../embeddings";
+import { cosineSimilarity } from "../../embeddings/index.js";
 
 import type { Entity, Fact } from '../types.js';
 import type { StorageAdapter } from './types.js';

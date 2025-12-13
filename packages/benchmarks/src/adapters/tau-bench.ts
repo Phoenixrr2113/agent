@@ -1,7 +1,7 @@
 import { createAgentRuntime, type AgentSession } from '@agent/core';
 import { logger } from '@agent/shared';
 
-import type { TauBenchAction, TauBenchMessage, BenchmarkResult } from '../types.js';
+import type { TauBenchAction, TauBenchMessage, BenchmarkResult } from '../types';
 
 export interface TauBenchConfig {
   domain: 'retail' | 'airline';
@@ -28,7 +28,9 @@ export async function createTauBenchAgent(config: TauBenchConfig) {
     const session = agentRuntime!.createSession();
 
     const lastUserMessage = messages
-      .findLast(m => m.role === 'user');
+      .slice()
+      .reverse()
+      .find((m: TauBenchMessage) => m.role === 'user');
 
     if (!lastUserMessage) {
       return {

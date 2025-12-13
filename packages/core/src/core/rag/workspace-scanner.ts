@@ -3,7 +3,7 @@ import path from 'node:path';
 
 import { logger } from '@agent/shared';
 
-import { type StrategyRegistry, type Chunk } from "./strategies";
+import { type StrategyRegistry, type Chunk } from "./strategies/index.js";
 
 export async function scanWorkspace(
   workspaceRoot: string,

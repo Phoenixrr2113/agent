@@ -1,8 +1,8 @@
 import { type ContextualChunk } from './context.js';
-import { type StrategyRegistry, type Chunk, type ChunkingStrategy, type ChunkMetadata } from "./strategies";
+import { type StrategyRegistry, type Chunk, type ChunkingStrategy, type ChunkMetadata } from "./strategies/index.js";
 
 export type { ContextualChunk } from './context.js';
-export type { Chunk, ChunkingStrategy, ChunkMetadata } from "./strategies";
+export type { Chunk, ChunkingStrategy, ChunkMetadata } from "./strategies/index.js";
 
 export interface EmbeddedChunk extends ContextualChunk {
   id: string;

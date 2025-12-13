@@ -7,12 +7,12 @@ import { embed } from 'ai';
 import { extractFromText, detectContradictionsBatch, resolveEntityConflicts } from './extraction.js';
 import { BaseMemoryProvider } from './provider-base.js';
 // Using consolidated embeddings module
-import { getEmbeddingModel } from "../embeddings";
+import { getEmbeddingModel } from "../embeddings/index.js";
 import {
   createInMemoryStorage,
   type StorageAdapter,
   createSQLiteStorage
-} from "./storage/";
+} from "./storage/index.js";
 
 import type {
   MemoryProvider,
@@ -23,6 +23,7 @@ import type {
   Fact,
   Episode,
   LiteMemoryConfig,
+  Relation,
 } from './types.js';
 
 /**
@@ -315,11 +316,11 @@ export function createMemoryLite(config: Omit<LiteMemoryConfig, 'provider'>): Me
 
       const entities = await Promise.all(
         Array.from(entityIds).map(id => storage.entities.get(id))
-      ).then(results => results.filter((e): e is Entity => e !== null));
+    ).then(results => results.filter((e: Entity | null): e is Entity => e !== null));
 
       const relations = await Promise.all(
         Array.from(relationIds).map(id => storage.relations.get(id))
-      ).then(results => results.filter((r): r is NonNullable<typeof r> => r !== null));
+    ).then((results: Array<Relation | null>) => results.filter((r): r is Relation => r !== null));
 
       const totalDuration = performance.now() - startTime;
       logger.info('⏱️  [memory] Memory search completed', {

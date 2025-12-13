@@ -6,7 +6,7 @@ import { mergeSearchResults, type BM25Index } from './bm25.js';
 import { rerankWithFallback } from './rerank.js';
 import { filterChunksToFitBudget, countTokens } from './tokens.js';
 import { type EmbeddedChunk, type SearchOptions } from './types.js';
-import { getEmbeddingModel, cosineSimilarity } from "../embeddings";
+import { getEmbeddingModel, cosineSimilarity } from "../embeddings/index.js";
 
 export interface SearchState {
   embeddedChunks: EmbeddedChunk[];

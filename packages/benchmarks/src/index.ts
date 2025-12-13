@@ -1,16 +1,16 @@
-export * from './types.js';
+export * from './types';
 export {
   run as halRun,
   shutdown as halShutdown,
   resetSession as halResetSession,
-  type HALAgentArgs,
-} from './adapters/hal.js';
+  type HALAgentArguments,
+} from './adapters/hal';
 export {
   createTauBenchAgent,
   runTauBenchTask,
   shutdown as tauBenchShutdown,
   type TauBenchConfig,
-} from './adapters/tau-bench.js';
+} from './adapters/tau-bench';
 export {
   runGAIATask,
   resetSession as gaiaResetSession,
@@ -19,7 +19,7 @@ export {
   type GAIATask,
   type GAIAConfig,
   type GAIAResult,
-} from './adapters/gaia.js';
+} from './adapters/gaia';
 export {
   runSWEBenchTask,
   resetSession as sweBenchResetSession,
@@ -28,5 +28,5 @@ export {
   type SWEBenchTask,
   type SWEBenchConfig,
   type SWEBenchResult,
-} from './adapters/swe-bench.js';
+} from './adapters/swe-bench';
 
