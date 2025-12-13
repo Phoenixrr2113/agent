@@ -1,6 +1,11 @@
-export { ChatBubble, type ChatBubbleProps } from './chat-bubble';
-export { ChatInput, type ChatInputProps } from './chat-input';
-export { ChatList, type ChatListProps } from './chat-list';
-export { ChatContainer, type ChatContainerProps } from './chat-container';
-export { useChat, type UseChatOptions, type UseChatReturn } from './use-chat';
-export type { Message, ChatState } from './types';
+export { ChatBubble, type ChatBubbleProps } from './chat-bubble.js';
+export { ChatInput, type ChatInputProps } from './chat-input.js';
+export { ChatList, type ChatListProps } from './chat-list.js';
+export { ChatContainer, type ChatContainerProps } from './chat-container.js';
+export { useChat, type UseChatOptions, type UseChatReturn } from './use-chat.js';
+export { StreamingText, type StreamingTextProps } from './streaming-text.js';
+export { ToolCallCard, type ToolCallCardProps } from './tool-call-card.js';
+export { ReasoningCollapsible, type ReasoningCollapsibleProps } from './reasoning-collapsible.js';
+export { StepIndicator, type StepIndicatorProps } from './step-indicator.js';
+export { SourcesList, type SourcesListProps } from './sources-list.js';
+export type { Message, ChatState } from './types.js';

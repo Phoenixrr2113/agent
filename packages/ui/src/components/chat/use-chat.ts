@@ -26,8 +26,10 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
   const [state, setState] = useState<ChatState>({
     messages: initialMessages,
     isLoading: false,
+    isStreaming: false,
     error: null,
     sessionId: null,
+    currentStep: 0,
   });
 
   const addMessage = useCallback(
@@ -77,7 +79,7 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
       setState((prev) => ({ ...prev, isLoading: true, error: null }));
 
       try {
-        updateMessage(userMessage.id, { status: 'sent' });
+        updateMessage(userMessage.id, { status: 'complete' });
 
         if (onSend) {
           const response = await onSend(content.trim());
@@ -85,7 +87,7 @@ export function useChat(options: UseChatOptions = {}): UseChatReturn {
           addMessage({
             role: 'assistant',
             content: response,
-            status: 'sent',
+            status: 'complete',
           });
         }
 
