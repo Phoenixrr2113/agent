@@ -21,7 +21,7 @@ export {
   cancelTaskTool,
   listTasksTool,
   cleanupOldTasksTool,
-  startAgentTaskTool,
+  spawnAgentTool,
   persistentBackgroundTaskTools,
 } from './tools.js';
 

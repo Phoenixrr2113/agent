@@ -17,6 +17,10 @@
     "./utils": {
       "import": "./dist/utils/index.js",
       "types": "./dist/utils/index.d.ts"
+    },
+    "./device": {
+      "import": "./dist/device/index.js",
+      "types": "./dist/device/index.d.ts"
     }
   },
   "scripts": {
@@ -24,10 +28,13 @@
     "clean": "rm -rf dist",
     "test": "vitest run"
   },
-  "dependencies": {},
+  "dependencies": {
+    "zod": "^3.23.8"
+  },
   "devDependencies": {
     "@types/node": "^20.0.0",
     "typescript": "^5.0.0",
     "vitest": "^2.0.0"
   }
 }
+

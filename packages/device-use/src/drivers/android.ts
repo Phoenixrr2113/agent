@@ -1,75 +1,171 @@
-import * as AgentAccessibility from '@agent/mobile-accessibility';
+import * as AgentAccessibility from '@agent/mobile-accessibility'
 
-import type { DeviceDriver } from '../driver.js';
+import type {
+  DeviceAction,
+  ActionResult,
+  DeviceCapabilities,
+  TapPayload,
+  TypePayload,
+  KeyPayload,
+  SwipePayload,
+  ScrollPayload,
+  DragPayload,
+  UIElement,
+} from '@agent/shared'
+
+import type { DeviceDriver } from '../driver.js'
 
 export class AndroidDriver implements DeviceDriver {
-  async click(x: number, y: number): Promise<void> {
-    // @ts-ignore
-    await AgentAccessibility.click(x, y);
+  private screenSize: { width: number; height: number } = { width: 1080, height: 1920 }
+
+  setScreenSize(width: number, height: number): void {
+    this.screenSize = { width, height }
   }
 
-  async doubleClick(x: number, y: number): Promise<void> {
-    // Android doesn't have native double click gesture, simulate with two clicks
-    // @ts-ignore
-    await AgentAccessibility.click(x, y);
-    // @ts-ignore
-    await AgentAccessibility.click(x, y);
+  async execute(action: DeviceAction): Promise<ActionResult> {
+    switch (action.type) {
+      case 'tap':
+        return this.handleTap(action.payload as TapPayload)
+      case 'double_tap':
+        return this.handleDoubleTap(action.payload as TapPayload)
+      case 'long_press':
+        return this.handleLongPress(action.payload as TapPayload)
+      case 'type':
+        return this.handleType(action.payload as TypePayload)
+      case 'key':
+        return this.handleKey(action.payload as KeyPayload)
+      case 'swipe':
+        return this.handleSwipe(action.payload as SwipePayload)
+      case 'scroll':
+        return this.handleScroll(action.payload as ScrollPayload)
+      case 'drag':
+        return this.handleDrag(action.payload as DragPayload)
+      case 'screenshot':
+        return this.handleScreenshot()
+      case 'get_ui_tree':
+        return this.handleGetUITree()
+      default:
+        return { success: false, error: `Unknown action type: ${action.type}`, code: 'NOT_SUPPORTED' }
+    }
   }
 
-  async rightClick(x: number, y: number): Promise<void> {
-    // Android doesn't have right click, maybe long press?
-    // For now, just click
-    // @ts-ignore
-    await AgentAccessibility.click(x, y);
+  async getCapabilities(): Promise<DeviceCapabilities> {
+    return {
+      platform: 'android',
+      deviceId: 'android-device',
+      deviceName: 'Android Device',
+      screenSize: this.screenSize,
+      supportedActions: [
+        'tap',
+        'double_tap',
+        'long_press',
+        'type',
+        'key',
+        'swipe',
+        'scroll',
+        'drag',
+        'screenshot',
+        'get_ui_tree',
+      ],
+      hasKeyboard: true,
+      hasUITree: true,
+    }
   }
 
-  async type(text: string): Promise<void> {
-    // Not implemented yet - requires AccessibilityService input method or ADB
-    console.warn('type() not implemented on AndroidDriver yet');
+  async getUITree(): Promise<UIElement> {
+    const treeJson = await AgentAccessibility.getUITree()
+    if (!treeJson) {
+      throw new Error('UI tree not available')
+    }
+    return JSON.parse(treeJson) as UIElement
   }
 
-  async pressKey(key: string): Promise<void> {
-    // Not implemented yet
-    console.warn('pressKey() not implemented on AndroidDriver yet');
+  private async handleTap(payload: TapPayload): Promise<ActionResult> {
+    const success = await AgentAccessibility.click(payload.x, payload.y)
+    return success ? { success: true } : { success: false, error: 'Tap failed', code: 'UNKNOWN' }
   }
 
-  async scroll(dx: number, dy: number): Promise<void> {
-    // Implement swipe for scroll
-    // This is a simplification, we need current position or center of screen
-    const { width, height } = await this.getScreenSize();
-    const cx = width / 2;
-    const cy = height / 2;
-
-    // Scroll down = swipe up
-    // Scroll up = swipe down
-    const startY = cy;
-    const endY = cy - dy;
-
-    // @ts-ignore
-    await AgentAccessibility.swipe(cx, startY, cx, endY, 300);
+  private async handleDoubleTap(payload: TapPayload): Promise<ActionResult> {
+    await AgentAccessibility.click(payload.x, payload.y)
+    await AgentAccessibility.click(payload.x, payload.y)
+    return { success: true }
   }
 
-  async drag(x1: number, y1: number, x2: number, y2: number): Promise<void> {
-    // @ts-ignore
-    await AgentAccessibility.swipe(x1, y1, x2, y2, 500);
+  private async handleLongPress(payload: TapPayload): Promise<ActionResult> {
+    const success = await AgentAccessibility.longPress(payload.x, payload.y, 500)
+    return success
+      ? { success: true }
+      : { success: false, error: 'Long press failed', code: 'UNKNOWN' }
   }
 
-  async getScreenSize(): Promise<{ width: number; height: number }> {
-    // We can get this from React Native Dimensions
-    const { Dimensions } = require('react-native');
-    const { width, height } = Dimensions.get('screen');
-    return { width, height };
+  private async handleType(payload: TypePayload): Promise<ActionResult> {
+    const success = await AgentAccessibility.type(payload.text)
+    return success ? { success: true } : { success: false, error: 'Type failed', code: 'UNKNOWN' }
   }
 
-  async getScreenshot(): Promise<string> {
-    // Requires MediaProjection API or AccessibilityService takeScreenshot (API 30+)
-    // For now, return empty or implement later
-    console.warn('getScreenshot() not implemented on AndroidDriver yet');
-    return '';
+  private async handleKey(payload: KeyPayload): Promise<ActionResult> {
+    const success = await AgentAccessibility.pressKey(payload.key)
+    return success ? { success: true } : { success: false, error: 'Key press failed', code: 'UNKNOWN' }
   }
 
-  async getCursorPosition(): Promise<{ x: number; y: number }> {
-    // Android doesn't have a cursor
-    return { x: 0, y: 0 };
+  private async handleSwipe(payload: SwipePayload): Promise<ActionResult> {
+    const duration = payload.durationMs ?? 300
+    const success = await AgentAccessibility.swipe(
+      payload.fromX,
+      payload.fromY,
+      payload.toX,
+      payload.toY,
+      duration
+    )
+    return success ? { success: true } : { success: false, error: 'Swipe failed', code: 'UNKNOWN' }
+  }
+
+  private async handleScroll(payload: ScrollPayload): Promise<ActionResult> {
+    const { width, height } = this.screenSize
+    const cx = payload.x ?? width / 2
+    const cy = payload.y ?? height / 2
+    const toY = cy - payload.deltaY
+    const toX = cx - payload.deltaX
+    await AgentAccessibility.swipe(cx, cy, toX, toY, 300)
+    return { success: true }
+  }
+
+  private async handleDrag(payload: DragPayload): Promise<ActionResult> {
+    await AgentAccessibility.swipe(payload.fromX, payload.fromY, payload.toX, payload.toY, 500)
+    return { success: true }
+  }
+
+  private async handleScreenshot(): Promise<ActionResult> {
+    const base64 = await AgentAccessibility.screenshot()
+    if (!base64) {
+      return { success: false, error: 'Screenshot failed', code: 'UNKNOWN' }
+    }
+    return {
+      success: true,
+      data: {
+        type: 'screenshot',
+        base64,
+        format: 'png',
+        width: this.screenSize.width,
+        height: this.screenSize.height,
+      },
+    }
+  }
+
+  private async handleGetUITree(): Promise<ActionResult> {
+    const treeJson = await AgentAccessibility.getUITree()
+    if (!treeJson) {
+      return { success: false, error: 'UI tree failed', code: 'UNKNOWN' }
+    }
+    return {
+      success: true,
+      data: {
+        type: 'ui_tree',
+        root: JSON.parse(treeJson) as UIElement,
+      },
+    }
   }
 }
+
+
+

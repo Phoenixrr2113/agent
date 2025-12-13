@@ -1,4 +1,4 @@
-export { createDeviceTools } from './tools.js';
+export { createDeviceTools } from './tools.js'
 export type {
   Platform,
   ComputerAction,
@@ -8,5 +8,10 @@ export type {
   DeviceUseConfig,
   BashCommand,
   TextEditorCommand,
-} from './types.js';
-export { SafetyValidator } from './utils/safety.js';
+} from './types.js'
+export { SafetyValidator } from './utils/safety.js'
+export type { DeviceDriver } from './driver.js'
+export { DesktopDriver } from './drivers/desktop.js'
+export { AndroidDriver } from './drivers/android.js'
+
+

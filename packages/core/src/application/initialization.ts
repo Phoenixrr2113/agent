@@ -2,30 +2,35 @@ import { stdin as input, stdout as output } from 'node:process';
 import * as readline from 'node:readline/promises';
 
 
-import { logger } from '@agent/shared';
+import { logger } from '@agent/shared'
 
-import { createCodebaseRAG } from "../core/rag";
-import { instrumentTools } from '../core/tool-instrumentation';
-import { createAgentTools } from '../tools/agent';
-import { persistentBackgroundTaskTools, getPersistentTaskManager } from '../tools/background-tasks-persistent';
-import { createCodebaseTools } from '../tools/codebase';
-import { fetchPageTool } from '../tools/fetch-page';
-import { createFilesystemTools } from '../tools/filesystem';
-import { memoryTools, closeMemory } from '../tools/memory';
+import { createCodebaseRAG } from '../core/rag'
+import { instrumentTools } from '../core/tool-instrumentation'
+import { createAgentTools } from '../tools/agent'
+import {
+  persistentBackgroundTaskTools,
+  getPersistentTaskManager,
+} from '../tools/background-tasks-persistent'
+import { createCodebaseTools } from '../tools/codebase'
+import { createDeviceTools } from '../tools/device/index'
+import { fetchPageTool } from '../tools/fetch-page'
+import { createFilesystemTools } from '../tools/filesystem'
+import { memoryTools, closeMemory } from '../tools/memory'
 import {
   type ToolRegistry,
   createToolRegistry,
   createToolSearchTool,
   createActivateToolTool,
   createDeactivateToolTool,
-} from '../tools/registry';
-import { sequentialThinkingTool, resetSequentialThinkingEngine } from '../tools/sequential-thinking';
-import { shellTool } from '../tools/shell';
+} from '../tools/registry'
 import {
-  createToolActivationManager,
-} from '../tools/tool-wrapper';
-import { webSearchTool } from '../tools/web-search';
-import { planTool, validationTool } from '../tools/workflow';
+  sequentialThinkingTool,
+  resetSequentialThinkingEngine,
+} from '../tools/sequential-thinking'
+import { shellTool } from '../tools/shell'
+import { createToolActivationManager } from '../tools/tool-wrapper'
+import { webSearchTool } from '../tools/web-search'
+import { planTool, validationTool } from '../tools/workflow'
 
 /**
  * Core tools that are always available without requiring activation.
@@ -99,6 +104,10 @@ export async function initializeAgent(config: InitializationConfig = {}): Promis
     ...agentTools,
   };
 
+  const deviceTools = createDeviceTools({
+    serverUrl: process.env['AGENT_SERVER_URL'] ?? 'http://localhost:3000',
+  })
+
   const deferredTools = {
     shell: shellTool,
     web_search: webSearchTool,
@@ -108,7 +117,8 @@ export async function initializeAgent(config: InitializationConfig = {}): Promis
     ...persistentBackgroundTaskTools,
     ...workspaceTools,
     ...filesystemTools,
-  };
+    ...deviceTools,
+  }
 
   registry.registerMany(activeTools, { deferLoading: false });
   registry.registerMany(deferredTools, { deferLoading: true });

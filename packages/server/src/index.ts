@@ -1,14 +1,17 @@
-import { type Server } from 'node:http';
-import { join } from 'node:path';
+import { type Server } from 'node:http'
+import { join } from 'node:path'
 
-import { createAgentRuntime, type AgentSession, type AgentRuntime, type TaskResult } from '@agent/core';
-import { logger } from '@agent/shared';
-import { serve } from '@hono/node-server';
-import { config } from 'dotenv';
-import { Hono, type Context } from 'hono';
-import { cors } from 'hono/cors';
-import { streamSSE } from 'hono/streaming';
-import { WebSocketServer, type WebSocket } from 'ws';
+import { createAgentRuntime, type AgentSession, type AgentRuntime, type TaskResult } from '@agent/core'
+import { logger } from '@agent/shared'
+import type { DeviceAction, DeviceCapabilities, ActionResult } from '@agent/shared'
+import { serve } from '@hono/node-server'
+import { config } from 'dotenv'
+import { Hono, type Context } from 'hono'
+import { cors } from 'hono/cors'
+import { streamSSE } from 'hono/streaming'
+import { WebSocketServer, type WebSocket } from 'ws'
+
+import { DeviceRegistry } from './devices/index.js'
 
 // Load environment variables from root .env
 config({ path: join(process.cwd(), '../../.env') });
@@ -19,7 +22,8 @@ export interface ServerConfig {
   corsOrigin?: string | string[];
 }
 
-const sessions = new Map<string, AgentSession>();
+const sessions = new Map<string, AgentSession>()
+const deviceRegistry = new DeviceRegistry()
 
 interface CreateServerResult {
   app: Hono;
@@ -178,14 +182,32 @@ export async function createServer(config: ServerConfig = {}): Promise<CreateSer
   });
 
   app.post('/mobile/command', async (c: Context) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const body = await c.req.json<{ type: string;[key: string]: any }>();
+    const body = await c.req.json<{ type: string; [key: string]: unknown }>()
     if (!mobileClient) {
-      return c.json({ error: 'Mobile client not connected' }, 400);
+      return c.json({ error: 'Mobile client not connected' }, 400)
     }
-    mobileClient.send(JSON.stringify(body));
-    return c.json({ success: true });
-  });
+    mobileClient.send(JSON.stringify(body))
+    return c.json({ success: true })
+  })
+
+  app.get('/devices', (c: Context) => {
+    return c.json({ devices: deviceRegistry.listDevices() })
+  })
+
+  app.post('/devices/:deviceId/action', async (c: Context) => {
+    const deviceId = c.req.param('deviceId')
+    const action = await c.req.json<DeviceAction>()
+    try {
+      const result = await deviceRegistry.executeAction(deviceId, action)
+      return c.json(result)
+    } catch (error) {
+      return c.json({
+        success: false,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        code: 'UNKNOWN',
+      })
+    }
+  })
 
   return { app, runtime, port };
 }
@@ -220,19 +242,45 @@ export async function startServer(config: ServerConfig = {}): Promise<StartServe
   const wss = new WebSocketServer({ server });
 
   wss.on('connection', (ws) => {
-    logger.info('Mobile client connected');
-    mobileClient = ws;
+    let deviceId: string | null = null
 
     ws.on('message', (message) => {
-      // eslint-disable-next-line @typescript-eslint/no-base-to-string
-      logger.info('Received from mobile:', { message: message.toString() });
-    });
+      const data = JSON.parse(message.toString()) as {
+        type?: string
+        capabilities?: DeviceCapabilities
+        actionId?: string
+        result?: ActionResult
+      }
+
+      if (data.type === 'device:register' && data.capabilities) {
+        deviceId = deviceRegistry.register(ws, data.capabilities)
+        logger.info('Device registered', { deviceId, platform: data.capabilities.platform })
+        return
+      }
+
+      if (data.type === 'action:result' && deviceId && data.actionId && data.result) {
+        deviceRegistry.handleActionResult(deviceId, data.actionId, data.result)
+        return
+      }
+
+      if (!deviceId) {
+        logger.info('Mobile client connected')
+        mobileClient = ws
+      }
+
+      logger.info('Received message:', { message: message.toString() })
+    })
 
     ws.on('close', () => {
-      logger.info('Mobile client disconnected');
-      mobileClient = null;
-    });
-  });
+      if (deviceId) {
+        deviceRegistry.unregister(deviceId)
+        logger.info('Device unregistered', { deviceId })
+      } else {
+        logger.info('Mobile client disconnected')
+        mobileClient = null
+      }
+    })
+  })
 
   const shutdown = async (): Promise<void> => {
     logger.info('Shutting down server...');

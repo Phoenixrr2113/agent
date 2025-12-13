@@ -2,6 +2,7 @@ package agent.accessibility
 
 import expo.modules.kotlin.modules.Module
 import expo.modules.kotlin.modules.ModuleDefinition
+import expo.modules.kotlin.Promise
 import android.accessibilityservice.GestureDescription
 import android.graphics.Path
 import android.util.Log
@@ -16,34 +17,75 @@ class AgentAccessibilityModule : Module() {
 
     AsyncFunction("click") { x: Float, y: Float ->
       val service = AgentAccessibilityService.instance ?: throw Exception("Accessibility Service not enabled")
-      
+
       val path = Path()
       path.moveTo(x, y)
       val builder = GestureDescription.Builder()
       val gestureDescription = builder
         .addStroke(GestureDescription.StrokeDescription(path, 0, 50))
         .build()
-        
+
       val result = service.dispatchGesture(gestureDescription, null, null)
       Log.d("AgentAccessibility", "Click at $x, $y: $result")
       return@AsyncFunction result
     }
-    
+
+    AsyncFunction("longPress") { x: Float, y: Float, durationMs: Long ->
+      val service = AgentAccessibilityService.instance ?: throw Exception("Accessibility Service not enabled")
+
+      val path = Path()
+      path.moveTo(x, y)
+      val duration = if (durationMs > 0) durationMs else 500L
+      val builder = GestureDescription.Builder()
+      val gestureDescription = builder
+        .addStroke(GestureDescription.StrokeDescription(path, 0, duration))
+        .build()
+
+      val result = service.dispatchGesture(gestureDescription, null, null)
+      Log.d("AgentAccessibility", "LongPress at $x, $y for ${duration}ms: $result")
+      return@AsyncFunction result
+    }
+
     AsyncFunction("swipe") { x1: Float, y1: Float, x2: Float, y2: Float, duration: Long ->
-        val service = AgentAccessibilityService.instance ?: throw Exception("Accessibility Service not enabled")
-        
-        val path = Path()
-        path.moveTo(x1, y1)
-        path.lineTo(x2, y2)
-        
-        val builder = GestureDescription.Builder()
-        val gestureDescription = builder
-            .addStroke(GestureDescription.StrokeDescription(path, 0, duration))
-            .build()
-            
-        val result = service.dispatchGesture(gestureDescription, null, null)
-        Log.d("AgentAccessibility", "Swipe from $x1,$y1 to $x2,$y2: $result")
-        return@AsyncFunction result
+      val service = AgentAccessibilityService.instance ?: throw Exception("Accessibility Service not enabled")
+
+      val path = Path()
+      path.moveTo(x1, y1)
+      path.lineTo(x2, y2)
+
+      val builder = GestureDescription.Builder()
+      val gestureDescription = builder
+        .addStroke(GestureDescription.StrokeDescription(path, 0, duration))
+        .build()
+
+      val result = service.dispatchGesture(gestureDescription, null, null)
+      Log.d("AgentAccessibility", "Swipe from $x1,$y1 to $x2,$y2: $result")
+      return@AsyncFunction result
+    }
+
+    AsyncFunction("type") { text: String ->
+      val service = AgentAccessibilityService.instance ?: throw Exception("Accessibility Service not enabled")
+      return@AsyncFunction service.typeText(text)
+    }
+
+    AsyncFunction("pressKey") { keyAction: String ->
+      val service = AgentAccessibilityService.instance ?: throw Exception("Accessibility Service not enabled")
+      return@AsyncFunction service.pressKey(keyAction)
+    }
+
+    AsyncFunction("screenshot") Coroutine { ->
+      val service = AgentAccessibilityService.instance ?: throw Exception("Accessibility Service not enabled")
+      return@Coroutine kotlinx.coroutines.suspendCancellableCoroutine<String?> { continuation ->
+        service.takeScreenshotAsync { base64 ->
+          continuation.resume(base64, null)
+        }
+      }
+    }
+
+    AsyncFunction("getUITree") { ->
+      val service = AgentAccessibilityService.instance ?: throw Exception("Accessibility Service not enabled")
+      val tree = service.getUITree()
+      return@AsyncFunction tree?.toString()
     }
 
     Function("showOverlay") {
@@ -65,3 +107,4 @@ class AgentAccessibilityModule : Module() {
     }
   }
 }
+
