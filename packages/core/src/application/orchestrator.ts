@@ -44,7 +44,9 @@ function cleanAIText(text: string): string {
   return cleaned;
 }
 
-export function createStepFinishHandler() {
+import type { StreamEventCallback } from '@agent/shared';
+
+export function createStepFinishHandler(onEvent?: StreamEventCallback) {
   let stepCount = 0;
   let stepStartTime = 0;
 
@@ -52,6 +54,15 @@ export function createStepFinishHandler() {
     stepCount++;
     const stepEndTime = performance.now();
     const stepDuration = stepStartTime > 0 ? stepEndTime - stepStartTime : 0;
+    const timestamp = Date.now();
+
+    if (onEvent) {
+      await onEvent({
+        type: 'step:start',
+        data: { stepIndex: stepCount },
+        timestamp,
+      });
+    }
 
     console.log('\n' + '═'.repeat(80));
     console.log(`📈 STEP ${stepCount} ${stepDuration > 0 ? `(${stepDuration.toFixed(2)}ms)` : ''}`);
@@ -63,6 +74,14 @@ export function createStepFinishHandler() {
         console.log('\n💭 AI THINKING:');
         console.log('─'.repeat(40));
         console.log(cleanedText);
+
+        if (onEvent) {
+          await onEvent({
+            type: 'text:delta',
+            data: { delta: cleanedText, stepIndex: stepCount },
+            timestamp: Date.now(),
+          });
+        }
       }
     }
 
@@ -71,6 +90,19 @@ export function createStepFinishHandler() {
         const tc = stepResult.toolCalls[index];
         if (!tc) continue;
         const tr = stepResult.toolResults?.find(r => r.toolCallId === tc.toolCallId);
+
+        if (onEvent) {
+          await onEvent({
+            type: 'tool:call',
+            data: {
+              toolCallId: tc.toolCallId,
+              toolName: tc.toolName,
+              args: tc.input as Record<string, unknown>,
+              stepIndex: stepCount,
+            },
+            timestamp: Date.now(),
+          });
+        }
 
         const timing = (tr as any)?.timing;
         const timingString = timing ? ` (${timing.toFixed(2)}ms)` : '';
@@ -100,12 +132,34 @@ export function createStepFinishHandler() {
           } else {
             console.log('(no output)');
           }
+
+          if (onEvent) {
+            await onEvent({
+              type: 'tool:result',
+              data: {
+                toolCallId: tc.toolCallId,
+                toolName: tc.toolName,
+                result: tr.output,
+                durationMs: timing ?? 0,
+                stepIndex: stepCount,
+              },
+              timestamp: Date.now(),
+            });
+          }
         } else {
           console.log('\n📤 OUTPUT: (tool execution pending)');
         }
       }
     } else {
       console.log('\n💬 No tool calls this step');
+    }
+
+    if (onEvent) {
+      await onEvent({
+        type: 'step:finish',
+        data: { stepIndex: stepCount, durationMs: stepDuration },
+        timestamp: Date.now(),
+      });
     }
 
     console.log('\n');
@@ -140,5 +194,37 @@ export function createAgent(
     stopWhen,
     prepareStep: createPrepareStep(activationManager),
     onStepFinish: createStepFinishHandler(),
+  });
+}
+
+export function createAgentWithStreaming(
+  tools: Record<string, any>,
+  options: {
+    maxSteps?: number;
+    activationManager?: any;
+    role?: AgentRole;
+    onEvent?: StreamEventCallback;
+  } = {}
+) {
+  const { maxSteps = 50, activationManager, role = 'generic', onEvent } = options;
+
+  const stopWhen = ({ steps }: { steps: Array<StepResult<any>> }) => {
+    const taskCompleted = steps.some((step) =>
+      step.toolCalls?.some((tc) => tc.toolName === 'task_complete')
+    );
+
+    if (taskCompleted) {
+      logger.info('✅ Task marked as complete by agent');
+      return true;
+    }
+
+    return stepCountIs(maxSteps)({ steps });
+  };
+
+  return createAgentWithRole(role, tools, {
+    modelType: 'standard',
+    stopWhen,
+    prepareStep: createPrepareStep(activationManager),
+    onStepFinish: createStepFinishHandler(onEvent),
   });
 }

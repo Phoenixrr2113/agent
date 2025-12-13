@@ -5,7 +5,8 @@ import type {
   SessionResponse,
   HistoryResponse,
   HealthResponse,
-} from './types';
+  StreamingChatCallbacks,
+} from './types.js';
 
 export class AgentHttpClient {
   private baseUrl: string;
@@ -135,6 +136,62 @@ export class AgentHttpClient {
       }
     } finally {
       reader.releaseLock();
+    }
+  }
+
+  async chatStreamWithCallbacks(
+    sessionId: string,
+    message: string,
+    callbacks: StreamingChatCallbacks
+  ): Promise<void> {
+    for await (const { event, data } of this.chatStream(sessionId, message)) {
+      switch (event) {
+        case 'session:start':
+          callbacks.onSessionStart?.(data as { sessionId: string });
+          break;
+        case 'step:start':
+          callbacks.onStepStart?.(data as { stepIndex: number });
+          break;
+        case 'step:finish':
+          callbacks.onStepFinish?.(data as { stepIndex: number; durationMs: number });
+          break;
+        case 'text:delta':
+          callbacks.onTextDelta?.(data as { delta: string; stepIndex: number });
+          break;
+        case 'reasoning:delta':
+          callbacks.onReasoningDelta?.(data as { delta: string; stepIndex: number });
+          break;
+        case 'tool:call':
+          callbacks.onToolCall?.(data as {
+            toolCallId: string;
+            toolName: string;
+            args: Record<string, unknown>;
+            stepIndex: number;
+          });
+          break;
+        case 'tool:result':
+          callbacks.onToolResult?.(data as {
+            toolCallId: string;
+            toolName: string;
+            result: unknown;
+            durationMs: number;
+            stepIndex: number;
+          });
+          break;
+        case 'complete':
+          callbacks.onComplete?.(data as {
+            text: string;
+            completed: boolean;
+            needsInput: boolean;
+            pendingQuestion?: string;
+            stepsUsed: number;
+            toolsUsed: string[];
+          });
+          break;
+        case 'error':
+          callbacks.onError?.(data as { message: string; code?: string });
+          break;
+      }
     }
   }
 }

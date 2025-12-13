@@ -1,7 +1,7 @@
-import { logger, createPerformanceTimer, type PerformanceTimer } from '@agent/shared';
+import { logger, createPerformanceTimer, type PerformanceTimer, type StreamEventCallback } from '@agent/shared';
 
 import { initializeAgent } from '../application/initialization.js';
-import { createAgent } from '../application/orchestrator.js';
+import { createAgent, createAgentWithStreaming } from '../application/orchestrator.js';
 import { createMemoryExtractor } from '../core/memory/extractor.js';
 import { getPersistentTaskManager } from '../tools/background-tasks-persistent.js';
 import { getMemoryProvider } from '../tools/memory.js';
@@ -41,6 +41,7 @@ export type AskUserHandler = (question: string) => Promise<string>;
 
 export interface AgentSession {
   send(message: string): Promise<TaskResult>;
+  sendWithEvents(message: string, onEvent: StreamEventCallback): Promise<TaskResult>;
   runTask(input: TaskInput): Promise<TaskResult>;
   getHistory(): ModelMessage[];
   clearHistory(): void;
@@ -283,6 +284,122 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
 
     return {
       send: async (message: string) => runTask({ prompt: message }),
+      sendWithEvents: async (message: string, onEvent: StreamEventCallback): Promise<TaskResult> => {
+        await onEvent({
+          type: 'session:start',
+          data: { sessionId: crypto.randomUUID() },
+          timestamp: Date.now(),
+        });
+
+        performanceTimer.reset();
+        performanceTimer.start('runTask', 'agent-runtime', {
+          hasPrompt: true,
+          hasMessages: false,
+        });
+
+        conversationHistory.push({ role: 'user', content: message });
+
+        logger.info('🧠 Sending request to AI model (streaming)...');
+        logger.debug('📤 Messages being sent', { count: conversationHistory.length });
+
+        performanceTimer.start('agent.generate', 'agent-runtime', {
+          messageCount: conversationHistory.length,
+        });
+
+        const streamingAgent = createAgentWithStreaming(tools, {
+          activationManager,
+          maxSteps: config.maxSteps || 50,
+          role: config.role || 'generic',
+          onEvent,
+        });
+
+        const result = await streamingAgent.generate({
+          messages: conversationHistory,
+        });
+
+        const agentExecutionMs = performanceTimer.end('agent.generate', 'agent-runtime', {
+          steps: result.steps.length,
+        });
+
+        logger.info('✅ AI model responded (streaming)', {
+          elapsedMs: agentExecutionMs?.toFixed(2),
+          elapsedSec: agentExecutionMs ? (agentExecutionMs / 1000).toFixed(2) : 'unknown',
+          steps: result.steps.length,
+        });
+
+        conversationHistory.push(...result.response.messages);
+
+        Promise.resolve()
+          .then(() => memoryExtractor.extractFromConversation(conversationHistory))
+          .catch(error => {
+            logger.error('Background memory extraction failed', { error: String(error) });
+          });
+
+        let codebaseIndexingMs: number | undefined;
+        if (codebaseRAG) {
+          const modifiedFiles = result.steps.some((step: any) =>
+            step.toolCalls?.some((tc: any) =>
+              ['write_file', 'edit_file', 'create_directory'].includes(tc.toolName)
+            )
+          );
+          if (modifiedFiles) {
+            performanceTimer.start('codebase.reindex', 'agent-runtime');
+            await codebaseRAG.indexCodebase();
+            codebaseIndexingMs = performanceTimer.end('codebase.reindex', 'agent-runtime');
+          }
+        }
+
+        const completed = result.steps.some((step: any) =>
+          step.toolCalls?.some((tc: any) => tc.toolName === 'task_complete')
+        );
+
+        const toolsUsed: string[] = [...new Set(
+          result.steps.flatMap((step: any) =>
+            step.toolCalls?.map((tc: any) => tc.toolName) || []
+          )
+        )];
+
+        const askUserCall = result.steps
+          .flatMap((step: any) => step.toolCalls || [])
+          .find((tc: any) => tc.toolName === 'ask_user');
+
+        const needsInput = !!askUserCall;
+        const pendingQuestion = askUserCall?.args?.question as string | undefined;
+
+        const totalDurationMs = performanceTimer.end('runTask', 'agent-runtime');
+
+        performanceTimer.logSummary();
+
+        const taskResult: TaskResult = {
+          text: result.text,
+          messages: result.response.messages,
+          completed,
+          needsInput,
+          pendingQuestion,
+          stepsUsed: result.steps.length,
+          toolsUsed,
+          performanceMetrics: {
+            totalDurationMs: totalDurationMs ?? 0,
+            agentExecutionMs: agentExecutionMs ?? 0,
+            codebaseIndexingMs,
+          },
+        };
+
+        await onEvent({
+          type: 'complete',
+          data: {
+            text: taskResult.text,
+            completed: taskResult.completed,
+            needsInput: taskResult.needsInput,
+            pendingQuestion: taskResult.pendingQuestion,
+            stepsUsed: taskResult.stepsUsed,
+            toolsUsed: taskResult.toolsUsed,
+          },
+          timestamp: Date.now(),
+        });
+
+        return taskResult;
+      },
       runTask,
       getHistory: () => [...conversationHistory],
       clearHistory: () => {

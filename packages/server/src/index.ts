@@ -106,14 +106,23 @@ export async function createServer(config: ServerConfig = {}): Promise<CreateSer
     }
 
     return streamSSE(c, async (stream) => {
-      await stream.writeSSE({ event: 'start', data: JSON.stringify({ sessionId }) });
-      
-      const result = await session.send(message);
-      
-      await stream.writeSSE({ 
-        event: 'complete', 
-        data: JSON.stringify(formatResult(result)) 
-      });
+      try {
+        await session.sendWithEvents(message, async (event) => {
+          await stream.writeSSE({
+            event: event.type,
+            data: JSON.stringify(event.data),
+          });
+        });
+      } catch (error) {
+        logger.error('Streaming error', { error: String(error), sessionId });
+        await stream.writeSSE({
+          event: 'error',
+          data: JSON.stringify({
+            message: error instanceof Error ? error.message : 'Unknown error',
+            code: 'STREAM_ERROR',
+          }),
+        });
+      }
     });
   });
 

@@ -1,6 +1,6 @@
-export { AgentClient, type AgentClientOptions } from './agent-client';
-export { AgentHttpClient } from './http-client';
-export { AgentWebSocketClient, type WebSocketClientConfig } from './websocket-client';
+export { AgentClient, type AgentClientOptions } from './agent-client.js';
+export { AgentHttpClient } from './http-client.js';
+export { AgentWebSocketClient, type WebSocketClientConfig } from './websocket-client.js';
 export type {
   ChatMessage,
   ChatRequest,
@@ -8,8 +8,18 @@ export type {
   SessionResponse,
   HistoryResponse,
   HealthResponse,
-  StreamEvent,
   AgentClientConfig,
   ConnectionState,
   WebSocketMessage,
-} from './types';
+  StreamingChatCallbacks,
+  StreamEventType,
+  StreamEvent,
+  StreamEventCallback,
+  TextDeltaData,
+  ToolCallData,
+  ToolResultData,
+  CompleteData,
+  StreamingMessage,
+  ToolCallInfo,
+  SourceInfo,
+} from './types.js';

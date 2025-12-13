@@ -1,4 +1,4 @@
-import type { ConnectionState, WebSocketMessage } from './types';
+import type { ConnectionState, WebSocketMessage } from './types.js';
 
 export interface WebSocketClientConfig {
   url: string;

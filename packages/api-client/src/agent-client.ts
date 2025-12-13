@@ -1,12 +1,13 @@
-import { AgentHttpClient } from './http-client';
-import { AgentWebSocketClient } from './websocket-client';
+import { AgentHttpClient } from './http-client.js';
+import { AgentWebSocketClient } from './websocket-client.js';
 import type {
   AgentClientConfig,
   ChatMessage,
   ChatResponse,
   ConnectionState,
   WebSocketMessage,
-} from './types';
+  StreamingChatCallbacks,
+} from './types.js';
 
 export interface AgentClientOptions extends AgentClientConfig {
   enableWebSocket?: boolean;
@@ -62,6 +63,14 @@ export class AgentClient {
     }
 
     yield* this.http.chatStream(this.sessionId!, message);
+  }
+
+  async streamMessageWithCallbacks(message: string, callbacks: StreamingChatCallbacks): Promise<void> {
+    if (!this.sessionId) {
+      await this.initialize();
+    }
+
+    await this.http.chatStreamWithCallbacks(this.sessionId!, message, callbacks);
   }
 
   async getHistory(): Promise<ChatMessage[]> {

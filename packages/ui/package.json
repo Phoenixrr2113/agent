@@ -15,6 +15,9 @@
     "react-native": ">=0.70.0",
     "react-native-safe-area-context": ">=4.0.0"
   },
+  "dependencies": {
+    "@agent/api-client": "workspace:*"
+  },
   "devDependencies": {
     "@types/react": "^19.1.0",
     "react": "^19.1.0",
