@@ -27,3 +27,4 @@ packages/shared/tsconfig.tsbuildinfo
 *.tsbuildinfo
 packages/core/test-memory-switch.db-shm
 packages/core/test-memory-switch.db-wal
+.eslintcache

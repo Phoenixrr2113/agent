@@ -1,112 +1,183 @@
-import { Image } from 'expo-image';
-import { Platform, StyleSheet } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import {
+  View,
+  Text,
+  TextInput,
+  Pressable,
+  ScrollView,
+  Alert,
+  Platform,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { AgentClient } from '@agent/api-client';
+import { useSettings } from '@/context/settings';
 
-import { ExternalLink } from '@/components/external-link';
-import ParallaxScrollView from '@/components/parallax-scroll-view';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
-import { Collapsible } from '@/components/ui/collapsible';
-import { IconSymbol } from '@/components/ui/icon-symbol';
-import { Fonts } from '@/constants/theme';
+export default function SettingsScreen() {
+  const { settings, updateSettings, isLoading } = useSettings();
+  const [serverUrl, setServerUrl] = useState(settings.serverUrl);
+  const [isTesting, setIsTesting] = useState(false);
+  const [testResult, setTestResult] = useState<'success' | 'error' | null>(null);
 
-export default function TabTwoScreen() {
+  const testConnection = useCallback(async () => {
+    setIsTesting(true);
+    setTestResult(null);
+
+    try {
+      const client = new AgentClient({ baseUrl: serverUrl });
+      const healthy = await client.checkHealth();
+
+      if (healthy) {
+        setTestResult('success');
+        Alert.alert('Success', 'Connected to agent server successfully!');
+      } else {
+        setTestResult('error');
+        Alert.alert('Error', 'Server is not responding. Check the URL and make sure the server is running.');
+      }
+    } catch (error) {
+      setTestResult('error');
+      Alert.alert('Error', `Failed to connect: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsTesting(false);
+    }
+  }, [serverUrl]);
+
+  const saveSettings = useCallback(async () => {
+    await updateSettings({ serverUrl });
+    Alert.alert('Saved', 'Settings have been saved.');
+  }, [serverUrl, updateSettings]);
+
+  const resetToDefault = useCallback(() => {
+    const defaultUrl = Platform.OS === 'android' ? 'http://10.0.2.2:3000' : 'http://localhost:3000';
+    setServerUrl(defaultUrl);
+    updateSettings({ serverUrl: defaultUrl });
+  }, [updateSettings]);
+
+  if (isLoading) {
+    return (
+      <SafeAreaView className="flex-1 bg-white dark:bg-gray-900 items-center justify-center">
+        <Text className="text-gray-500">Loading settings...</Text>
+      </SafeAreaView>
+    );
+  }
+
   return (
-    <ParallaxScrollView
-      headerBackgroundColor={{ light: '#D0D0D0', dark: '#353636' }}
-      headerImage={
-        <IconSymbol
-          size={310}
-          color="#808080"
-          name="chevron.left.forwardslash.chevron.right"
-          style={styles.headerImage}
-        />
-      }>
-      <ThemedView style={styles.titleContainer}>
-        <ThemedText
-          type="title"
-          style={{
-            fontFamily: Fonts.rounded,
-          }}>
-          Explore
-        </ThemedText>
-      </ThemedView>
-      <ThemedText>This app includes example code to help you get started.</ThemedText>
-      <Collapsible title="File-based routing">
-        <ThemedText>
-          This app has two screens:{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/index.tsx</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">app/(tabs)/explore.tsx</ThemedText>
-        </ThemedText>
-        <ThemedText>
-          The layout file in <ThemedText type="defaultSemiBold">app/(tabs)/_layout.tsx</ThemedText>{' '}
-          sets up the tab navigator.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/router/introduction">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Android, iOS, and web support">
-        <ThemedText>
-          You can open this project on Android, iOS, and the web. To open the web version, press{' '}
-          <ThemedText type="defaultSemiBold">w</ThemedText> in the terminal running this project.
-        </ThemedText>
-      </Collapsible>
-      <Collapsible title="Images">
-        <ThemedText>
-          For static images, you can use the <ThemedText type="defaultSemiBold">@2x</ThemedText> and{' '}
-          <ThemedText type="defaultSemiBold">@3x</ThemedText> suffixes to provide files for
-          different screen densities
-        </ThemedText>
-        <Image
-          source={require('@/assets/images/react-logo.png')}
-          style={{ width: 100, height: 100, alignSelf: 'center' }}
-        />
-        <ExternalLink href="https://reactnative.dev/docs/images">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Light and dark mode components">
-        <ThemedText>
-          This template has light and dark mode support. The{' '}
-          <ThemedText type="defaultSemiBold">useColorScheme()</ThemedText> hook lets you inspect
-          what the user&apos;s current color scheme is, and so you can adjust UI colors accordingly.
-        </ThemedText>
-        <ExternalLink href="https://docs.expo.dev/develop/user-interface/color-themes/">
-          <ThemedText type="link">Learn more</ThemedText>
-        </ExternalLink>
-      </Collapsible>
-      <Collapsible title="Animations">
-        <ThemedText>
-          This template includes an example of an animated component. The{' '}
-          <ThemedText type="defaultSemiBold">components/HelloWave.tsx</ThemedText> component uses
-          the powerful{' '}
-          <ThemedText type="defaultSemiBold" style={{ fontFamily: Fonts.mono }}>
-            react-native-reanimated
-          </ThemedText>{' '}
-          library to create a waving hand animation.
-        </ThemedText>
-        {Platform.select({
-          ios: (
-            <ThemedText>
-              The <ThemedText type="defaultSemiBold">components/ParallaxScrollView.tsx</ThemedText>{' '}
-              component provides a parallax effect for the header image.
-            </ThemedText>
-          ),
-        })}
-      </Collapsible>
-    </ParallaxScrollView>
+    <SafeAreaView className="flex-1 bg-white dark:bg-gray-900" edges={['top']}>
+      {/* Header */}
+      <View className="py-3 px-4 border-b border-gray-200 dark:border-gray-700">
+        <Text className="text-lg font-semibold text-center text-gray-900 dark:text-white">
+          Settings
+        </Text>
+      </View>
+
+      <ScrollView className="flex-1" contentContainerStyle={{ padding: 16 }}>
+        {/* Server Configuration */}
+        <View className="mb-6">
+          <Text className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
+            Server Configuration
+          </Text>
+
+          <View className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4">
+            <Text className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              Agent Server URL
+            </Text>
+            <TextInput
+              className="bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg px-4 py-3 text-base text-gray-900 dark:text-white mb-3"
+              value={serverUrl}
+              onChangeText={setServerUrl}
+              placeholder="http://localhost:3000"
+              placeholderTextColor="#9CA3AF"
+              autoCapitalize="none"
+              autoCorrect={false}
+              keyboardType="url"
+            />
+
+            <View className="flex-row gap-2">
+              <Pressable
+                onPress={testConnection}
+                disabled={isTesting}
+                className={`flex-1 py-3 rounded-lg items-center ${
+                  isTesting ? 'bg-gray-300 dark:bg-gray-600' : 'bg-primary'
+                }`}
+              >
+                <Text className="text-white font-semibold">
+                  {isTesting ? 'Testing...' : 'Test Connection'}
+                </Text>
+              </Pressable>
+
+              <Pressable
+                onPress={saveSettings}
+                className="flex-1 py-3 rounded-lg items-center bg-green-500"
+              >
+                <Text className="text-white font-semibold">Save</Text>
+              </Pressable>
+            </View>
+
+            {testResult && (
+              <View className={`mt-3 p-3 rounded-lg ${
+                testResult === 'success'
+                  ? 'bg-green-50 dark:bg-green-900/30'
+                  : 'bg-red-50 dark:bg-red-900/30'
+              }`}>
+                <Text className={`text-sm ${
+                  testResult === 'success'
+                    ? 'text-green-600 dark:text-green-400'
+                    : 'text-red-600 dark:text-red-400'
+                }`}>
+                  {testResult === 'success' ? '✓ Connection successful' : '✗ Connection failed'}
+                </Text>
+              </View>
+            )}
+
+            <Pressable onPress={resetToDefault} className="mt-3">
+              <Text className="text-sm text-primary text-center">Reset to Default</Text>
+            </Pressable>
+          </View>
+        </View>
+
+        {/* App Info */}
+        <View className="mb-6">
+          <Text className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
+            About
+          </Text>
+
+          <View className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4">
+            <View className="flex-row justify-between py-2 border-b border-gray-200 dark:border-gray-700">
+              <Text className="text-gray-600 dark:text-gray-400">Version</Text>
+              <Text className="text-gray-900 dark:text-white">0.1.0</Text>
+            </View>
+            <View className="flex-row justify-between py-2 border-b border-gray-200 dark:border-gray-700">
+              <Text className="text-gray-600 dark:text-gray-400">Platform</Text>
+              <Text className="text-gray-900 dark:text-white">{Platform.OS}</Text>
+            </View>
+            <View className="flex-row justify-between py-2">
+              <Text className="text-gray-600 dark:text-gray-400">Package</Text>
+              <Text className="text-gray-900 dark:text-white">@agent/mobile</Text>
+            </View>
+          </View>
+        </View>
+
+        {/* Instructions */}
+        <View className="mb-6">
+          <Text className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
+            Quick Start
+          </Text>
+
+          <View className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4">
+            <Text className="text-sm text-gray-600 dark:text-gray-400 leading-relaxed">
+              1. Start the agent server:{'\n'}
+              <Text className="font-mono text-primary">pnpm server</Text>
+              {'\n\n'}
+              2. The server runs on port 3000 by default.
+              {'\n\n'}
+              3. For Android emulator, use:{'\n'}
+              <Text className="font-mono text-primary">http://10.0.2.2:3000</Text>
+              {'\n\n'}
+              4. For iOS simulator or web, use:{'\n'}
+              <Text className="font-mono text-primary">http://localhost:3000</Text>
+            </Text>
+          </View>
+        </View>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
-
-const styles = StyleSheet.create({
-  headerImage: {
-    color: '#808080',
-    bottom: -90,
-    left: -35,
-    position: 'absolute',
-  },
-  titleContainer: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-});
