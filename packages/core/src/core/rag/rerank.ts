@@ -1,6 +1,6 @@
-import { rerank } from 'ai';
-import { cohere } from '@ai-sdk/cohere';
 import { logger } from '@agent/shared';
+import { cohere } from '@ai-sdk/cohere';
+import { rerank } from 'ai';
 
 export interface RerankDocument {
   id: string;
@@ -30,8 +30,8 @@ export async function rerankDocuments(
   }
 
   if (documents.length <= topN) {
-    return documents.map((doc, index) => ({
-      id: doc.id,
+    return documents.map((document, index) => ({
+      id: document.id,
       score: 1 - index / documents.length,
       rank: index + 1,
     }));
@@ -40,12 +40,12 @@ export async function rerankDocuments(
   const { ranking } = await rerank({
     model: cohere.reranking(model),
     query,
-    documents: documents.map((doc) => doc.content),
+    documents: documents.map((document) => document.content),
     topN,
   });
 
   return ranking.map((result: { originalIndex: number; score: number }, index: number) => ({
-    id: documents[result.originalIndex].id,
+    id: documents[result.originalIndex]?.id ?? 'unknown',
     score: result.score,
     rank: index + 1,
   }));
@@ -64,8 +64,8 @@ export async function rerankWithFallback(
       documentCount: documents.length,
       topN: options.topN || 20,
     });
-    return documents.slice(0, options.topN || 20).map((doc, index) => ({
-      id: doc.id,
+    return documents.slice(0, options.topN || 20).map((document, index) => ({
+      id: document.id,
       score: 1 - index / documents.length,
       rank: index + 1,
     }));

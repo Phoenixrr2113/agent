@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
 import { run, shutdown, resetSession, type HALAgentArgs } from './hal.js';
+
 import type { BenchmarkTask } from '../types.js';
 
 vi.mock('@agent/core', () => ({
@@ -16,7 +18,7 @@ vi.mock('@agent/core', () => ({
       }),
       clearHistory: vi.fn(),
     }),
-    shutdown: vi.fn().mockResolvedValue(undefined),
+    shutdown: vi.fn().mockResolvedValue(),
   })),
 }));
 

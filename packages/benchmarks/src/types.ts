@@ -26,9 +26,7 @@ export interface HALTaskResult {
   cost: number;
 }
 
-export interface HALRunResult {
-  [taskId: string]: HALTaskResult;
-}
+export type HALRunResult = Record<string, HALTaskResult>;
 
 export interface TauBenchAction {
   type: 'message' | 'tool_call';

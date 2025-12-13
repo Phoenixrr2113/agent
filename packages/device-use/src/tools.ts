@@ -1,17 +1,21 @@
 
-import { anthropic } from '@ai-sdk/anthropic';
+import { execSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
+import { readFile, writeFile } from 'node:fs/promises';
+
 import { logger } from '@agent/shared';
+import { anthropic } from '@ai-sdk/anthropic';
+
 import {
-  ComputerActionResult,
-  DeviceUseConfig,
-  BashCommand,
-  TextEditorCommand,
+  type ComputerActionResult,
+  type DeviceUseConfig,
+  type BashCommand,
+  type TextEditorCommand,
 } from './types.js';
 import { SafetyValidator } from './utils/safety.js';
-import { execSync } from 'child_process';
-import { readFile, writeFile } from 'fs/promises';
-import { existsSync } from 'fs';
-import { DeviceDriver } from './driver.js';
+
+
+import type { DeviceDriver } from './driver.js';
 
 export async function createDeviceTools(config: DeviceUseConfig) {
   let driver: DeviceDriver;
@@ -157,9 +161,9 @@ export async function createDeviceTools(config: DeviceUseConfig) {
             return `Unknown action: ${action}`;
         }
       } catch (error) {
-        const errorMsg = `Action failed: ${error instanceof Error ? error.message : 'Unknown error'}`;
-        logger.error(`[device-use] ${errorMsg}`);
-        return errorMsg;
+        const errorMessage = `Action failed: ${error instanceof Error ? error.message : 'Unknown error'}`;
+        logger.error(`[device-use] ${errorMessage}`);
+        return errorMessage;
       }
     },
     experimental_toToolResultContent(result: any) {
@@ -187,9 +191,9 @@ export async function createDeviceTools(config: DeviceUseConfig) {
         });
         return result;
       } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-        logger.error(`[device-use] Bash command failed: ${errorMsg}`);
-        return `Error: ${errorMsg}`;
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        logger.error(`[device-use] Bash command failed: ${errorMessage}`);
+        return `Error: ${errorMessage}`;
       }
     },
   });
@@ -276,9 +280,9 @@ export async function createDeviceTools(config: DeviceUseConfig) {
             return `Unknown command: ${command}`;
         }
       } catch (error) {
-        const errorMsg = error instanceof Error ? error.message : 'Unknown error';
-        logger.error(`[device-use] Text editor command failed: ${errorMsg}`);
-        return `Error: ${errorMsg}`;
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+        logger.error(`[device-use] Text editor command failed: ${errorMessage}`);
+        return `Error: ${errorMessage}`;
       }
     },
   });

@@ -1,7 +1,9 @@
-import fs from 'fs/promises';
-import path from 'path';
-import { StrategyRegistry, Chunk } from './strategies/index.js';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+
 import { logger } from '@agent/shared';
+
+import { type StrategyRegistry, type Chunk } from "./strategies";
 
 export async function scanWorkspace(
   workspaceRoot: string,
@@ -11,7 +13,7 @@ export async function scanWorkspace(
   const chunks: Chunk[] = [];
 
   // Directories to exclude from indexing (matches common .gitignore patterns)
-  const excludedDirs = new Set([
+  const excludedDirectories = new Set([
     'node_modules',
     'dist',
     '.git',
@@ -48,7 +50,7 @@ export async function scanWorkspace(
         const fullPath = path.join(dir, entry.name);
 
         // Skip excluded directories
-        if (entry.isDirectory() && excludedDirs.has(entry.name)) {
+        if (entry.isDirectory() && excludedDirectories.has(entry.name)) {
           continue;
         }
 

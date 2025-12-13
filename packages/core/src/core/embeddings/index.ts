@@ -1,19 +1,19 @@
-import { embed, embedMany, type EmbeddingModel } from 'ai';
-import { openai } from '@ai-sdk/openai';
-import { createOllama } from 'ollama-ai-provider-v2';
 import { logger } from '@agent/shared';
+import { openai } from '@ai-sdk/openai';
+import { embed, embedMany, type EmbeddingModel } from 'ai';
+import { createOllama } from 'ollama-ai-provider-v2';
 
 const ollama = createOllama({
-  baseURL: process.env.OLLAMA_BASE_URL || 'http://localhost:11434/api',
+  baseURL: process.env['OLLAMA_BASE_URL'] || 'http://localhost:11434/api',
 });
 
 export function getEmbeddingModel(modelOverride?: string): EmbeddingModel {
-  if (process.env.OLLAMA_ENABLED === 'true') {
-    const modelName = modelOverride || process.env.OLLAMA_EMBEDDING_MODEL || 'nomic-embed-text';
+  if (process.env['OLLAMA_ENABLED'] === 'true') {
+    const modelName = modelOverride || process.env['OLLAMA_EMBEDDING_MODEL'] || 'nomic-embed-text';
     logger.info('🔌 Using Ollama embedding model', { model: modelName });
     return ollama.textEmbeddingModel(modelName);
   }
-  const modelName = modelOverride || process.env.OPENAI_EMBEDDING_MODEL || 'text-embedding-3-small';
+  const modelName = modelOverride || process.env['OPENAI_EMBEDDING_MODEL'] || 'text-embedding-3-small';
   logger.info('🔌 Using OpenAI embedding model', { model: modelName });
   return openai.embedding(modelName);
 }
@@ -36,10 +36,12 @@ export function cosineSimilarity(a: number[], b: number[]): number {
   let normA = 0;
   let normB = 0;
 
-  for (let i = 0; i < a.length; i++) {
-    dotProduct += a[i] * b[i];
-    normA += a[i] * a[i];
-    normB += b[i] * b[i];
+  for (let index = 0; index < a.length; index++) {
+    const valueA = a[index] ?? 0;
+    const valueB = b[index] ?? 0;
+    dotProduct += valueA * valueB;
+    normA += valueA * valueA;
+    normB += valueB * valueB;
   }
 
   const denominator = Math.sqrt(normA) * Math.sqrt(normB);

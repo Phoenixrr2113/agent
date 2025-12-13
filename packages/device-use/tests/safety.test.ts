@@ -1,6 +1,7 @@
 import { describe, it, expect, beforeEach } from 'vitest';
+
+import { type DeviceUseConfig } from '../src/types.js';
 import { SafetyValidator } from '../src/utils/safety.js';
-import { DeviceUseConfig } from '../src/types.js';
 
 describe('SafetyValidator', () => {
   let validator: SafetyValidator;
@@ -50,7 +51,7 @@ describe('SafetyValidator', () => {
     });
 
     it('should allow undefined coordinates', () => {
-      const result = validator.validateCoordinate(undefined);
+      const result = validator.validateCoordinate();
       expect(result.valid).toBe(true);
     });
 

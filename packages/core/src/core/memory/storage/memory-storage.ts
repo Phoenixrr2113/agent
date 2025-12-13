@@ -1,6 +1,7 @@
+import { cosineSimilarity } from "../../embeddings";
+
 import type { Entity, Relation, Fact, Episode } from '../types.js';
 import type { StorageAdapter } from './types.js';
-import { cosineSimilarity } from '../../embeddings/index.js';
 
 export function createInMemoryStorage(): StorageAdapter {
   const entities = new Map<string, Entity>();
@@ -91,7 +92,7 @@ export function createInMemoryStorage(): StorageAdapter {
       },
     },
 
-    async transaction<T>(fn: () => Promise<T>) { return fn(); },
+    async transaction<T>(function_: () => Promise<T>) { return function_(); },
     async close() { entities.clear(); relations.clear(); facts.clear(); episodes.clear(); },
   };
 }

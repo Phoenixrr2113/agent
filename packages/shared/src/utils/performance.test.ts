@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeEach } from 'vitest';
-import { PerformanceTimer, createPerformanceTimer } from './performance.js';
+
+import { type PerformanceTimer, createPerformanceTimer } from './performance.js';
 
 describe('PerformanceTimer', () => {
   let timer: PerformanceTimer;
@@ -32,9 +33,9 @@ describe('PerformanceTimer', () => {
 
     const metrics = timer.getMetrics();
     expect(metrics.length).toBe(1);
-    expect(metrics[0].operation).toBe('parent');
-    expect(metrics[0].children).toBeDefined();
-    expect(metrics[0].children?.length).toBe(2);
+    expect(metrics[0]?.operation).toBe('parent');
+    expect(metrics[0]?.children).toBeDefined();
+    expect(metrics[0]?.children?.length).toBe(2);
   });
 
   it('should generate summary statistics', () => {
@@ -46,10 +47,13 @@ describe('PerformanceTimer', () => {
     timer.end('op2', 'comp2');
 
     const summary = timer.getSummary();
-    expect(summary.operations['[comp1] op1']).toBeDefined();
-    expect(summary.operations['[comp1] op1'].count).toBe(2);
-    expect(summary.operations['[comp2] op2']).toBeDefined();
-    expect(summary.operations['[comp2] op2'].count).toBe(1);
+    const op1 = summary.operations['[comp1] op1'];
+    const op2 = summary.operations['[comp2] op2'];
+
+    expect(op1).toBeDefined();
+    expect(op1?.count).toBe(2);
+    expect(op2).toBeDefined();
+    expect(op2?.count).toBe(1);
   });
 
   it('should measure sync function execution', () => {
@@ -62,8 +66,8 @@ describe('PerformanceTimer', () => {
     expect(result).toBe(42);
     const metrics = timer.getMetrics();
     expect(metrics.length).toBe(1);
-    expect(metrics[0].operation).toBe('sync-op');
-    expect(metrics[0].duration).toBeDefined();
+    expect(metrics[0]?.operation).toBe('sync-op');
+    expect(metrics[0]?.duration).toBeDefined();
   });
 
   it('should measure async function execution', async () => {
@@ -79,8 +83,8 @@ describe('PerformanceTimer', () => {
     expect(result).toBe('done');
     const metrics = timer.getMetrics();
     expect(metrics.length).toBe(1);
-    expect(metrics[0].operation).toBe('async-op');
-    expect(metrics[0].duration).toBeGreaterThanOrEqual(10);
+    expect(metrics[0]?.operation).toBe('async-op');
+    expect(metrics[0]?.duration).toBeGreaterThanOrEqual(10);
   });
 
   it('should handle errors in measured functions', async () => {
@@ -89,6 +93,7 @@ describe('PerformanceTimer', () => {
         'error-op',
         'component',
         async () => {
+          await Promise.resolve();
           throw new Error('test error');
         }
       );
@@ -96,7 +101,7 @@ describe('PerformanceTimer', () => {
 
     const metrics = timer.getMetrics();
     expect(metrics.length).toBe(1);
-    expect(metrics[0].metadata?.error).toBeDefined();
+    expect(metrics[0]?.metadata?.['error']).toBeDefined();
   });
 
   it('should reset metrics', () => {
@@ -117,11 +122,14 @@ describe('PerformanceTimer', () => {
     const summary = timer.getSummary();
     const op = summary.operations['[comp] test'];
 
-    expect(op.count).toBe(5);
-    expect(op.avgDuration).toBeDefined();
-    expect(op.minDuration).toBeDefined();
-    expect(op.maxDuration).toBeDefined();
-    expect(op.minDuration).toBeLessThanOrEqual(op.avgDuration);
-    expect(op.avgDuration).toBeLessThanOrEqual(op.maxDuration);
+    expect(op).toBeDefined();
+    expect(op?.count).toBe(5);
+    expect(op?.avgDuration).toBeDefined();
+    expect(op?.minDuration).toBeDefined();
+    expect(op?.maxDuration).toBeDefined();
+    if (op) {
+      expect(op.minDuration).toBeLessThanOrEqual(op.avgDuration);
+      expect(op.avgDuration).toBeLessThanOrEqual(op.maxDuration);
+    }
   });
 });

@@ -1,18 +1,20 @@
-import path from 'path';
+import path from 'node:path';
+
 import { logger } from '@agent/shared';
-import { createFileCache, computeHash, type Cache } from './cache.js';
+
 import { createBM25Index, type BM25Index } from './bm25.js';
-import { createDefaultRegistry, Chunk } from './strategies/index.js';
-import {
-  CodebaseRAG,
-  RAGOptions,
-  CachedFileData,
-  EmbeddedChunk,
-  SearchOptions
-} from './types.js';
-import { scanWorkspace } from './workspace-scanner.js';
+import { createFileCache, computeHash, type Cache } from './cache.js';
 import { processChunks } from './chunk-processor.js';
 import { executeSearch } from './search-engine.js';
+import { createDefaultRegistry, type Chunk } from "./strategies";
+import {
+  type CodebaseRAG,
+  type RAGOptions,
+  type CachedFileData,
+  type EmbeddedChunk,
+  type SearchOptions
+} from './types.js';
+import { scanWorkspace } from './workspace-scanner.js';
 
 export function createCodebaseRAG(
   workspaceRoot: string,

@@ -1,5 +1,7 @@
-import { Tool, embed } from 'ai';
-import { getEmbeddingModel, cosineSimilarity } from '../../core/embeddings/index.js';
+import { type Tool, embed } from 'ai';
+
+import { getEmbeddingModel, cosineSimilarity } from "../../core/embeddings";
+
 import type { ToolMetadata, RegisteredTool, ToolRegistrationOptions } from './types.js';
 
 function extractSchemaDescription(toolDef: Tool): string {
@@ -30,7 +32,7 @@ function extractSchemaDescription(toolDef: Tool): string {
 }
 
 export class ToolRegistry {
-  private tools: Map<string, RegisteredTool> = new Map();
+  private tools = new Map<string, RegisteredTool>();
 
   register(name: string, toolDef: Tool, options: ToolRegistrationOptions = {}): void {
     const description = (toolDef as any).description || options.description || '';
@@ -172,9 +174,9 @@ export class ToolRegistry {
         parts.push(`Tags: ${registered.metadata.tags.join(', ')}`);
       }
 
-      const paramDesc = extractSchemaDescription(registered.tool);
-      if (paramDesc) {
-        parts.push(paramDesc);
+      const parameterDesc = extractSchemaDescription(registered.tool);
+      if (parameterDesc) {
+        parts.push(parameterDesc);
       }
 
       if (registered.metadata.examples && registered.metadata.examples.length > 0) {

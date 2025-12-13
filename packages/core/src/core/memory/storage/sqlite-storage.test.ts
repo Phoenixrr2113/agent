@@ -1,7 +1,9 @@
+import fs from 'node:fs';
+import path from 'node:path';
+
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+
 import { createSQLiteStorage } from './sqlite-storage.js';
-import fs from 'fs';
-import path from 'path';
 
 describe('SQLite Storage - SQL Injection Protection', () => {
   const testDbPath = path.join(process.cwd(), 'test-sqlite-storage.db');

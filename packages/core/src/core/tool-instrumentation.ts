@@ -9,11 +9,11 @@ export interface InstrumentedToolResult {
   };
 }
 
-export function instrumentTool<TArgs = any, TResult = any>(
+export function instrumentTool<TArguments = any, TResult = any>(
   toolName: string,
-  execute: (args: TArgs) => Promise<TResult> | TResult
-): (args: TArgs) => Promise<TResult> {
-  return async (args: TArgs): Promise<TResult> => {
+  execute: (args: TArguments) => Promise<TResult> | TResult
+): (args: TArguments) => Promise<TResult> {
+  return async (args: TArguments): Promise<TResult> => {
     const startTime = performance.now();
 
     logger.info(`⏱️  [${toolName}] Starting`, { args });

@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
 import { createTauBenchAgent, runTauBenchTask, shutdown, type TauBenchConfig } from './tau-bench.js';
+
 import type { TauBenchMessage } from '../types.js';
 
 vi.mock('@agent/core', () => ({
@@ -16,7 +18,7 @@ vi.mock('@agent/core', () => ({
       }),
       clearHistory: vi.fn(),
     }),
-    shutdown: vi.fn().mockResolvedValue(undefined),
+    shutdown: vi.fn().mockResolvedValue(),
   })),
 }));
 

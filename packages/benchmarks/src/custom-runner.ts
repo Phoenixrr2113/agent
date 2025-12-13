@@ -1,11 +1,12 @@
 #!/usr/bin/env node
-import { config } from 'dotenv';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { createAgentRuntime, type AgentSession } from '@agent/core';
 import { logger } from '@agent/shared';
-import fs from 'fs/promises';
-import path from 'path';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
+import { config } from 'dotenv';
 
 // ES module __dirname equivalent
 const __filename = fileURLToPath(import.meta.url);
@@ -210,7 +211,7 @@ async function runTask(task: BenchmarkTask, workspace?: string): Promise<Benchma
 async function saveResults(
   outputFile: string,
   results: BenchmarkResult[],
-  partial: boolean = false
+  partial = false
 ): Promise<void> {
   const summary = calculateSummary(results);
   const data = {
@@ -322,25 +323,25 @@ function calculateSummary(results: BenchmarkResult[]): BenchmarkSummary {
     if (!byCategory[result.category]) {
       byCategory[result.category] = { total: 0, success: 0, avgDuration: 0 };
     }
-    byCategory[result.category].total++;
-    if (result.success) byCategory[result.category].success++;
-    byCategory[result.category].avgDuration += result.durationMs;
+    byCategory[result.category]!.total++;
+    if (result.success) byCategory[result.category]!.success++;
+    byCategory[result.category]!.avgDuration += result.durationMs;
 
     // By difficulty
     if (!byDifficulty[result.difficulty]) {
       byDifficulty[result.difficulty] = { total: 0, success: 0, avgScore: 0 };
     }
-    byDifficulty[result.difficulty].total++;
-    if (result.success) byDifficulty[result.difficulty].success++;
-    byDifficulty[result.difficulty].avgScore += result.score || 0;
+    byDifficulty[result.difficulty]!.total++;
+    if (result.success) byDifficulty[result.difficulty]!.success++;
+    byDifficulty[result.difficulty]!.avgScore += result.score || 0;
   }
 
   // Calculate averages
   for (const cat in byCategory) {
-    byCategory[cat].avgDuration /= byCategory[cat].total;
+    byCategory[cat]!.avgDuration /= byCategory[cat]!.total;
   }
   for (const diff in byDifficulty) {
-    byDifficulty[diff].avgScore /= byDifficulty[diff].total;
+    byDifficulty[diff]!.avgScore /= byDifficulty[diff]!.total;
   }
 
   const totalDuration = results.reduce((sum, r) => sum + r.durationMs, 0);

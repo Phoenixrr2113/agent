@@ -1,10 +1,18 @@
 import { requireNativeModule } from 'expo-modules-core';
 
-let AgentAccessibility: any = null;
+interface AgentAccessibilityModule {
+  isAccessibilityEnabled(): boolean;
+  click(x: number, y: number): Promise<boolean>;
+  swipe(x1: number, y1: number, x2: number, y2: number, duration: number): Promise<boolean>;
+  showOverlay(): boolean;
+  hideOverlay(): boolean;
+}
+
+let AgentAccessibility: AgentAccessibilityModule | null = null;
 
 try {
   AgentAccessibility = requireNativeModule('AgentAccessibility');
-} catch (e) {
+} catch {
   console.warn('AgentAccessibility native module not available (web or iOS platform)');
 }
 
@@ -21,7 +29,8 @@ export async function click(x: number, y: number): Promise<boolean> {
   return await AgentAccessibility.click(x, y);
 }
 
-export async function swipe(x1: number, y1: number, x2: number, y2: number, duration: number = 300): Promise<boolean> {
+// eslint-disable-next-line max-params
+export async function swipe(x1: number, y1: number, x2: number, y2: number, duration = 300): Promise<boolean> {
   if (!AgentAccessibility) {
     console.warn('AgentAccessibility not available on this platform');
     return false;

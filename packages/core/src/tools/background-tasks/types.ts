@@ -13,9 +13,7 @@ export interface PersistentTaskInfo {
   errorLogFile?: string;
 }
 
-export interface TaskMonitorCallback {
-  (event: 'task_completed' | 'task_failed' | 'task_orphaned', task: PersistentTaskInfo): void;
-}
+export type TaskMonitorCallback = (event: 'task_completed' | 'task_failed' | 'task_orphaned', task: PersistentTaskInfo) => void;
 
 export interface TaskFilter {
   status?: TaskStatus;

@@ -31,8 +31,8 @@ export function calculateRAGBudget(
   maxContextTokens: number,
   systemPrompt: string,
   toolCount: number,
-  userMessageLength: number = 500,
-  safetyBuffer: number = 500
+  userMessageLength = 500,
+  safetyBuffer = 500
 ): TokenBudget {
   const systemPromptTokens = countTokens(systemPrompt);
 

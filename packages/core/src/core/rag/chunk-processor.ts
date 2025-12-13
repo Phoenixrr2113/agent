@@ -1,13 +1,14 @@
 import { embedMany } from 'ai';
+
 import {
   generateContextBatch,
   createContextualChunkWithoutLLM,
-  ContextualChunk,
+  type ContextualChunk,
 } from './context.js';
-import { Chunk } from './strategies/index.js';
-import { EmbeddedChunk } from './types.js';
+import { type Chunk } from "./strategies";
+import { type EmbeddedChunk } from './types.js';
 // Using consolidated embeddings module
-import { getEmbeddingModel } from '../embeddings/index.js';
+import { getEmbeddingModel } from "../embeddings";
 
 export async function processChunks(
   chunks: Chunk[],
@@ -39,6 +40,6 @@ export async function processChunks(
   return contextualChunks.map((chunk, index) => ({
     ...chunk,
     id: `${chunk.filePath}:${chunk.startLine}-${chunk.endLine}`,
-    embedding: vectors[index],
+    embedding: vectors[index] ?? [],
   }));
 }

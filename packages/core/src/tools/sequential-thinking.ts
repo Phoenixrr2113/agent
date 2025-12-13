@@ -1,6 +1,6 @@
+import { logger } from '@agent/shared';
 import { tool } from 'ai';
 import { z } from 'zod';
-import { logger } from '@agent/shared';
 
 export interface ThoughtData {
   thought: string;
@@ -49,18 +49,21 @@ export class SequentialThinkingEngine {
       if (!this.branches[input.branchId]) {
         this.branches[input.branchId] = [];
       }
-      this.branches[input.branchId].push(input);
-
-      if (this.branches[input.branchId].length > this.maxBranchSize) {
-        this.branches[input.branchId].shift();
+      
+      const branch = this.branches[input.branchId];
+      if (branch) {
+        branch.push(input);
+        if (branch.length > this.maxBranchSize) {
+          branch.shift();
+        }
       }
     }
 
     const prefix = input.isRevision
       ? `🔄 Revision (revising thought ${input.revisesThought})`
-      : input.branchFromThought
+      : (input.branchFromThought
         ? `🌿 Branch (from thought ${input.branchFromThought}, ID: ${input.branchId})`
-        : '💭 Thought';
+        : '💭 Thought');
 
     logger.info(`${prefix} ${input.thoughtNumber}/${input.totalThoughts}`, {
       thought: input.thought.slice(0, 200) + (input.thought.length > 200 ? '...' : ''),

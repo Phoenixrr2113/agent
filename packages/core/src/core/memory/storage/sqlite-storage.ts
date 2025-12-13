@@ -1,7 +1,9 @@
 import Database from 'better-sqlite3';
+
+import { cosineSimilarity } from "../../embeddings";
+
 import type { Entity, Fact } from '../types.js';
 import type { StorageAdapter } from './types.js';
-import { cosineSimilarity } from '../../embeddings/index.js';
 
 function safeJsonParse<T>(json: string | null | undefined, fallback: T): T {
   if (!json) return fallback;
@@ -106,7 +108,7 @@ export function createSQLiteStorage(dbPath: string): StorageAdapter {
     name: row.name,
     type: row.type,
     attributes: safeJsonParse(row.attributes, {}),
-    embedding: safeJsonParse(row.embedding, undefined),
+    embedding: safeJsonParse<number[]>(row.embedding, []),
     createdAt: new Date(row.created_at),
     updatedAt: new Date(row.updated_at),
   });
@@ -290,15 +292,15 @@ export function createSQLiteStorage(dbPath: string): StorageAdapter {
       },
     },
 
-    async transaction<T>(fn: () => Promise<T>) {
+    async transaction<T>(function_: () => Promise<T>) {
       db.exec('BEGIN');
       try {
-        const result = await fn();
+        const result = await function_();
         db.exec('COMMIT');
         return result;
-      } catch (e) {
+      } catch (error) {
         db.exec('ROLLBACK');
-        throw e;
+        throw error;
       }
     },
     async close() {

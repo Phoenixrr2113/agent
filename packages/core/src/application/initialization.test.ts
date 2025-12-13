@@ -1,15 +1,17 @@
+import { promises as fs } from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
+
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { promises as fs } from 'fs';
-import * as path from 'path';
-import * as os from 'os';
+
 import { initializeAgent, cleanup } from './initialization.js';
 
 vi.mock('../core/rag/index.js', () => ({
   createCodebaseRAG: (workspaceRoot: string) => ({
-    indexCodebase: vi.fn().mockResolvedValue(undefined),
+    indexCodebase: vi.fn().mockResolvedValue(),
     searchCodebase: vi.fn().mockResolvedValue([]),
     getStats: vi.fn().mockReturnValue({ totalChunks: 0, files: 0 }),
-    clearCache: vi.fn().mockResolvedValue(undefined),
+    clearCache: vi.fn().mockResolvedValue(),
     dispose: vi.fn(),
   }),
 }));

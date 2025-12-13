@@ -1,11 +1,14 @@
+import { randomBytes } from 'node:crypto';
+import { writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { tool } from 'ai';
 import { z } from 'zod';
-import { join } from 'path';
-import { randomBytes } from 'crypto';
-import { writeFileSync } from 'fs';
+
 import { getPersistentTaskManager } from './task-manager.js';
-import type { TaskStatus } from './types.js';
 import { success, error } from '../utils/tool-result.js';
+
+import type { TaskStatus } from './types.js';
 
 const MAX_CONCURRENT_AGENT_TASKS = 5;
 const AGENT_TASK_PREFIX = 'agent-task-';
@@ -30,8 +33,8 @@ export const startBackgroundTaskTool = tool({
         instructions:
           'Task will continue running even if agent restarts. Use check_task_status to monitor and get_task_output to retrieve logs.',
       });
-    } catch (err) {
-      return error(err instanceof Error ? err : String(err), {
+    } catch (error_) {
+      return error(error_ instanceof Error ? error_ : String(error_), {
         context: 'Failed to start background task',
       });
     }
@@ -112,8 +115,8 @@ export const getTaskOutputTool = tool({
         outputType: stderr ? 'stderr' : 'stdout',
         fromEnd,
       });
-    } catch (err) {
-      return error(err instanceof Error ? err : String(err), {
+    } catch (error_) {
+      return error(error_ instanceof Error ? error_ : String(error_), {
         context: 'Failed to get task output',
         taskId,
       });
@@ -315,8 +318,8 @@ runAgentTask();
         instructions:
           'Agent will work independently. Use check_task_status and get_task_output to monitor progress.',
       });
-    } catch (err) {
-      return error(err instanceof Error ? err : String(err), {
+    } catch (error_) {
+      return error(error_ instanceof Error ? error_ : String(error_), {
         context: 'Failed to start agent task',
       });
     }

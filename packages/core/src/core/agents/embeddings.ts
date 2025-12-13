@@ -3,5 +3,5 @@ export {
   cosineSimilarity,
   createEmbeddingService,
   type EmbeddingService,
-} from '../embeddings/index.js';
+} from "../embeddings";
 

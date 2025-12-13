@@ -1,7 +1,9 @@
-import { promises as fs } from 'fs';
-import { createReadStream } from 'fs';
-import * as path from 'path';
+import { promises as fs } from 'node:fs';
+import { createReadStream } from 'node:fs';
+import * as path from 'node:path';
+
 import { createTwoFilesPatch } from 'diff';
+
 import type { FileInfo, FileEdit } from './types.js';
 
 export async function getFileStats(filePath: string): Promise<FileInfo> {
@@ -58,7 +60,7 @@ export async function readMediaFile(filePath: string): Promise<{ data: string; m
     stream.on('end', () => {
       const buffer = Buffer.concat(chunks);
       const base64 = buffer.toString('base64');
-      const ext = path.extname(filePath).toLowerCase();
+      const extension = path.extname(filePath).toLowerCase();
 
       const mimeTypes: Record<string, string> = {
         '.png': 'image/png',
@@ -74,7 +76,7 @@ export async function readMediaFile(filePath: string): Promise<{ data: string; m
         '.flac': 'audio/flac',
       };
 
-      const mimeType = mimeTypes[ext] || 'application/octet-stream';
+      const mimeType = mimeTypes[extension] || 'application/octet-stream';
       cleanup();
       resolve({ data: base64, mimeType });
     });
@@ -147,7 +149,7 @@ export async function headFile(filePath: string, lines: number): Promise<string>
 }
 
 export function normalizeLineEndings(text: string): string {
-  return text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  return text.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
 }
 
 export function createUnifiedDiff(

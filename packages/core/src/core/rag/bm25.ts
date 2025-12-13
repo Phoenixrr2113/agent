@@ -1,4 +1,7 @@
-import bm25 from 'wink-bm25-text-search';
+import { createRequire } from 'node:module';
+
+const require = createRequire(import.meta.url);
+const bm25 = require('wink-bm25-text-search');
 
 export interface BM25Document {
   id: string;
@@ -15,7 +18,7 @@ export interface BM25SearchResult {
 
 export interface BM25Index {
   search: (query: string, limit?: number) => BM25SearchResult[];
-  addDocument: (doc: BM25Document) => void;
+  addDocument: (document: BM25Document) => void;
   addDocuments: (docs: BM25Document[]) => void;
   consolidate: () => void;
   getDocumentCount: () => number;
@@ -43,34 +46,34 @@ export function createBM25Index(): BM25Index {
 
   engine.definePrepTasks([
     (text: string) => text.toLowerCase(),
-    (text: string) => text.replace(/[^\w\s]/g, ' '),
+    (text: string) => text.replaceAll(/[^\w\s]/g, ' '),
     (text: string) => text.split(/\s+/).filter((t: string) => t.length > 1),
   ]);
 
   return {
-    addDocument(doc: BM25Document): void {
+    addDocument(document: BM25Document): void {
       if (isConsolidated) {
         throw new Error('Cannot add documents after consolidation');
       }
-      if (doc.content.length > MAX_DOCUMENT_SIZE) {
+      if (document.content.length > MAX_DOCUMENT_SIZE) {
         throw new Error(
-          `Document content exceeds maximum size of ${MAX_DOCUMENT_SIZE} bytes (got ${doc.content.length})`
+          `Document content exceeds maximum size of ${MAX_DOCUMENT_SIZE} bytes (got ${document.content.length})`
         );
       }
       engine.addDoc(
         {
-          content: doc.content,
-          name: doc.name || '',
-          filePath: doc.filePath || '',
+          content: document.content,
+          name: document.name || '',
+          filePath: document.filePath || '',
         },
-        doc.id
+        document.id
       );
       documentCount++;
     },
 
     addDocuments(docs: BM25Document[]): void {
-      for (const doc of docs) {
-        this.addDocument(doc);
+      for (const document of docs) {
+        this.addDocument(document);
       }
     },
 
@@ -108,15 +111,15 @@ export function createBM25Index(): BM25Index {
 }
 
 export function reciprocalRankFusion(
-  rankings: Map<string, number>[],
+  rankings: Array<Map<string, number>>,
   k = 60
 ): Map<string, number> {
   const scores = new Map<string, number>();
 
   for (const ranking of rankings) {
-    for (const [docId, rank] of ranking) {
-      const current = scores.get(docId) || 0;
-      scores.set(docId, current + 1 / (k + rank));
+    for (const [documentId, rank] of ranking) {
+      const current = scores.get(documentId) || 0;
+      scores.set(documentId, current + 1 / (k + rank));
     }
   }
 
@@ -124,10 +127,10 @@ export function reciprocalRankFusion(
 }
 
 export function mergeSearchResults(
-  embeddingResults: { id: string; rank: number }[],
+  embeddingResults: Array<{ id: string; rank: number }>,
   bm25Results: BM25SearchResult[],
   options: { k?: number; embeddingWeight?: number; bm25Weight?: number } = {}
-): { id: string; score: number }[] {
+): Array<{ id: string; score: number }> {
   const { k = 60, embeddingWeight = 1.0, bm25Weight = 1.0 } = options;
 
   const embeddingRanking = new Map<string, number>();

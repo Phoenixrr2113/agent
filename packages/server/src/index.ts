@@ -1,16 +1,17 @@
+import { type Server } from 'node:http';
+import { join } from 'node:path';
+
+import { createAgentRuntime, type AgentSession, type AgentRuntime, type TaskResult } from '@agent/core';
+import { logger } from '@agent/shared';
+import { serve } from '@hono/node-server';
 import { config } from 'dotenv';
-import { join } from 'path';
+import { Hono, type Context } from 'hono';
+import { cors } from 'hono/cors';
+import { streamSSE } from 'hono/streaming';
+import { WebSocketServer, type WebSocket } from 'ws';
 
 // Load environment variables from root .env
 config({ path: join(process.cwd(), '../../.env') });
-
-import { Hono } from 'hono';
-import { cors } from 'hono/cors';
-import { serve } from '@hono/node-server';
-import { streamSSE } from 'hono/streaming';
-import { createAgentRuntime, type AgentSession, type TaskResult } from '@agent/core';
-import { logger } from '@agent/shared';
-import { WebSocketServer, WebSocket } from 'ws';
 
 export interface ServerConfig {
   port?: number;
@@ -20,24 +21,32 @@ export interface ServerConfig {
 
 const sessions = new Map<string, AgentSession>();
 
-export async function createServer(config: ServerConfig = {}) {
-  const port = config.port || Number(process.env.PORT) || 3000;
+interface CreateServerResult {
+  app: Hono;
+  runtime: AgentRuntime;
+  port: number;
+}
+
+// eslint-disable-next-line max-lines-per-function
+export async function createServer(config: ServerConfig = {}): Promise<CreateServerResult> {
+  const envPort = process.env['PORT'] ? Number(process.env['PORT']) : 3000;
+  const port = config.port ?? envPort;
   
   const runtime = await createAgentRuntime({
-    workspaceRoot: config.workspaceRoot,
+    workspaceRoot: config.workspaceRoot ?? process.cwd(),
   });
 
   const app = new Hono();
 
   app.use('*', cors({
-    origin: config.corsOrigin || '*',
+    origin: config.corsOrigin ?? '*',
     allowMethods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
     allowHeaders: ['Content-Type', 'Authorization'],
   }));
 
-  app.get('/health', (c) => c.json({ status: 'ok' }));
+  app.get('/health', (c: Context) => c.json({ status: 'ok' }));
 
-  app.post('/sessions', (c) => {
+  app.post('/sessions', (c: Context) => {
     const sessionId = crypto.randomUUID();
     const session = runtime.createSession();
     sessions.set(sessionId, session);
@@ -45,7 +54,7 @@ export async function createServer(config: ServerConfig = {}) {
     return c.json({ sessionId });
   });
 
-  app.delete('/sessions/:sessionId', (c) => {
+  app.delete('/sessions/:sessionId', (c: Context) => {
     const sessionId = c.req.param('sessionId');
     if (!sessions.has(sessionId)) {
       return c.json({ error: 'Session not found' }, 404);
@@ -55,7 +64,7 @@ export async function createServer(config: ServerConfig = {}) {
     return c.json({ success: true });
   });
 
-  app.post('/sessions/:sessionId/chat', async (c) => {
+  app.post('/sessions/:sessionId/chat', async (c: Context) => {
     const requestStartTime = performance.now();
     const sessionId = c.req.param('sessionId');
     const session = sessions.get(sessionId);
@@ -84,7 +93,7 @@ export async function createServer(config: ServerConfig = {}) {
     });
   });
 
-  app.get('/sessions/:sessionId/chat/stream', async (c) => {
+  app.get('/sessions/:sessionId/chat/stream', (c: Context) => {
     const sessionId = c.req.param('sessionId');
     const session = sessions.get(sessionId);
     if (!session) {
@@ -108,7 +117,7 @@ export async function createServer(config: ServerConfig = {}) {
     });
   });
 
-  app.get('/sessions/:sessionId/history', (c) => {
+  app.get('/sessions/:sessionId/history', (c: Context) => {
     const sessionId = c.req.param('sessionId');
     const session = sessions.get(sessionId);
     if (!session) {
@@ -117,7 +126,7 @@ export async function createServer(config: ServerConfig = {}) {
     return c.json({ messages: session.getHistory() });
   });
 
-  app.post('/sessions/:sessionId/clear', (c) => {
+  app.post('/sessions/:sessionId/clear', (c: Context) => {
     const sessionId = c.req.param('sessionId');
     const session = sessions.get(sessionId);
     if (!session) {
@@ -127,7 +136,7 @@ export async function createServer(config: ServerConfig = {}) {
     return c.json({ success: true });
   });
 
-  app.post('/chat', async (c) => {
+  app.post('/chat', async (c: Context) => {
     const requestStartTime = performance.now();
     const body = await c.req.json<{ message: string; sessionId?: string }>();
     if (!body.message) {
@@ -154,13 +163,13 @@ export async function createServer(config: ServerConfig = {}) {
     });
 
     return c.json({
-      sessionId,
       ...formatResult(result),
       _httpTiming: { totalRequestDurationMs: requestDuration.toFixed(2) },
     });
   });
 
-  app.post('/mobile/command', async (c) => {
+  app.post('/mobile/command', async (c: Context) => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const body = await c.req.json<{ type: string;[key: string]: any }>();
     if (!mobileClient) {
       return c.json({ error: 'Mobile client not connected' }, 400);
@@ -174,7 +183,7 @@ export async function createServer(config: ServerConfig = {}) {
 
 let mobileClient: WebSocket | null = null;
 
-function formatResult(result: TaskResult) {
+function formatResult(result: TaskResult): object {
   return {
     text: result.text,
     completed: result.completed,
@@ -185,22 +194,28 @@ function formatResult(result: TaskResult) {
   };
 }
 
-export async function startServer(config: ServerConfig = {}) {
+export interface StartServerResult {
+  server: Server;
+  shutdown: () => Promise<void>;
+}
+
+export async function startServer(config: ServerConfig = {}): Promise<StartServerResult> {
   logger.reconfigure();
 
   const { app, runtime, port } = await createServer(config);
 
   const server = serve({ fetch: app.fetch, port }, (info) => {
     logger.info(`🚀 Agent server running on http://localhost:${info.port}`);
-  });
+  }) as unknown as Server;
 
-  const wss = new WebSocketServer({ server: server as any });
+  const wss = new WebSocketServer({ server });
 
   wss.on('connection', (ws) => {
     logger.info('Mobile client connected');
     mobileClient = ws;
 
     ws.on('message', (message) => {
+      // eslint-disable-next-line @typescript-eslint/no-base-to-string
       logger.info('Received from mobile:', { message: message.toString() });
     });
 
@@ -210,7 +225,7 @@ export async function startServer(config: ServerConfig = {}) {
     });
   });
 
-  const shutdown = async () => {
+  const shutdown = async (): Promise<void> => {
     logger.info('Shutting down server...');
     sessions.clear();
     await runtime.shutdown();
@@ -228,11 +243,15 @@ export async function startServer(config: ServerConfig = {}) {
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  startServer({
-    workspaceRoot: process.env.WORKSPACE_ROOT,
-  }).catch((error) => {
-    console.error('Failed to start server:', error);
-    process.exit(1);
-  });
+  void (async () => {
+    try {
+      await startServer({
+        workspaceRoot: process.env['WORKSPACE_ROOT'] ?? process.cwd(),
+      });
+    } catch (error: unknown) {
+      console.error('Failed to start server:', error);
+      // eslint-disable-next-line unicorn/no-process-exit
+      process.exit(1);
+    }
+  })();
 }
-

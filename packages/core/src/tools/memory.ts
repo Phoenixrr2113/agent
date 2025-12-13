@@ -1,7 +1,9 @@
 import { tool } from 'ai';
 import { z } from 'zod';
-import type { MemoryProvider } from '../core/memory/types.js';
+
 import { createAutoMemoryProvider } from '../core/memory/factory.js';
+
+import type { MemoryProvider } from '../core/memory/types.js';
 
 let memoryProviderPromise: Promise<MemoryProvider> | null = null;
 let isClosing = false;
@@ -12,10 +14,10 @@ function getProvider(): Promise<MemoryProvider> {
   }
   if (!memoryProviderPromise) {
     memoryProviderPromise = createAutoMemoryProvider({
-      storagePath: process.env.MEMORY_DB_PATH || './memory.db',
-      graphitiUrl: process.env.GRAPHITI_URL,
-      embeddingModel: process.env.MEMORY_EMBEDDING_MODEL,
-      extractionModel: process.env.MEMORY_EXTRACTION_MODEL,
+      storagePath: process.env['MEMORY_DB_PATH'] || './memory.db',
+      graphitiUrl: process.env['GRAPHITI_URL'],
+      embeddingModel: process.env['MEMORY_EMBEDDING_MODEL'],
+      extractionModel: process.env['MEMORY_EXTRACTION_MODEL'],
     });
   }
   return memoryProviderPromise;

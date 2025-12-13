@@ -1,8 +1,9 @@
-import { describe, it, expect, beforeEach } from 'vitest';
 import { tool } from 'ai';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { z } from 'zod';
+
 import {
-  ToolRegistry,
+  type ToolRegistry,
   createToolRegistry,
   createToolSearchTool,
   createActivateToolTool,

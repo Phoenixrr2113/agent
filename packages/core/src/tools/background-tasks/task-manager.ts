@@ -1,5 +1,5 @@
-import { spawn, type ChildProcess } from 'child_process';
-import { randomBytes } from 'crypto';
+import { spawn, type ChildProcess } from 'node:child_process';
+import { randomBytes } from 'node:crypto';
 import {
   existsSync,
   mkdirSync,
@@ -10,10 +10,14 @@ import {
   closeSync,
   readSync,
   writeFileSync,
-} from 'fs';
-import { join } from 'path';
-import Database from 'better-sqlite3';
+} from 'node:fs';
+import { join } from 'node:path';
+
 import { logger } from '@agent/shared';
+import Database from 'better-sqlite3';
+
+import { TASK_DB_SCHEMA, mapRowToTaskInfo, type TaskRow } from './task-database.js';
+
 import type {
   TaskStatus,
   PersistentTaskInfo,
@@ -23,11 +27,11 @@ import type {
   TaskOutput,
   TaskStartupSummary,
 } from './types.js';
-import { TASK_DB_SCHEMA, mapRowToTaskInfo, type TaskRow } from './task-database.js';
+
 
 export class PersistentTaskManager {
   private db: Database.Database;
-  private activeProcesses: Map<string, ChildProcess> = new Map();
+  private activeProcesses = new Map<string, ChildProcess>();
   private logsDir: string;
   private dbPath: string;
   private checkInterval: NodeJS.Timeout;
@@ -35,7 +39,7 @@ export class PersistentTaskManager {
   private maxLogSize = 100 * 1024 * 1024;
   private readonly MAX_GLOBAL_LOG_SIZE = 2 * 1024 * 1024 * 1024;
   private monitorCallback: TaskMonitorCallback | null = null;
-  private lastKnownStates: Map<string, TaskStatus> = new Map();
+  private lastKnownStates = new Map<string, TaskStatus>();
   private readonly MAX_CONCURRENT_TASKS = 50;
 
   constructor(workspaceRoot?: string) {
@@ -145,8 +149,8 @@ export class PersistentTaskManager {
         originalSize: stats.size,
         newSize: keepBytes,
       });
-    } catch (err) {
-      logger.debug('Could not truncate log file', { logFile, error: String(err) });
+    } catch (error) {
+      logger.debug('Could not truncate log file', { logFile, error: String(error) });
     }
   }
 
@@ -168,7 +172,7 @@ export class PersistentTaskManager {
   private getTotalLogSize(): number {
     try {
       let totalSize = 0;
-      const files = require('fs').readdirSync(this.logsDir);
+      const files = require('node:fs').readdirSync(this.logsDir);
       for (const file of files) {
         const filePath = join(this.logsDir, file);
         try {
@@ -257,8 +261,8 @@ export class PersistentTaskManager {
             )
             .run(status, exitCode, Date.now(), new Date().toISOString(), taskId);
         }
-      } catch (err) {
-        logger.debug('Could not update task status on exit', { taskId, error: String(err) });
+      } catch (error) {
+        logger.debug('Could not update task status on exit', { taskId, error: String(error) });
       }
 
       this.activeProcesses.delete(taskId);
@@ -295,7 +299,7 @@ export class PersistentTaskManager {
 
   getAllTasks(filter?: TaskFilter): PersistentTaskInfo[] {
     let query = 'SELECT * FROM tasks';
-    const params: (string | number)[] = [];
+    const params: Array<string | number> = [];
 
     if (filter?.status) {
       query += ' WHERE status = ?';
@@ -386,10 +390,10 @@ export class PersistentTaskManager {
 
       logger.info('Cancelled background task', { taskId, pid: task.pid });
       return true;
-    } catch (err) {
+    } catch (error) {
       logger.error('Failed to cancel task', {
         taskId,
-        error: err instanceof Error ? err.message : String(err),
+        error: error instanceof Error ? error.message : String(error),
       });
       return false;
     }
@@ -446,7 +450,7 @@ export class PersistentTaskManager {
     };
   }
 
-  startMonitoring(callback: TaskMonitorCallback, intervalMs: number = 60000): void {
+  startMonitoring(callback: TaskMonitorCallback, intervalMs = 60000): void {
     if (this.monitorInterval) {
       clearInterval(this.monitorInterval);
     }
@@ -492,8 +496,8 @@ export class PersistentTaskManager {
           } else if (task.status === 'orphaned') {
             this.monitorCallback('task_orphaned', task);
           }
-        } catch (err) {
-          logger.error('Monitoring callback error', { error: String(err), taskId: task.id });
+        } catch (error) {
+          logger.error('Monitoring callback error', { error: String(error), taskId: task.id });
         }
       }
 

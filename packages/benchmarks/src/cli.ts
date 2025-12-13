@@ -1,11 +1,9 @@
 #!/usr/bin/env node
 import 'dotenv/config';
-import { Command } from 'commander';
 import { logger } from '@agent/shared';
+import { Command } from 'commander';
 
 logger.reconfigure();
-import { run as halRun, shutdown as halShutdown, resetSession } from './adapters/hal.js';
-import { runTauBenchTask, shutdown as tauShutdown } from './adapters/tau-bench.js';
 import {
   runGAIATask,
   shutdown as gaiaShutdown,
@@ -13,6 +11,7 @@ import {
   scoreGAIAResults,
   type GAIATask,
 } from './adapters/gaia.js';
+import { run as halRun, shutdown as halShutdown, resetSession } from './adapters/hal.js';
 import {
   runSWEBenchTask,
   shutdown as sweBenchShutdown,
@@ -20,7 +19,10 @@ import {
   scoreSWEBenchResults,
   type SWEBenchTask,
 } from './adapters/swe-bench.js';
+import { runTauBenchTask, shutdown as tauShutdown } from './adapters/tau-bench.js';
+
 import type { BenchmarkResult, BenchmarkTask } from './types.js';
+
 import * as fs from 'node:fs';
 
 const program = new Command();
@@ -136,9 +138,9 @@ program
       const scores = scoreGAIAResults(results);
       console.log('\nGAIA Results:');
       console.log(`Overall: ${(scores.overall * 100).toFixed(1)}%`);
-      console.log(`Level 1: ${(scores.byLevel[1] * 100).toFixed(1)}%`);
-      console.log(`Level 2: ${(scores.byLevel[2] * 100).toFixed(1)}%`);
-      console.log(`Level 3: ${(scores.byLevel[3] * 100).toFixed(1)}%`);
+      console.log(`Level 1: ${(scores.byLevel[1] ?? 0 * 100).toFixed(1)}%`);
+      console.log(`Level 2: ${(scores.byLevel[2] ?? 0 * 100).toFixed(1)}%`);
+      console.log(`Level 3: ${(scores.byLevel[3] ?? 0 * 100).toFixed(1)}%`);
 
       if (options.output) {
         fs.writeFileSync(options.output, JSON.stringify({ results, scores }, null, 2));

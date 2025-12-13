@@ -1,4 +1,4 @@
-import { Tool } from 'ai';
+import { type Tool } from 'ai';
 
 export interface ToolMetadata {
   name: string;

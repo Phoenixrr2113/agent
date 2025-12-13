@@ -1,6 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { cosineSimilarity } from './index.js';
 import { logger } from '@agent/shared';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+import { cosineSimilarity } from ".";
 
 vi.mock('@agent/shared', () => ({
   logger: {

@@ -1,6 +1,19 @@
-import { embed } from 'ai';
+import { randomUUID } from 'node:crypto';
+
+import { logger } from '@agent/shared';
 import { createOpenRouter } from '@openrouter/ai-sdk-provider';
-import { randomUUID } from 'crypto';
+import { embed } from 'ai';
+
+import { extractFromText, detectContradictionsBatch, resolveEntityConflicts } from './extraction.js';
+import { BaseMemoryProvider } from './provider-base.js';
+// Using consolidated embeddings module
+import { getEmbeddingModel } from "../embeddings";
+import {
+  createInMemoryStorage,
+  type StorageAdapter,
+  createSQLiteStorage
+} from "./storage/";
+
 import type {
   MemoryProvider,
   MemoryAddInput,
@@ -11,16 +24,6 @@ import type {
   Episode,
   LiteMemoryConfig,
 } from './types.js';
-import {
-  createInMemoryStorage,
-  type StorageAdapter,
-  createSQLiteStorage
-} from './storage/index.js';
-import { extractFromText, detectContradictionsBatch, resolveEntityConflicts } from './extraction.js';
-import { logger } from '@agent/shared';
-import { BaseMemoryProvider } from './provider-base.js';
-// Using consolidated embeddings module
-import { getEmbeddingModel } from '../embeddings/index.js';
 
 /**
  * Normalizes fact content for comparison to handle LLM extraction variations.
@@ -34,7 +37,7 @@ function normalizeFactContent(content: string): string {
     .toLowerCase();
 }
 
-const DEFAULT_EXTRACTION_MODEL = process.env.MODEL_EXTRACTION || process.env.MODEL_STANDARD || 'google/gemini-2.0-flash-001';
+const DEFAULT_EXTRACTION_MODEL = process.env['MODEL_EXTRACTION'] || process.env['MODEL_STANDARD'] || 'google/gemini-2.0-flash-001';
 
 export function createMemoryLite(config: Omit<LiteMemoryConfig, 'provider'>): MemoryProvider {
   const storage: StorageAdapter = config.storagePath
@@ -112,7 +115,7 @@ export function createMemoryLite(config: Omit<LiteMemoryConfig, 'provider'>): Me
         contentLength: input.content.length,
       });
 
-      const existingEntities = (await storage.entities.all()).map(e => e.name);
+      const existingEntities = (await storage.entities.all()).map((e: { name: string }) => e.name);
 
       const extractionStartTime = performance.now();
       const extracted = await extractFromText(input.content, extractionModel, existingEntities);
@@ -137,8 +140,10 @@ export function createMemoryLite(config: Omit<LiteMemoryConfig, 'provider'>): Me
       });
 
       const entityMap = new Map<string, Entity>();
-      for (let i = 0; i < extracted.entities.length; i++) {
-        entityMap.set(extracted.entities[i].name, entities[i]);
+      for (let index = 0; index < extracted.entities.length; index++) {
+        const entity = extracted.entities[index];
+        const processedEntity = entities[index];
+        if (entity && processedEntity) entityMap.set(entity.name, processedEntity);
       }
 
       const relationIds: string[] = [];
@@ -175,7 +180,7 @@ export function createMemoryLite(config: Omit<LiteMemoryConfig, 'provider'>): Me
 
         const contradictionResults = await detectContradictionsBatch(
           extracted.facts.map(f => f.content),
-          existingFacts.map(ef => ef.content),
+          existingFacts.map((ef: { content: string }) => ef.content),
           extractionModel
         );
 
@@ -202,13 +207,15 @@ export function createMemoryLite(config: Omit<LiteMemoryConfig, 'provider'>): Me
           factCount: extracted.facts.length,
         });
 
-        for (let i = 0; i < extracted.facts.length; i++) {
-          const f = extracted.facts[i];
-          const contradictions = contradictionResults[i];
-          const embedding = factEmbeddings[i];
+        for (let index = 0; index < extracted.facts.length; index++) {
+          const f = extracted.facts[index];
+          if (!f) continue;
+          const contradictions = contradictionResults[index];
+          if (!contradictions) continue;
+          const embedding = factEmbeddings[index];
           const factStartTime = performance.now();
 
-          logger.debug(`⏱️  [memory] Processing fact ${i + 1}/${extracted.facts.length}`);
+          logger.debug(`⏱️  [memory] Processing fact ${index + 1}/${extracted.facts.length}`);
 
           const relatedEntityIds = f.entityNames
             .map(name => entityMap.get(name)?.id)
@@ -217,7 +224,7 @@ export function createMemoryLite(config: Omit<LiteMemoryConfig, 'provider'>): Me
           for (const supersededContent of contradictions.supersedes) {
             const normalizedSuperseded = normalizeFactContent(supersededContent);
             const superseded = existingFacts.find(
-              ef => normalizeFactContent(ef.content) === normalizedSuperseded
+              (ef: { content: string }) => normalizeFactContent(ef.content) === normalizedSuperseded
             );
             if (superseded) {
               logger.debug('⏱️  [memory] Invalidating superseded fact', {
@@ -237,7 +244,7 @@ export function createMemoryLite(config: Omit<LiteMemoryConfig, 'provider'>): Me
           const fact: Fact = {
             id: randomUUID(),
             content: f.content,
-            embedding,
+            embedding: embedding ?? [],
             entityIds: relatedEntityIds,
             relationIds: [],
             validFrom: new Date(),
@@ -250,7 +257,7 @@ export function createMemoryLite(config: Omit<LiteMemoryConfig, 'provider'>): Me
           factIds.push(fact.id);
 
           const factDuration = performance.now() - factStartTime;
-          logger.info(`⏱️  [memory] Fact ${i + 1}/${extracted.facts.length} processed`, {
+          logger.info(`⏱️  [memory] Fact ${index + 1}/${extracted.facts.length} processed`, {
             durationMs: factDuration.toFixed(2),
             durationSec: (factDuration / 1000).toFixed(3),
             supersedes: contradictions.supersedes.length,
@@ -302,8 +309,8 @@ export function createMemoryLite(config: Omit<LiteMemoryConfig, 'provider'>): Me
       const entityIds = new Set<string>();
       const relationIds = new Set<string>();
       for (const { fact } of factResults) {
-        fact.entityIds.forEach(id => entityIds.add(id));
-        fact.relationIds.forEach(id => relationIds.add(id));
+        fact.entityIds.forEach((id: string) => entityIds.add(id));
+        fact.relationIds.forEach((id: string) => relationIds.add(id));
       }
 
       const entities = await Promise.all(
@@ -324,7 +331,7 @@ export function createMemoryLite(config: Omit<LiteMemoryConfig, 'provider'>): Me
       });
 
       return {
-        facts: factResults.map(r => r.fact),
+        facts: factResults.map((r: any) => r.fact),
         entities,
         relations,
         score: factResults[0]?.score || 0,

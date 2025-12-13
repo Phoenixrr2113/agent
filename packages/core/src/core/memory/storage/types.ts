@@ -35,6 +35,6 @@ export interface StorageAdapter {
     findByGroup(groupId: string, limit?: number): Promise<Episode[]>;
   };
 
-  transaction<T>(fn: () => Promise<T>): Promise<T>;
+  transaction<T>(function_: () => Promise<T>): Promise<T>;
   close(): Promise<void>;
 }

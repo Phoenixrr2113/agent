@@ -1,9 +1,12 @@
-import { promises as fs } from 'fs';
-import * as path from 'path';
+import { promises as fs } from 'node:fs';
+import * as path from 'node:path';
+
 import { glob } from 'glob';
 import { minimatch } from 'minimatch';
-import type { SearchResult, DirectoryTree } from './types.js';
+
 import { validatePath } from './path-security.js';
+
+import type { SearchResult, DirectoryTree } from './types.js';
 
 export async function searchFilesWithValidation(
   searchPath: string,
@@ -56,7 +59,7 @@ export async function buildDirectoryTree(
   dirPath: string,
   excludePatterns?: string[],
   maxDepth: number = MAX_DIRECTORY_DEPTH,
-  currentDepth: number = 0
+  currentDepth = 0
 ): Promise<DirectoryTree> {
   const stats = await fs.stat(dirPath);
   const name = path.basename(dirPath);
@@ -80,7 +83,7 @@ export async function buildDirectoryTree(
     const fullPath = path.join(dirPath, entry);
     const relativePath = path.relative(dirPath, fullPath);
 
-    if (excludePatterns && excludePatterns.some(p => minimatch(relativePath, p))) {
+    if (excludePatterns?.some(p => minimatch(relativePath, p))) {
       continue;
     }
 

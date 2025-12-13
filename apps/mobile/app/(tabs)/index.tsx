@@ -1,9 +1,11 @@
-import { StyleSheet, Button, Alert } from 'react-native';
-import { ThemedText } from '@/components/themed-text';
-import { ThemedView } from '@/components/themed-view';
 import * as AgentAccessibility from '@agent/mobile-accessibility';
 import { useState, useEffect } from 'react';
+import { StyleSheet, Button, Alert } from 'react-native';
+
 import { AgentBridge } from '@/components/agent-bridge';
+import { ThemedText } from '@/components/themed-text';
+import { ThemedView } from '@/components/themed-view';
+
 
 export default function HomeScreen() {
   const [enabled, setEnabled] = useState(false);
@@ -23,8 +25,8 @@ export default function HomeScreen() {
       // @ts-ignore
       const result = await AgentAccessibility.click(500, 500);
       Alert.alert('Click Result', String(result));
-    } catch (e) {
-      Alert.alert('Error', String(e));
+    } catch (error) {
+      Alert.alert('Error', String(error));
     }
   };
 

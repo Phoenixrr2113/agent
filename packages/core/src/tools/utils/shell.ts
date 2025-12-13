@@ -1,4 +1,4 @@
-import { spawn } from 'child_process';
+import { spawn } from 'node:child_process';
 
 const DANGEROUS_PATTERNS = [
   /rm\s+(-rf?|--recursive)?\s*[\/~]/i,
@@ -10,6 +10,7 @@ const DANGEROUS_PATTERNS = [
   /\b(shutdown|reboot|halt|poweroff)\b/i,
   /\b(curl|wget)\b.*\|\s*(bash|sh|zsh)\b/i,
   /\beval\b/i,
+  /\bchmod\s+(-R\s+)?(777|755)\b/i, // Basic check for dangerous permissions
 ];
 
 export function isDangerousCommand(command: string): boolean {

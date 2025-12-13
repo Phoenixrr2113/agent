@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+
 import { createDefaultRegistry } from './registry.js';
 
 describe('StrategyRegistry', () => {

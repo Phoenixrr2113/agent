@@ -1,6 +1,6 @@
+import { Readability } from '@mozilla/readability';
 import { tool } from 'ai';
 import { z } from 'zod';
-import { Readability } from '@mozilla/readability';
 
 interface ParsedPage {
   title: string;
@@ -17,10 +17,10 @@ const DEFAULT_TIMEOUT = 30000;
 
 function fetchWithTimeout(url: string, options: RequestInit = {}, timeout = DEFAULT_TIMEOUT): Promise<Response> {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeout);
+  const timeoutId = setTimeout(() => { controller.abort(); }, timeout);
 
   return fetch(url, { ...options, signal: controller.signal })
-    .finally(() => clearTimeout(timeoutId));
+    .finally(() => { clearTimeout(timeoutId); });
 }
 
 async function getJSDOM() {

@@ -1,7 +1,9 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+
 import { createMemoryExtractor } from './extractor.js';
+
 import type { MemoryProvider } from './types.js';
-import type { ModelMessage } from '../../types/index.js';
+import type { ModelMessage } from "../../types";
 
 describe('Memory Extractor', () => {
   let mockMemoryProvider: MemoryProvider;

@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+
 import { success, error, safeTool, safeToolSync, withTiming } from './tool-result.js';
 
 describe('tool-result utilities', () => {

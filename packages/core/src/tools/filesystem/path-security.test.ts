@@ -1,4 +1,9 @@
+import { promises as fs } from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
+
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+
 import {
   setAllowedDirectories,
   isPathWithinAllowedDirectories,
@@ -6,9 +11,6 @@ import {
   expandHome,
   validatePath
 } from './path-security.js';
-import * as path from 'path';
-import * as os from 'os';
-import { promises as fs } from 'fs';
 
 describe('Path Security', () => {
   const originalAllowedDirectories = process.cwd();

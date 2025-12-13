@@ -50,25 +50,25 @@ export function withTiming<T extends Record<string, unknown>>(
 }
 
 export async function safeTool<T extends Record<string, unknown>>(
-  fn: () => Promise<T>,
+  function_: () => Promise<T>,
   context?: Record<string, unknown>
 ): Promise<string> {
   try {
-    const result = await fn();
+    const result = await function_();
     return success(result);
-  } catch (err) {
-    return error(err as Error, context);
+  } catch (error_) {
+    return error(error_ as Error, context);
   }
 }
 
 export function safeToolSync<T extends Record<string, unknown>>(
-  fn: () => T,
+  function_: () => T,
   context?: Record<string, unknown>
 ): string {
   try {
-    const result = fn();
+    const result = function_();
     return success(result);
-  } catch (err) {
-    return error(err as Error, context);
+  } catch (error_) {
+    return error(error_ as Error, context);
   }
 }

@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
+
 import { createBM25Index, reciprocalRankFusion, mergeSearchResults } from './bm25.js';
 
 describe('BM25Index', () => {
@@ -56,7 +57,7 @@ describe('BM25Index', () => {
     index.addDocument({ id: '2', content: 'world' });
     index.addDocument({ id: '3', content: 'test' });
     index.consolidate();
-    expect(() => index.addDocument({ id: '4', content: 'new' })).toThrow(
+    expect(() => { index.addDocument({ id: '4', content: 'new' }); }).toThrow(
       'Cannot add documents after consolidation'
     );
   });

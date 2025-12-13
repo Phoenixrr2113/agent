@@ -23,7 +23,7 @@
     "agent-benchmark": "./dist/cli.js"
   },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc -p tsconfig.build.json",
     "clean": "rm -rf dist",
     "test": "vitest run",
     "test:watch": "vitest",

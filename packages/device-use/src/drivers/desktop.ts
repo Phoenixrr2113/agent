@@ -1,5 +1,6 @@
 import { mouse, keyboard, screen, Button, Key, Point } from '@nut-tree-fork/nut-js';
-import { DeviceDriver } from '../driver.js';
+
+import type { DeviceDriver } from '../driver.js';
 
 export class DesktopDriver implements DeviceDriver {
   async getScreenshot(): Promise<string> {

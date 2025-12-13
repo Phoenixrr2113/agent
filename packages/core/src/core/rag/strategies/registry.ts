@@ -1,7 +1,9 @@
-import path from 'path';
-import type { ChunkingStrategy, Chunk } from './base.js';
+import path from 'node:path';
+
 import { CodeChunkingStrategy } from './code-strategy.js';
 import { DocumentChunkingStrategy } from './document-strategy.js';
+
+import type { ChunkingStrategy, Chunk } from './base.js';
 
 export class StrategyRegistry {
   private strategies: ChunkingStrategy[] = [];

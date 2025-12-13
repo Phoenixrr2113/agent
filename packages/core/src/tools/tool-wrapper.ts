@@ -2,9 +2,9 @@ import { tool, type Tool } from 'ai';
 import { z } from 'zod';
 
 export class ToolActivationManager {
-  private activeTools: Set<string> = new Set();
-  private wrappedTools: Map<string, { original: Tool; wrapped: Tool }> = new Map();
-  private availableTools: Set<string> = new Set();
+  private activeTools = new Set<string>();
+  private wrappedTools = new Map<string, { original: Tool; wrapped: Tool }>();
+  private availableTools = new Set<string>();
 
   isActive(toolName: string): boolean {
     return this.activeTools.has(toolName);

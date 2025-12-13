@@ -1,4 +1,4 @@
-import { BaseChunkingStrategy, type Chunk } from './base.js';
+import { BaseChunkingStrategy, type Chunk, type ChunkMetadata } from './base.js';
 
 export interface DocumentChunkingOptions {
   maxChunkSize?: number;
@@ -39,11 +39,14 @@ export class DocumentChunkingStrategy extends BaseChunkingStrategy {
     const chunks: Chunk[] = [];
     let currentChunk: string[] = [];
     let currentStartLine = 1;
-    let currentHeading: string | undefined;
+    let currentMetadata: Record<string, any> = {
+      type: 'section',
+      language: 'markdown',
+    };
 
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-      const headingMatch = line.match(/^(#{1,6})\s+(.+)$/);
+    for (let index = 0; index < lines.length; index++) {
+      const line = lines[index] ?? '';
+      const headingMatch = /^(#{1,6})\s+(.+)$/.exec(line);
 
       if (headingMatch) {
         if (currentChunk.length > 0) {
@@ -51,17 +54,20 @@ export class DocumentChunkingStrategy extends BaseChunkingStrategy {
             content: currentChunk.join('\n'),
             filePath,
             startLine: currentStartLine,
-            endLine: i,
+            endLine: index,
             metadata: {
               type: 'section',
               language: 'markdown',
-              heading: currentHeading,
-            },
+              heading: currentMetadata['section'],
+            } as ChunkMetadata,
           });
         }
         currentChunk = [line];
-        currentStartLine = i + 1;
-        currentHeading = headingMatch[2];
+        currentStartLine = index + 1;
+        currentMetadata = {
+          ...currentMetadata,
+          section: headingMatch[2],
+        };
       } else {
         currentChunk.push(line);
       }
@@ -76,8 +82,8 @@ export class DocumentChunkingStrategy extends BaseChunkingStrategy {
         metadata: {
           type: 'section',
           language: 'markdown',
-          heading: currentHeading,
-        },
+          heading: currentMetadata['section'],
+        } as ChunkMetadata,
       });
     }
 
@@ -142,15 +148,16 @@ export class DocumentChunkingStrategy extends BaseChunkingStrategy {
     let currentChunk: string[] = [];
     let currentStartLine = 1;
 
-    for (let i = 0; i < lines.length; i++) {
-      currentChunk.push(lines[i]);
+    for (let index = 0; index < lines.length; index++) {
+      const line = lines[index] ?? '';
+      currentChunk.push(line);
 
       if (currentChunk.join('\n').length >= this.options.maxChunkSize) {
         chunks.push({
           content: currentChunk.join('\n'),
           filePath,
           startLine: currentStartLine,
-          endLine: i + 1,
+          endLine: index + 1,
           metadata: {
             type: 'fixed_size',
             language: 'text',
@@ -159,7 +166,7 @@ export class DocumentChunkingStrategy extends BaseChunkingStrategy {
 
         const overlapLines = Math.floor(currentChunk.length * (this.options.chunkOverlap / this.options.maxChunkSize));
         currentChunk = currentChunk.slice(-Math.max(1, overlapLines));
-        currentStartLine = i + 2 - currentChunk.length;
+        currentStartLine = index + 2 - currentChunk.length;
       }
     }
 

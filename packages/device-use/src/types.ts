@@ -42,7 +42,7 @@ export interface PlatformImplementation {
   getCursorPosition(): Promise<string>;
 }
 
-import { DeviceDriver } from './driver.js';
+import type { DeviceDriver } from './driver.js';
 
 export interface DeviceUseConfig {
   displayWidth: number;

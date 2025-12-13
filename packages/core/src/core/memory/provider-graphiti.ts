@@ -1,4 +1,12 @@
-import { randomUUID } from 'crypto';
+import { randomUUID } from 'node:crypto';
+
+import {
+  BaseMemoryProvider,
+  normalizeEntity,
+  normalizeFact,
+  normalizeEpisode,
+} from './provider-base.js';
+
 import type {
   MemoryAddInput,
   MemorySearchInput,
@@ -7,12 +15,6 @@ import type {
   Entity,
   Episode,
 } from './types.js';
-import {
-  BaseMemoryProvider,
-  normalizeEntity,
-  normalizeFact,
-  normalizeEpisode,
-} from './provider-base.js';
 
 class GraphitiProvider extends BaseMemoryProvider {
   constructor(private graphitiUrl: string) {

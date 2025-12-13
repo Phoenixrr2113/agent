@@ -1,5 +1,6 @@
 import { createAgentRuntime, type AgentSession } from '@agent/core';
 import { logger } from '@agent/shared';
+
 import type { BenchmarkResult } from '../types.js';
 
 export interface SWEBenchTask {
@@ -80,8 +81,8 @@ Please analyze the issue and provide a solution. Generate a git patch that resol
 
     const durationMs = Date.now() - startTime;
 
-    const patchMatch = result.text.match(/```(?:diff|patch)?\n([\s\S]*?)```/);
-    const generatedPatch = patchMatch ? patchMatch[1].trim() : undefined;
+    const patchMatch = /```(?:diff|patch)?\n([\s\S]*?)```/.exec(result.text);
+    const generatedPatch = patchMatch?.[1] ? patchMatch[1].trim() : undefined;
 
     logger.info('SWE-bench adapter: Task completed', {
       instanceId: task.instance_id,

@@ -1,11 +1,12 @@
-import { embed } from 'ai';
 import { logger } from '@agent/shared';
+import { embed } from 'ai';
+
 // Using consolidated embeddings module
-import { getEmbeddingModel, cosineSimilarity } from '../embeddings/index.js';
+import { mergeSearchResults, type BM25Index } from './bm25.js';
 import { rerankWithFallback } from './rerank.js';
 import { filterChunksToFitBudget, countTokens } from './tokens.js';
-import { mergeSearchResults, BM25Index } from './bm25.js';
-import { EmbeddedChunk, SearchOptions } from './types.js';
+import { type EmbeddedChunk, type SearchOptions } from './types.js';
+import { getEmbeddingModel, cosineSimilarity } from "../embeddings";
 
 export interface SearchState {
   embeddedChunks: EmbeddedChunk[];
@@ -55,7 +56,7 @@ export async function executeSearch(
     }))
     .sort((a, b) => b.score - a.score)
     .slice(0, config.rerankTopN)
-    .map((r, i) => ({ ...r, rank: i + 1 }));
+    .map((r, index) => ({ ...r, rank: index + 1 }));
 
   let candidateIds: string[];
 

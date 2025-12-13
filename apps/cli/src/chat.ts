@@ -1,25 +1,26 @@
+import { dirname } from 'node:path';
+import { resolve } from 'node:path';
+import { stdin as input, stdout as output } from 'node:process';
+import * as readline from 'node:readline/promises';
+import { fileURLToPath } from 'node:url';
+
 import { config } from 'dotenv';
-import { resolve } from 'path';
-import { fileURLToPath } from 'url';
-import { dirname } from 'path';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 config({ path: resolve(__dirname, '../../../.env') });
 
-import * as readline from 'readline/promises';
-import { stdin as input, stdout as output } from 'process';
 import { createAgentRuntime } from '@agent/core';
 import { logger } from '@agent/shared';
 
 logger.reconfigure();
 
-console.log('\n💬 Interactive Chat Mode\n');
-console.log('Type your requests or "exit" to quit\n');
+logger.info('\n💬 Interactive Chat Mode\n');
+logger.info('Type your requests or "exit" to quit\n');
 
 const rl = readline.createInterface({ input, output });
 
-const workspaceRoot = process.env.WORKSPACE_ROOT || process.argv[2];
+const workspaceRoot = process.env['WORKSPACE_ROOT'] ?? process.argv[2] ?? process.cwd();
 
 const runtime = await createAgentRuntime({
   workspaceRoot,
@@ -34,7 +35,7 @@ const session = runtime.createSession();
 
 process.on('SIGINT', () => {
   void (async () => {
-    console.log('\n\n👋 Shutting down...');
+    logger.info('\n\n👋 Shutting down...');
     rl.close();
     await runtime.shutdown();
     process.exit(0);
@@ -45,7 +46,7 @@ while (true) {
   const userInput = await rl.question('👤 You: ');
 
   if (userInput.toLowerCase() === 'exit' || userInput.toLowerCase() === 'quit') {
-    console.log('\n👋 Goodbye!\n');
+    logger.info('\n👋 Goodbye!\n');
     break;
   }
 
@@ -57,11 +58,11 @@ while (true) {
     const result = await session.send(userInput);
 
     if (result.text) {
-      console.log(`\n🤖 Agent: ${result.text}\n`);
+      logger.info(`\n🤖 Agent: ${result.text}\n`);
     }
 
     if (result.completed) {
-      console.log('✅ Task completed\n');
+      logger.info('✅ Task completed\n');
     }
 
     if (result.toolsUsed.length > 0) {
@@ -69,7 +70,7 @@ while (true) {
     }
   } catch (error) {
     logger.error('❌ Error', { error: String(error) });
-    console.log('\n❌ An error occurred. Please try again.\n');
+    logger.info('\n❌ An error occurred. Please try again.\n');
   }
 }
 

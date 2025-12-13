@@ -1,10 +1,13 @@
-import type { ModelMessage } from 'ai';
+import { logger, createPerformanceTimer, type PerformanceTimer } from '@agent/shared';
+
 import { initializeAgent } from '../application/initialization.js';
 import { createAgent } from '../application/orchestrator.js';
-import { logger, createPerformanceTimer, type PerformanceTimer } from '@agent/shared';
 import { createMemoryExtractor } from '../core/memory/extractor.js';
-import { getMemoryProvider } from '../tools/memory.js';
 import { getPersistentTaskManager } from '../tools/background-tasks-persistent.js';
+import { getMemoryProvider } from '../tools/memory.js';
+
+import type { TaskMonitorCallback, PersistentTaskInfo } from '../tools/background-tasks/types.js';
+import type { ModelMessage } from 'ai';
 
 export interface AgentConfig {
   workspaceRoot?: string;
@@ -94,9 +97,9 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
     }
   }
 
-  taskManager.startMonitoring((event, task) => {
+  taskManager.startMonitoring((event: Parameters<TaskMonitorCallback>[0], task: PersistentTaskInfo) => {
     const durationMs = task.endTime ? task.endTime - task.startTime : 0;
-    const durationStr = durationMs > 3600000
+    const durationString = durationMs > 3600000
       ? `${(durationMs / (1000 * 60 * 60)).toFixed(1)}h`
       : `${(durationMs / (1000 * 60)).toFixed(1)}m`;
 
@@ -104,35 +107,34 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
       logger.info('🎉 Background task completed', {
         taskId: task.id,
         command: task.command.substring(0, 60),
-        duration: durationStr,
+        duration: durationString,
         exitCode: task.exitCode,
       });
     } else if (event === 'task_failed') {
       logger.warn('⚠️  Background task failed', {
         taskId: task.id,
         command: task.command.substring(0, 60),
-        duration: durationStr,
+        duration: durationString,
         exitCode: task.exitCode,
       });
-    } else if (event === 'task_orphaned') {
       logger.warn('👻 Background task orphaned (process died)', {
         taskId: task.id,
         command: task.command.substring(0, 60),
       });
     }
-  }, 60000);
+  });
 
   if (config.askUserHandler) {
     const askUserHandler = config.askUserHandler;
-    tools.ask_user = {
-      ...tools.ask_user,
+    tools['ask_user'] = {
+      ...tools['ask_user'],
       execute: async (args: { question: string }) => {
         return askUserHandler(args.question);
       },
     };
   } else {
-    tools.ask_user = {
-      ...tools.ask_user,
+    tools['ask_user'] = {
+      ...tools['ask_user'],
       // eslint-disable-next-line @typescript-eslint/require-await
       execute: async (args: { question: string }) => {
         logger.info('🤖 ask_user auto-approved', { question: args.question });
@@ -142,7 +144,7 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
   }
 
   if (config.disableAgentSpawning) {
-    delete tools.start_agent_task;
+    delete tools['start_agent_task'];
     logger.info('🚫 Agent spawning disabled (prevents recursion)');
   }
 

@@ -1,7 +1,8 @@
-import { stepCountIs, type StepResult, type PrepareStepFunction } from 'ai';
-import { createAgentWithRole, type AgentRole } from '../core/agents/factory.js';
 import { logger } from '@agent/shared';
+import { stepCountIs, type StepResult, type PrepareStepFunction } from 'ai';
+
 import { CORE_TOOL_NAMES } from './initialization.js';
+import { createAgentWithRole, type AgentRole } from '../core/agents/factory.js';
 
 export function createPrepareStep(activationManager?: any): PrepareStepFunction<any> {
   return ({ messages }) => {
@@ -11,7 +12,7 @@ export function createPrepareStep(activationManager?: any): PrepareStepFunction<
     if (messages.length > MAX_CONTEXT_MESSAGES) {
       logger.info('🔄 Trimming context', { from: messages.length, to: MAX_CONTEXT_MESSAGES });
       finalMessages = [
-        messages[0],
+        messages[0]!,
         ...messages.slice(-(MAX_CONTEXT_MESSAGES - 1)),
       ];
     }
@@ -39,7 +40,7 @@ export function createPrepareStep(activationManager?: any): PrepareStepFunction<
 
 function cleanAIText(text: string): string {
   const xmlTagPattern = /<\/?[a-zA-Z_][a-zA-Z0-9_-]*(?:\s+[^>]*)?\/?>/g;
-  const cleaned = text.replace(xmlTagPattern, '').trim();
+  const cleaned = text.replaceAll(xmlTagPattern, '').trim();
   return cleaned;
 }
 
@@ -66,20 +67,21 @@ export function createStepFinishHandler() {
     }
 
     if (stepResult.toolCalls && stepResult.toolCalls.length > 0) {
-      for (let i = 0; i < stepResult.toolCalls.length; i++) {
-        const tc = stepResult.toolCalls[i];
+      for (let index = 0; index < stepResult.toolCalls.length; index++) {
+        const tc = stepResult.toolCalls[index];
+        if (!tc) continue;
         const tr = stepResult.toolResults?.find(r => r.toolCallId === tc.toolCallId);
 
         const timing = (tr as any)?.timing;
-        const timingStr = timing ? ` (${timing.toFixed(2)}ms)` : '';
-        console.log(`\n🔧 TOOL CALL: ${tc.toolName}${timingStr}`);
+        const timingString = timing ? ` (${timing.toFixed(2)}ms)` : '';
+        console.log(`\n🔧 TOOL CALL: ${tc.toolName}${timingString}`);
         console.log('─'.repeat(40));
 
         const input = tc.input;
         if (input && typeof input === 'object' && Object.keys(input).length > 0) {
           console.log('📥 INPUT:');
-          const inputStr = JSON.stringify(input, null, 2);
-          console.log(inputStr.length > 500 ? inputStr.slice(0, 500) + '...' : inputStr);
+          const inputString = JSON.stringify(input, null, 2);
+          console.log(inputString.length > 500 ? inputString.slice(0, 500) + '...' : inputString);
         } else {
           console.log('📥 INPUT: (none)');
         }
@@ -87,11 +89,11 @@ export function createStepFinishHandler() {
         if (tr) {
           console.log('\n📤 OUTPUT:');
           if (tr.output !== undefined && tr.output !== null) {
-            const outputStr = typeof tr.output === 'string'
+            const outputString = typeof tr.output === 'string'
               ? tr.output
               : JSON.stringify(tr.output, null, 2);
-            if (outputStr) {
-              console.log(outputStr.length > 1000 ? outputStr.slice(0, 1000) + '...' : outputStr);
+            if (outputString) {
+              console.log(outputString.length > 1000 ? outputString.slice(0, 1000) + '...' : outputString);
             } else {
               console.log('(empty result)');
             }
@@ -118,7 +120,7 @@ export function createAgent(
   const { maxSteps = 50, activationManager, role = 'generic' } = options;
 
   // Create custom stop condition that checks for task_complete
-  const stopWhen = ({ steps }: { steps: StepResult<any>[] }) => {
+  const stopWhen = ({ steps }: { steps: Array<StepResult<any>> }) => {
     // Check if task_complete was called in any step
     const taskCompleted = steps.some((step) =>
       step.toolCalls?.some((tc) => tc.toolName === 'task_complete')

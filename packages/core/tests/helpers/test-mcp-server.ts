@@ -60,29 +60,42 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
   };
 });
 
+interface EchoArgs {
+  message: string;
+}
+
+interface AddArgs {
+  a: number;
+  b: number;
+}
+
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
   const { name, arguments: args } = request.params;
 
   switch (name) {
-    case 'echo':
+    case 'echo': {
+      const echoArgs = args as unknown as EchoArgs;
       return {
         content: [
           {
             type: 'text',
-            text: args.message,
+            text: echoArgs.message,
           },
         ],
       };
+    }
 
-    case 'add':
+    case 'add': {
+      const addArgs = args as unknown as AddArgs;
       return {
         content: [
           {
             type: 'text',
-            text: String(args.a + args.b),
+            text: String(addArgs.a + addArgs.b),
           },
         ],
       };
+    }
 
     case 'error':
       throw new Error('Test error from tool');
@@ -92,12 +105,12 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
   }
 });
 
-async function main() {
+async function main(): Promise<void> {
   const transport = new StdioServerTransport();
   await server.connect(transport);
 }
 
-main().catch((error) => {
+main().catch((error: unknown) => {
   console.error('Fatal error:', error);
   process.exit(1);
 });

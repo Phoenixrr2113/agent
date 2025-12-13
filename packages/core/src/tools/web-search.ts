@@ -5,10 +5,10 @@ const DEFAULT_TIMEOUT = 30000;
 
 function fetchWithTimeout(url: string, options: RequestInit = {}, timeout = DEFAULT_TIMEOUT): Promise<Response> {
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeout);
+  const timeoutId = setTimeout(() => { controller.abort(); }, timeout);
 
   return fetch(url, { ...options, signal: controller.signal })
-    .finally(() => clearTimeout(timeoutId));
+    .finally(() => { clearTimeout(timeoutId); });
 }
 
 interface BraveSearchResult {
@@ -24,12 +24,32 @@ interface TavilySearchResult {
   score: number;
 }
 
-async function braveSearch(query: string, count: number = 5): Promise<BraveSearchResult[]> {
-  const apiKey = process.env.BRAVE_API_KEY;
+interface BraveResponse {
+  web?: {
+    results?: Array<{
+      title: string;
+      url: string;
+      description: string;
+    }>;
+  };
+}
+
+interface TavilyResponse {
+  results?: Array<{
+    title: string;
+    url: string;
+    content: string;
+    score: number;
+  }>;
+  answer?: string;
+}
+
+async function braveSearch(query: string, count = 5): Promise<BraveSearchResult[]> {
+  const apiKey = process.env['BRAVE_API_KEY'];
   if (!apiKey) throw new Error('BRAVE_API_KEY not set');
 
   const response = await fetchWithTimeout(
-    `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=${count}`,
+    `https://api.search.brave.com/res/v1/web/search?q=${encodeURIComponent(query)}&count=${String(count)}`,
     {
       headers: {
         'Accept': 'application/json',
@@ -39,11 +59,11 @@ async function braveSearch(query: string, count: number = 5): Promise<BraveSearc
   );
 
   if (!response.ok) {
-    throw new Error(`Brave search failed: ${response.status}`);
+    throw new Error(`Brave search failed: ${String(response.status)}`);
   }
 
-  const data = await response.json();
-  return (data.web?.results || []).map((r: any) => ({
+  const data = (await response.json()) as BraveResponse;
+  return (data.web?.results ?? []).map((r) => ({
     title: r.title,
     url: r.url,
     description: r.description,
@@ -54,7 +74,7 @@ async function tavilySearch(
   query: string,
   options: { maxResults?: number; searchDepth?: 'basic' | 'advanced' } = {}
 ): Promise<{ results: TavilySearchResult[]; answer?: string }> {
-  const apiKey = process.env.TAVILY_API_KEY;
+  const apiKey = process.env['TAVILY_API_KEY'];
   if (!apiKey) throw new Error('TAVILY_API_KEY not set');
 
   const { maxResults = 5, searchDepth = 'basic' } = options;
@@ -74,19 +94,32 @@ async function tavilySearch(
   });
 
   if (!response.ok) {
-    throw new Error(`Tavily search failed: ${response.status}`);
+    throw new Error(`Tavily search failed: ${String(response.status)}`);
   }
 
-  const data = await response.json();
-  return {
-    results: (data.results || []).map((r: any) => ({
+  const data = (await response.json()) as TavilyResponse;
+  const result: { results: TavilySearchResult[]; answer?: string } = {
+    results: (data.results ?? []).map((r) => ({
       title: r.title,
       url: r.url,
       content: r.content,
       score: r.score,
     })),
-    answer: data.answer,
   };
+  
+  if (data.answer) {
+    result.answer = data.answer;
+  }
+  
+  return result;
+}
+
+interface SearchResults {
+    brave?: BraveSearchResult[];
+    tavily?: TavilySearchResult[];
+    answer?: string;
+    braveError?: string;
+    tavilyError?: string;
 }
 
 export const webSearchTool = tool({
@@ -97,15 +130,19 @@ export const webSearchTool = tool({
     maxResults: z.number().min(1).max(50).optional().default(5).describe('Max results (1-50, default: 5)'),
     deep: z.boolean().optional().describe('Deep search for tavily (slower, more thorough)'),
   }),
-  execute: async ({ query, engine = 'tavily', maxResults = 5, deep }: { query: string; engine?: string; maxResults?: number; deep?: boolean }) => {
-    const results: any = {};
+  execute: async ({ query, engine, maxResults, deep }) => {
+    const results: SearchResults = {};
 
     try {
       if (engine === 'brave' || engine === 'both') {
         try {
           results.brave = await braveSearch(query, maxResults);
-        } catch (e: any) {
-          results.braveError = e.message;
+        } catch (error) {
+           if (error instanceof Error) {
+               results.braveError = error.message;
+           } else {
+               results.braveError = String(error);
+           }
         }
       }
 
@@ -119,8 +156,12 @@ export const webSearchTool = tool({
           if (tavily.answer) {
             results.answer = tavily.answer;
           }
-        } catch (e: any) {
-          results.tavilyError = e.message;
+        } catch (error) {
+           if (error instanceof Error) {
+               results.tavilyError = error.message;
+           } else {
+               results.tavilyError = String(error);
+           }
         }
       }
 
@@ -129,8 +170,8 @@ export const webSearchTool = tool({
       }
 
       return JSON.stringify(results);
-    } catch (error: any) {
-      return JSON.stringify({ error: error.message });
+    } catch (error) {
+        return JSON.stringify({ error: error instanceof Error ? error.message : String(error) });
     }
   },
 });

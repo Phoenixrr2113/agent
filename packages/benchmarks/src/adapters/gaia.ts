@@ -1,5 +1,6 @@
 import { createAgentRuntime, type AgentSession } from '@agent/core';
 import { logger } from '@agent/shared';
+
 import type { BenchmarkResult } from '../types.js';
 
 export interface GAIATask {
@@ -151,9 +152,9 @@ export function scoreGAIAResults(results: GAIAResult[]): {
   };
 
   for (const result of results) {
-    byLevel[result.level].total++;
+    byLevel[result.level]!.total++;
     if (result.isCorrect) {
-      byLevel[result.level].correct++;
+      byLevel[result.level]!.correct++;
     }
   }
 
@@ -163,9 +164,9 @@ export function scoreGAIAResults(results: GAIAResult[]): {
   return {
     overall: totalTasks > 0 ? totalCorrect / totalTasks : 0,
     byLevel: {
-      1: byLevel[1].total > 0 ? byLevel[1].correct / byLevel[1].total : 0,
-      2: byLevel[2].total > 0 ? byLevel[2].correct / byLevel[2].total : 0,
-      3: byLevel[3].total > 0 ? byLevel[3].correct / byLevel[3].total : 0,
+      1: (byLevel[1]?.total ?? 0) > 0 ? (byLevel[1]?.correct ?? 0) / (byLevel[1]?.total ?? 1) : 0,
+      2: (byLevel[2]?.total ?? 0) > 0 ? (byLevel[2]?.correct ?? 0) / (byLevel[2]?.total ?? 1) : 0,
+      3: (byLevel[3]?.total ?? 0) > 0 ? (byLevel[3]?.correct ?? 0) / (byLevel[3]?.total ?? 1) : 0,
     },
   };
 }

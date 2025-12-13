@@ -6,44 +6,44 @@ export interface TimingMetric {
   startTime: number;
   endTime?: number;
   duration?: number;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
   children?: TimingMetric[];
 }
 
 export interface PerformanceSummary {
   totalDuration: number;
-  operations: {
-    [key: string]: {
-      count: number;
-      totalDuration: number;
-      avgDuration: number;
-      minDuration: number;
-      maxDuration: number;
-    };
-  };
+  operations: Record<string, {
+    count: number;
+    totalDuration: number;
+    avgDuration: number;
+    minDuration: number;
+    maxDuration: number;
+  }>;
 }
 
 export class PerformanceTimer {
   private metrics: TimingMetric[] = [];
-  private activeMetrics: Map<string, TimingMetric> = new Map();
+  private readonly activeMetrics = new Map<string, TimingMetric>();
   private metricStack: TimingMetric[] = [];
 
-  start(operation: string, component: string, metadata?: Record<string, any>): void {
+  start(operation: string, component: string, metadata?: Record<string, unknown>): void {
     const metric: TimingMetric = {
       operation,
       component,
       startTime: performance.now(),
-      metadata,
       children: [],
+      ...(metadata && { metadata }),
     };
 
     const metricId = `${component}:${operation}`;
     this.activeMetrics.set(metricId, metric);
 
     if (this.metricStack.length > 0) {
-      const parent = this.metricStack[this.metricStack.length - 1];
-      parent.children = parent.children || [];
-      parent.children.push(metric);
+      const parent = this.metricStack.at(-1);
+      if (parent) {
+        parent.children = parent.children ?? [];
+        parent.children.push(metric);
+      }
     } else {
       this.metrics.push(metric);
     }
@@ -56,7 +56,7 @@ export class PerformanceTimer {
     });
   }
 
-  end(operation: string, component: string, metadata?: Record<string, any>): number | undefined {
+  end(operation: string, component: string, metadata?: Record<string, unknown>): number | undefined {
     const metricId = `${component}:${operation}`;
     const metric = this.activeMetrics.get(metricId);
 
@@ -94,12 +94,12 @@ export class PerformanceTimer {
   measure<T>(
     operation: string,
     component: string,
-    fn: () => T,
-    metadata?: Record<string, any>
+    function_: () => T,
+    metadata?: Record<string, unknown>
   ): T {
     this.start(operation, component, metadata);
     try {
-      const result = fn();
+      const result = function_();
       this.end(operation, component);
       return result;
     } catch (error) {
@@ -111,12 +111,12 @@ export class PerformanceTimer {
   async measureAsync<T>(
     operation: string,
     component: string,
-    fn: () => Promise<T>,
-    metadata?: Record<string, any>
+    function_: () => Promise<T>,
+    metadata?: Record<string, unknown>
   ): Promise<T> {
     this.start(operation, component, metadata);
     try {
-      const result = await fn();
+      const result = await function_();
       this.end(operation, component);
       return result;
     } catch (error) {
@@ -135,20 +135,20 @@ export class PerformanceTimer {
       operations: {},
     };
 
-    const processMetric = (metric: TimingMetric) => {
-      if (metric.duration !== undefined) {
+    const processMetric = (metric: TimingMetric): void => {
+        if (metric.duration !== undefined) {
         const key = `[${metric.component}] ${metric.operation}`;
 
-        if (!summary.operations[key]) {
-          summary.operations[key] = {
-            count: 0,
-            totalDuration: 0,
-            avgDuration: 0,
-            minDuration: Infinity,
-            maxDuration: 0,
-          };
-        }
+        // eslint-disable-next-line security/detect-object-injection
+        summary.operations[key] ??= {
+          count: 0,
+          totalDuration: 0,
+          avgDuration: 0,
+          minDuration: Infinity,
+          maxDuration: 0,
+        };
 
+        // eslint-disable-next-line security/detect-object-injection
         const op = summary.operations[key];
         op.count++;
         op.totalDuration += metric.duration;

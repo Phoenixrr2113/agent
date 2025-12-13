@@ -1,8 +1,9 @@
 import { createAgentRuntime, type AgentSession } from '@agent/core';
 import { logger } from '@agent/shared';
+
 import type { HALRunResult, BenchmarkTask } from '../types.js';
 
-export interface HALAgentArgs {
+export interface HALAgentArguments {
   model_name?: string;
   max_steps?: number;
   workspace?: string;
@@ -26,14 +27,14 @@ async function getOrCreateSession(workspace?: string): Promise<AgentSession> {
 export async function run(
   taskId: string,
   task: BenchmarkTask,
-  agentArgs: HALAgentArgs = {}
+  agentArguments: HALAgentArguments = {}
 ): Promise<HALRunResult> {
   const startTime = Date.now();
 
   try {
-    logger.info('HAL adapter: Starting task', { taskId, agentArgs });
+    logger.info('HAL adapter: Starting task', { taskId, agentArgs: agentArguments });
 
-    const agentSession = await getOrCreateSession(agentArgs.workspace);
+    const agentSession = await getOrCreateSession(agentArguments.workspace);
 
     const prompt = task.prompt || task.instruction || '';
 

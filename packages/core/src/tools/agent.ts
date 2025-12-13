@@ -1,7 +1,9 @@
+
+import { logger } from '@agent/shared';
 import { tool } from 'ai';
 import { z } from 'zod';
-import * as readline from 'readline/promises';
-import { logger } from '@agent/shared';
+
+import type * as readline from 'node:readline/promises';
 
 export function createAgentTools(rl: readline.Interface | null) {
   return {

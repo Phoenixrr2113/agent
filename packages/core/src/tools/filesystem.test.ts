@@ -1,16 +1,46 @@
+import { promises as fs } from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
+
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { promises as fs } from 'fs';
-import * as path from 'path';
-import * as os from 'os';
+
 import { createFilesystemTools, setAllowedDirectories, getAllowedDirectories } from './filesystem.js';
+
+interface ToolResult {
+  success?: boolean;
+  error?: string;
+  content?: string;
+  count?: number;
+  entries?: any[];
+  tree?: any;
+  info?: any;
+  results?: any[];
+  dryRun?: boolean;
+  [key: string]: any;
+}
+
+const parseResult = (result: string | unknown): ToolResult => {
+  if (typeof result !== 'string') {
+    throw new TypeError('Expected result to be a string');
+  }
+  return JSON.parse(result) as ToolResult;
+};
+
+const mockContext: any = {
+  toolCallId: 'test-call',
+  messages: [],
+};
+
 
 describe('Filesystem Tools', () => {
   let testDir: string;
-  let filesystemTools: ReturnType<typeof createFilesystemTools>;
+  let filesystemTools: ReturnType<typeof createFilesystemTools> = null!;
 
   beforeEach(async () => {
     testDir = path.join(os.tmpdir(), `fs-test-${Date.now()}`);
     await fs.mkdir(testDir, { recursive: true });
+    testDir = await fs.realpath(testDir);
+    setAllowedDirectories([testDir]);
     filesystemTools = createFilesystemTools(testDir);
   });
 
@@ -34,8 +64,8 @@ describe('Filesystem Tools', () => {
       const filePath = path.join(testDir, 'test.txt');
       await fs.writeFile(filePath, 'Hello World', 'utf-8');
 
-      const result = await filesystemTools.read_text_file.execute({ path: filePath });
-      const parsed = JSON.parse(result as string);
+      const result = await filesystemTools.read_text_file.execute({ path: filePath }, mockContext);
+      const parsed = parseResult(result);
 
       expect(parsed.success).toBe(true);
       expect(parsed.content).toBe('Hello World');
@@ -45,8 +75,8 @@ describe('Filesystem Tools', () => {
       const filePath = path.join(testDir, 'multiline.txt');
       await fs.writeFile(filePath, 'Line 1\nLine 2\nLine 3\nLine 4', 'utf-8');
 
-      const result = await filesystemTools.read_text_file.execute({ path: filePath, head: 2 });
-      const parsed = JSON.parse(result as string);
+      const result = await filesystemTools.read_text_file.execute({ path: filePath, head: 2 }, mockContext);
+      const parsed = parseResult(result);
 
       expect(parsed.success).toBe(true);
       expect(parsed.content).toBe('Line 1\nLine 2');
@@ -56,8 +86,8 @@ describe('Filesystem Tools', () => {
       const filePath = path.join(testDir, 'multiline.txt');
       await fs.writeFile(filePath, 'Line 1\nLine 2\nLine 3\nLine 4', 'utf-8');
 
-      const result = await filesystemTools.read_text_file.execute({ path: filePath, tail: 2 });
-      const parsed = JSON.parse(result as string);
+      const result = await filesystemTools.read_text_file.execute({ path: filePath, tail: 2 }, mockContext);
+      const parsed = parseResult(result);
 
       expect(parsed.success).toBe(true);
       expect(parsed.content).toContain('Line 3');
@@ -68,15 +98,15 @@ describe('Filesystem Tools', () => {
       const filePath = path.join(testDir, 'test.txt');
       await fs.writeFile(filePath, 'content', 'utf-8');
 
-      const result = await filesystemTools.read_text_file.execute({ path: filePath, head: 1, tail: 1 });
-      const parsed = JSON.parse(result as string);
+      const result = await filesystemTools.read_text_file.execute({ path: filePath, head: 1, tail: 1 }, mockContext);
+      const parsed = parseResult(result);
 
       expect(parsed.error).toBe('Cannot specify both head and tail parameters');
     });
 
     it('should return error for non-existent file', async () => {
-      const result = await filesystemTools.read_text_file.execute({ path: '/nonexistent.txt' });
-      const parsed = JSON.parse(result as string);
+      const result = await filesystemTools.read_text_file.execute({ path: '/nonexistent.txt' }, mockContext);
+      const parsed = parseResult(result);
 
       expect(parsed.error).toBeDefined();
     });
@@ -85,8 +115,8 @@ describe('Filesystem Tools', () => {
   describe('write_file', () => {
     it('should create new file', async () => {
       const filePath = path.join(testDir, 'new.txt');
-      const result = await filesystemTools.write_file.execute({ path: filePath, content: 'New content' });
-      const parsed = JSON.parse(result as string);
+      const result = await filesystemTools.write_file.execute({ path: filePath, content: 'New content' }, mockContext);
+      const parsed = parseResult(result);
 
       expect(parsed.success).toBe(true);
       const content = await fs.readFile(filePath, 'utf-8');
@@ -97,8 +127,8 @@ describe('Filesystem Tools', () => {
       const filePath = path.join(testDir, 'existing.txt');
       await fs.writeFile(filePath, 'Old content', 'utf-8');
 
-      const result = await filesystemTools.write_file.execute({ path: filePath, content: 'New content' });
-      const parsed = JSON.parse(result as string);
+      const result = await filesystemTools.write_file.execute({ path: filePath, content: 'New content' }, mockContext);
+      const parsed = parseResult(result);
 
       expect(parsed.success).toBe(true);
       const content = await fs.readFile(filePath, 'utf-8');
@@ -114,8 +144,9 @@ describe('Filesystem Tools', () => {
       const result = await filesystemTools.edit_file.execute({
         path: filePath,
         edits: [{ oldText: 'World', newText: 'Universe' }],
-      });
-      const parsed = JSON.parse(result as string);
+        dryRun: false,
+      }, mockContext);
+      const parsed = parseResult(result);
 
       expect(parsed.success).toBe(true);
       const content = await fs.readFile(filePath, 'utf-8');
@@ -131,8 +162,8 @@ describe('Filesystem Tools', () => {
         path: filePath,
         edits: [{ oldText: 'Original', newText: 'Modified' }],
         dryRun: true,
-      });
-      const parsed = JSON.parse(result as string);
+      }, mockContext);
+      const parsed = parseResult(result);
 
       expect(parsed.success).toBe(true);
       expect(parsed.dryRun).toBe(true);
@@ -147,8 +178,9 @@ describe('Filesystem Tools', () => {
       const result = await filesystemTools.edit_file.execute({
         path: filePath,
         edits: [{ oldText: 'NonExistent', newText: 'New' }],
-      });
-      const parsed = JSON.parse(result as string);
+        dryRun: false,
+      }, mockContext);
+      const parsed = parseResult(result);
 
       expect(parsed.error).toContain('Could not find text to replace');
     });
@@ -161,14 +193,14 @@ describe('Filesystem Tools', () => {
       await fs.writeFile(file1, 'Content 1', 'utf-8');
       await fs.writeFile(file2, 'Content 2', 'utf-8');
 
-      const result = await filesystemTools.read_multiple_files.execute({ paths: [file1, file2] });
-      const parsed = JSON.parse(result as string);
+      const result = await filesystemTools.read_multiple_files.execute({ paths: [file1, file2] }, mockContext);
+      const parsed = parseResult(result);
 
-      expect(parsed.results).toHaveLength(2);
-      expect(parsed.results[0].success).toBe(true);
-      expect(parsed.results[0].content).toBe('Content 1');
-      expect(parsed.results[1].success).toBe(true);
-      expect(parsed.results[1].content).toBe('Content 2');
+      expect(parsed.results!).toHaveLength(2);
+      expect(parsed.results![0].success).toBe(true);
+      expect(parsed.results![0].content).toBe('Content 1');
+      expect(parsed.results![1].success).toBe(true);
+      expect(parsed.results![1].content).toBe('Content 2');
     });
 
     it('should handle mixed success and failure', async () => {
@@ -176,21 +208,21 @@ describe('Filesystem Tools', () => {
       const file2 = path.join(testDir, 'nonexistent.txt');
       await fs.writeFile(file1, 'Content', 'utf-8');
 
-      const result = await filesystemTools.read_multiple_files.execute({ paths: [file1, file2] });
-      const parsed = JSON.parse(result as string);
+      const result = await filesystemTools.read_multiple_files.execute({ paths: [file1, file2] }, mockContext);
+      const parsed = parseResult(result);
 
-      expect(parsed.results).toHaveLength(2);
-      expect(parsed.results[0].success).toBe(true);
-      expect(parsed.results[1].success).toBe(false);
-      expect(parsed.results[1].error).toBeDefined();
+      expect(parsed.results!).toHaveLength(2);
+      expect(parsed.results![0].success).toBe(true);
+      expect(parsed.results![1].success).toBe(false);
+      expect(parsed.results![1].error).toBeDefined();
     });
   });
 
   describe('create_directory', () => {
     it('should create directory', async () => {
       const dirPath = path.join(testDir, 'newdir');
-      const result = await filesystemTools.create_directory.execute({ path: dirPath });
-      const parsed = JSON.parse(result as string);
+      const result = await filesystemTools.create_directory.execute({ path: dirPath }, mockContext);
+      const parsed = parseResult(result);
 
       expect(parsed.success).toBe(true);
       const stats = await fs.stat(dirPath);
@@ -199,8 +231,8 @@ describe('Filesystem Tools', () => {
 
     it('should create nested directories', async () => {
       const dirPath = path.join(testDir, 'level1', 'level2', 'level3');
-      const result = await filesystemTools.create_directory.execute({ path: dirPath });
-      const parsed = JSON.parse(result as string);
+      const result = await filesystemTools.create_directory.execute({ path: dirPath }, mockContext);
+      const parsed = parseResult(result);
 
       expect(parsed.success).toBe(true);
       const stats = await fs.stat(dirPath);
@@ -211,8 +243,8 @@ describe('Filesystem Tools', () => {
       const dirPath = path.join(testDir, 'idempotent');
       await fs.mkdir(dirPath);
 
-      const result = await filesystemTools.create_directory.execute({ path: dirPath });
-      const parsed = JSON.parse(result as string);
+      const result = await filesystemTools.create_directory.execute({ path: dirPath }, mockContext);
+      const parsed = parseResult(result);
 
       expect(parsed.success).toBe(true);
     });
@@ -223,14 +255,14 @@ describe('Filesystem Tools', () => {
       await fs.writeFile(path.join(testDir, 'file.txt'), 'content', 'utf-8');
       await fs.mkdir(path.join(testDir, 'subdir'));
 
-      const result = await filesystemTools.list_directory.execute({ path: testDir });
-      const parsed = JSON.parse(result as string);
+      const result = await filesystemTools.list_directory.execute({ path: testDir }, mockContext);
+      const parsed = parseResult(result);
 
       expect(parsed.success).toBe(true);
-      expect(parsed.entries).toHaveLength(2);
+      expect(parsed.entries!).toHaveLength(2);
 
-      const fileEntry = parsed.entries.find((e: any) => e.name === 'file.txt');
-      const dirEntry = parsed.entries.find((e: any) => e.name === 'subdir');
+      const fileEntry = parsed.entries!.find((e: any) => e.name === 'file.txt');
+      const dirEntry = parsed.entries!.find((e: any) => e.name === 'subdir');
 
       expect(fileEntry?.type).toBe('file');
       expect(fileEntry?.prefix).toBe('[FILE]');
@@ -244,12 +276,12 @@ describe('Filesystem Tools', () => {
       await fs.writeFile(path.join(testDir, 'small.txt'), 'x', 'utf-8');
       await fs.writeFile(path.join(testDir, 'large.txt'), 'x'.repeat(1000), 'utf-8');
 
-      const result = await filesystemTools.list_directory_with_sizes.execute({ path: testDir });
-      const parsed = JSON.parse(result as string);
+      const result = await filesystemTools.list_directory_with_sizes.execute({ path: testDir }, mockContext);
+      const parsed = parseResult(result);
 
       expect(parsed.success).toBe(true);
-      expect(parsed.entries.every((e: any) => typeof e.size === 'number')).toBe(true);
-      expect(parsed.entries.every((e: any) => typeof e.formattedSize === 'string')).toBe(true);
+      expect(parsed.entries!.every((e: any) => typeof e.size === 'number')).toBe(true);
+      expect(parsed.entries!.every((e: any) => typeof e.formattedSize === 'string')).toBe(true);
     });
 
     it('should sort by size', async () => {
@@ -259,11 +291,11 @@ describe('Filesystem Tools', () => {
       const result = await filesystemTools.list_directory_with_sizes.execute({
         path: testDir,
         sortBy: 'size'
-      });
-      const parsed = JSON.parse(result as string);
+      }, mockContext);
+      const parsed = parseResult(result);
 
       expect(parsed.success).toBe(true);
-      expect(parsed.entries[0].size).toBeGreaterThan(parsed.entries[1].size);
+      expect(parsed.entries![0].size).toBeGreaterThan(parsed.entries![1].size);
     });
   });
 
@@ -273,8 +305,8 @@ describe('Filesystem Tools', () => {
       await fs.writeFile(path.join(testDir, 'file.txt'), 'content', 'utf-8');
       await fs.writeFile(path.join(testDir, 'subdir', 'nested.txt'), 'content', 'utf-8');
 
-      const result = await filesystemTools.directory_tree.execute({ path: testDir });
-      const parsed = JSON.parse(result as string);
+      const result = await filesystemTools.directory_tree.execute({ path: testDir }, mockContext);
+      const parsed = parseResult(result);
 
       expect(parsed.success).toBe(true);
       expect(parsed.tree.type).toBe('directory');
@@ -289,8 +321,8 @@ describe('Filesystem Tools', () => {
       const result = await filesystemTools.directory_tree.execute({
         path: testDir,
         excludePatterns: ['*.log']
-      });
-      const parsed = JSON.parse(result as string);
+      }, mockContext);
+      const parsed = parseResult(result);
 
       expect(parsed.success).toBe(true);
       const hasLog = parsed.tree.children.some((c: any) => c.name === 'exclude.log');
@@ -307,8 +339,8 @@ describe('Filesystem Tools', () => {
       const result = await filesystemTools.search_files.execute({
         path: testDir,
         pattern: '*.txt'
-      });
-      const parsed = JSON.parse(result as string);
+      }, mockContext);
+      const parsed = parseResult(result);
 
       expect(parsed.success).toBe(true);
       expect(parsed.count).toBe(2);
@@ -322,12 +354,12 @@ describe('Filesystem Tools', () => {
         path: testDir,
         pattern: '*.txt',
         excludePatterns: ['exclude.txt']
-      });
-      const parsed = JSON.parse(result as string);
+      }, mockContext);
+      const parsed = parseResult(result);
 
       expect(parsed.success).toBe(true);
       expect(parsed.count).toBe(1);
-      expect(parsed.results[0].path).toContain('include.txt');
+      expect(parsed.results![0].path).toContain('include.txt');
     });
   });
 
@@ -336,8 +368,8 @@ describe('Filesystem Tools', () => {
       const filePath = path.join(testDir, 'info.txt');
       await fs.writeFile(filePath, 'test content', 'utf-8');
 
-      const result = await filesystemTools.get_file_info.execute({ path: filePath });
-      const parsed = JSON.parse(result as string);
+      const result = await filesystemTools.get_file_info.execute({ path: filePath }, mockContext);
+      const parsed = parseResult(result);
 
       expect(parsed.success).toBe(true);
       expect(parsed.info.size).toBeGreaterThan(0);
@@ -357,8 +389,8 @@ describe('Filesystem Tools', () => {
       const result = await filesystemTools.move_file.execute({
         source: sourcePath,
         destination: destPath
-      });
-      const parsed = JSON.parse(result as string);
+      }, mockContext);
+      const parsed = parseResult(result);
 
       expect(parsed.success).toBe(true);
 
@@ -380,8 +412,8 @@ describe('Filesystem Tools', () => {
       const result = await filesystemTools.move_file.execute({
         source: sourcePath,
         destination: destPath
-      });
-      const parsed = JSON.parse(result as string);
+      }, mockContext);
+      const parsed = parseResult(result);
 
       expect(parsed.error).toContain('already exists');
     });
@@ -393,8 +425,8 @@ describe('Filesystem Tools', () => {
       await fs.writeFile(outsidePath, 'content', 'utf-8');
 
       try {
-        const result = await filesystemTools.read_text_file.execute({ path: outsidePath });
-        const parsed = JSON.parse(result as string);
+        const result = await filesystemTools.read_text_file.execute({ path: outsidePath }, mockContext);
+        const parsed = parseResult(result);
 
         expect(parsed.error).toContain('Access denied');
       } finally {

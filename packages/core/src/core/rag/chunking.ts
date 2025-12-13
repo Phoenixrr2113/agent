@@ -1,4 +1,5 @@
 import { CodeChunkingStrategy } from './strategies/code-strategy.js';
+
 import type { Chunk, ChunkMetadata } from './strategies/base.js';
 
 export type CodeChunk = Chunk;
@@ -11,12 +12,12 @@ export function disposeParserFactory(): void {
   codeStrategy.dispose();
 }
 
-export function getLanguageFromExtension(ext: string): string | null {
-  return codeStrategy.getLanguageFromExtension(ext);
+export function getLanguageFromExtension(extension: string): string | null {
+  return codeStrategy.getLanguageFromExtension(extension);
 }
 
-export function isASTSupported(ext: string): boolean {
-  return codeStrategy.canHandle('', ext);
+export function isASTSupported(extension: string): boolean {
+  return codeStrategy.canHandle('', extension);
 }
 
 export async function chunkDirectory(

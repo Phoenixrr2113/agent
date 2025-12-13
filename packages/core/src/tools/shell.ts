@@ -1,9 +1,10 @@
 import { tool } from 'ai';
 import { z } from 'zod';
+
 import {
   executeCommand,
   isDangerousCommand,
-  type ShellResult as UtilShellResult,
+  type ShellResult as UtilityShellResult,
 } from './utils/shell.js';
 import { error, success } from './utils/tool-result.js';
 

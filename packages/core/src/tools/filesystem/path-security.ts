@@ -1,6 +1,6 @@
-import * as path from 'path';
-import * as os from 'os';
-import { promises as fs } from 'fs';
+import { promises as fs } from 'node:fs';
+import * as os from 'node:os';
+import * as path from 'node:path';
 
 let allowedDirectories: string[] = [];
 
@@ -20,7 +20,7 @@ export function expandHome(filepath: string): string {
 }
 
 export function normalizePath(p: string): string {
-  let cleaned = p.normalize('NFC').trim().replace(/^["']|["']$/g, '');
+  let cleaned = p.normalize('NFC').trim().replaceAll(/^["']|["']$/g, '');
 
   if (cleaned.startsWith('/mnt/')) {
     return cleaned;
@@ -31,15 +31,17 @@ export function normalizePath(p: string): string {
       cleaned = cleaned[1] + ':' + cleaned.slice(2);
     }
 
-    if (/^\\\\/.test(cleaned)) {
+    if (cleaned.startsWith("\\\\")) {
       cleaned = cleaned.replace(/^\\+/, '\\\\');
     }
 
     if (/^[a-z]:/.test(cleaned)) {
+    if (cleaned && cleaned.length > 0 && typeof cleaned[0] === 'string') {
       cleaned = cleaned[0].toUpperCase() + cleaned.slice(1);
     }
+    }
 
-    return cleaned.replace(/\//g, '\\');
+    return cleaned.replaceAll('/', '\\');
   }
 
   return cleaned;
@@ -121,8 +123,8 @@ export function isPathWithinAllowedDirectories(targetPath: string): boolean {
 
     // For case-insensitive logic, we used lowercase aDir. So use proper separator check.
     // Actually simpler:
-    const sep = path.sep;
-    const suffix = aDir.endsWith(sep) ? '' : sep;
+    const separator_ = path.sep;
+    const suffix = aDir.endsWith(separator_) ? '' : separator_;
     if (pPath.startsWith(aDir + suffix)) {
       return true;
     }

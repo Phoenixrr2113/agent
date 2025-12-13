@@ -1,29 +1,31 @@
-import * as readline from 'readline/promises';
-import { stdin as input, stdout as output } from 'process';
-import { createCodebaseRAG } from '../core/rag/index.js';
-import { logger } from '@agent/shared';
-import { instrumentTools } from '../core/tool-instrumentation.js';
+import { stdin as input, stdout as output } from 'node:process';
+import * as readline from 'node:readline/promises';
 
-import { shellTool } from '../tools/shell.js';
-import { webSearchTool } from '../tools/web-search.js';
-import { fetchPageTool } from '../tools/fetch-page.js';
-import { memoryTools, closeMemory } from '../tools/memory.js';
-import { planTool, validationTool } from '../tools/workflow.js';
-import { createCodebaseTools } from '../tools/codebase.js';
+
+import { logger } from '@agent/shared';
+
+import { createCodebaseRAG } from "../core/rag";
+import { instrumentTools } from '../core/tool-instrumentation.js';
 import { createAgentTools } from '../tools/agent.js';
-import { sequentialThinkingTool, resetSequentialThinkingEngine } from '../tools/sequential-thinking.js';
-import { createFilesystemTools } from '../tools/filesystem.js';
 import { persistentBackgroundTaskTools, getPersistentTaskManager } from '../tools/background-tasks-persistent.js';
+import { createCodebaseTools } from '../tools/codebase.js';
+import { fetchPageTool } from '../tools/fetch-page.js';
+import { createFilesystemTools } from '../tools/filesystem.js';
+import { memoryTools, closeMemory } from '../tools/memory.js';
 import {
-  ToolRegistry,
+  type ToolRegistry,
   createToolRegistry,
   createToolSearchTool,
   createActivateToolTool,
   createDeactivateToolTool,
 } from '../tools/registry.js';
+import { sequentialThinkingTool, resetSequentialThinkingEngine } from '../tools/sequential-thinking.js';
+import { shellTool } from '../tools/shell.js';
 import {
   createToolActivationManager,
 } from '../tools/tool-wrapper.js';
+import { webSearchTool } from '../tools/web-search.js';
+import { planTool, validationTool } from '../tools/workflow.js';
 
 /**
  * Core tools that are always available without requiring activation.

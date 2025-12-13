@@ -1,6 +1,8 @@
+import { rmSync, existsSync } from 'node:fs';
+import { join } from 'node:path';
+
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { rmSync, existsSync } from 'fs';
-import { join } from 'path';
+
 import {
   getPersistentTaskManager,
   resetPersistentTaskManager,
@@ -232,26 +234,36 @@ describe('PersistentTaskManager', () => {
       const taskManager = getPersistentTaskManager(TEST_WORKSPACE);
       const taskId = taskManager.startTask('echo "old task"');
 
-      await new Promise(resolve => setTimeout(resolve, 300));
+      // Wait for task completion
+      let task = taskManager.getTask(taskId);
+      while (task?.status === 'running') {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        task = taskManager.getTask(taskId);
+      }
 
       const count = taskManager.cleanupOldTasks(0);
       expect(count).toBeGreaterThan(0);
 
-      const task = taskManager.getTask(taskId);
-      expect(task).toBeUndefined();
+      const deletedTask = taskManager.getTask(taskId);
+      expect(deletedTask).toBeUndefined();
     });
 
     it('should not delete recent tasks', async () => {
       const taskManager = getPersistentTaskManager(TEST_WORKSPACE);
       const taskId = taskManager.startTask('echo "recent task"');
 
-      await new Promise(resolve => setTimeout(resolve, 300));
+      // Wait for task completion
+      let task = taskManager.getTask(taskId);
+      while (task?.status === 'running') {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        task = taskManager.getTask(taskId);
+      }
 
-      const count = taskManager.cleanupOldTasks(86400000);
+      const count = taskManager.cleanupOldTasks(86400000); // 1 day
       expect(count).toBe(0);
 
-      const task = taskManager.getTask(taskId);
-      expect(task).toBeDefined();
+      const remainingTask = taskManager.getTask(taskId);
+      expect(remainingTask).toBeDefined();
     });
   });
 
@@ -274,11 +286,25 @@ describe('PersistentTaskManager', () => {
 
     it('should detect orphaned tasks', async () => {
       let taskManager = getPersistentTaskManager(TEST_WORKSPACE);
-      const taskId = taskManager.startTask('sleep 0.5');
+      // Start a long running task
+      const taskId = taskManager.startTask('sleep 10');
+      const taskInfo = taskManager.getTask(taskId);
+      const pid = taskInfo?.pid;
 
-      await new Promise(resolve => setTimeout(resolve, 800));
+      expect(pid).toBeDefined();
 
       resetPersistentTaskManager();
+
+      // Kill the process manually to simulate crash/orphan
+      if (pid) {
+        try {
+          process.kill(pid, 'SIGKILL');
+          // Give OS time to update process table
+          await new Promise(resolve => setTimeout(resolve, 100));
+        } catch {
+          // Process might already be gone
+        }
+      }
 
       taskManager = getPersistentTaskManager(TEST_WORKSPACE);
       const task = taskManager.getTask(taskId);

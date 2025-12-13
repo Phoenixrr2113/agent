@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+
 import { runSWEBenchTask, resetSession, shutdown, scoreSWEBenchResults, type SWEBenchTask, type SWEBenchConfig, type SWEBenchResult } from './swe-bench.js';
 
 vi.mock('@agent/core', () => ({
@@ -15,7 +16,7 @@ vi.mock('@agent/core', () => ({
       }),
       clearHistory: vi.fn(),
     }),
-    shutdown: vi.fn().mockResolvedValue(undefined),
+    shutdown: vi.fn().mockResolvedValue(),
   }),
 }));
 

@@ -1,6 +1,6 @@
-import fs from 'fs/promises';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -14,7 +14,8 @@ export async function createTempDirectory(name: string): Promise<string> {
 export async function cleanupTempDirectory(dirPath: string): Promise<void> {
   try {
     await fs.rm(dirPath, { recursive: true, force: true });
-  } catch (error) {
+  } catch {
+    // Ignore errors during cleanup
   }
 }
 
@@ -44,7 +45,7 @@ export async function readTestFile(filePath: string): Promise<string> {
   return fs.readFile(filePath, 'utf-8');
 }
 
-export function generateTestCode(lines: number, pattern: string = 'const x = 1;'): string {
+export function generateTestCode(lines: number, pattern = 'const x = 1;'): string {
   return Array(lines).fill(pattern).join('\n');
 }
 

@@ -1,7 +1,8 @@
-import { describe, it, expect, beforeEach } from 'vitest';
 import { tool } from 'ai';
+import { describe, it, expect, beforeEach } from 'vitest';
 import { z } from 'zod';
-import { ToolActivationManager, createToolActivationManager } from './tool-wrapper.js';
+
+import { type ToolActivationManager, createToolActivationManager } from './tool-wrapper.js';
 
 function createMockTool(description: string) {
   return tool({

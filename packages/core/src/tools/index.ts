@@ -28,10 +28,10 @@ export {
 } from './background-tasks-persistent.js';
 
 export * from './factory.js';
-import { defaultToolFactory } from './factory.js';
 import { createAgentTools } from './agent.js';
-import { createFilesystemTools } from './filesystem.js';
 import { createCodebaseTools } from './codebase.js';
+import { defaultToolFactory } from './factory.js';
+import { createFilesystemTools } from './filesystem.js';
 
 defaultToolFactory.register('agent', (deps) => createAgentTools(deps.rl ?? null));
 defaultToolFactory.register('filesystem', (deps) =>

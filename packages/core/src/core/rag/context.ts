@@ -1,7 +1,9 @@
-import { generateText } from 'ai';
-import type { CodeChunk } from './chunking.js';
 import { logger } from '@agent/shared';
+import { generateText } from 'ai';
+
 import { models } from '../agents/models.js';
+
+import type { CodeChunk } from './chunking.js';
 
 export interface ContextualChunk extends CodeChunk {
   context: string;
@@ -95,15 +97,15 @@ export async function generateContextBatch(
     }
   };
 
-  for (let i = 0; i < chunks.length; i += concurrency) {
-    const batch = chunks.slice(i, i + concurrency);
+  for (let index = 0; index < chunks.length; index += concurrency) {
+    const batch = chunks.slice(index, index + concurrency);
     const batchResults = await Promise.all(batch.map(processChunk));
     results.push(...batchResults);
 
     completed += batch.length;
     onProgress?.(completed, chunks.length);
 
-    if (i + concurrency < chunks.length && delayMs > 0) {
+    if (index + concurrency < chunks.length && delayMs > 0) {
       await new Promise((resolve) => setTimeout(resolve, delayMs));
     }
   }

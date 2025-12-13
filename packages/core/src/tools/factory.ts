@@ -1,6 +1,9 @@
-import * as readline from 'readline/promises';
-import { CodebaseRAG } from '../core/rag/types.js';
+
 import { logger } from '@agent/shared';
+
+import { type CodebaseRAG } from '../core/rag/types.js';
+
+import type * as readline from 'node:readline/promises';
 
 export interface ToolDependencies {
   rl?: readline.Interface;
@@ -26,9 +29,9 @@ export class ToolFactory {
       try {
         const tools = creator(deps);
         Object.assign(allTools, tools);
-      } catch (e) {
+      } catch (error) {
         logger.error(`Failed to create tool set "${name}"`, {
-          error: String(e),
+          error: String(error),
           toolSet: name,
         });
       }

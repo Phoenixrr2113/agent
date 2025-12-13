@@ -1,15 +1,14 @@
+import { promises as fs } from 'node:fs';
+import * as path from 'node:path';
+
 import { tool } from 'ai';
 import { z } from 'zod';
-import { promises as fs } from 'fs';
-import * as path from 'path';
 
 import {
-  setAllowedDirectories,
-  validatePath,
-  validateNewPath,
-  validateAfterOperation,
-} from './path-security.js';
-
+  searchFilesWithValidation,
+  buildDirectoryTree,
+  formatSize,
+} from './directory-operations.js';
 import {
   readFileContent,
   writeFileContent,
@@ -19,13 +18,12 @@ import {
   applyFileEdits,
   getFileStats,
 } from './file-operations.js';
-
 import {
-  searchFilesWithValidation,
-  buildDirectoryTree,
-  formatSize,
-} from './directory-operations.js';
-
+  setAllowedDirectories,
+  validatePath,
+  validateNewPath,
+  validateAfterOperation,
+} from './path-security.js';
 import { success, error } from '../utils/tool-result.js';
 
 export function createFilesystemTools(workspaceRoot: string) {
@@ -60,8 +58,8 @@ export function createFilesystemTools(workspaceRoot: string) {
             path: filePath,
             content,
           });
-        } catch (err) {
-          return error(err instanceof Error ? err : String(err), { path: filePath });
+        } catch (error_) {
+          return error(error_ instanceof Error ? error_ : String(error_), { path: filePath });
         }
       },
     }),
@@ -81,8 +79,8 @@ export function createFilesystemTools(workspaceRoot: string) {
             data,
             mimeType,
           });
-        } catch (err) {
-          return error(err instanceof Error ? err : String(err), { path: filePath });
+        } catch (error_) {
+          return error(error_ instanceof Error ? error_ : String(error_), { path: filePath });
         }
       },
     }),
@@ -103,10 +101,10 @@ export function createFilesystemTools(workspaceRoot: string) {
                 content,
                 success: true,
               };
-            } catch (err) {
+            } catch (error_) {
               return {
                 path: filePath,
-                error: err instanceof Error ? err.message : 'Unknown error',
+                error: error_ instanceof Error ? error_.message : 'Unknown error',
                 success: false,
               };
             }
@@ -132,8 +130,8 @@ export function createFilesystemTools(workspaceRoot: string) {
             path: filePath,
             message: 'File written successfully',
           });
-        } catch (err) {
-          return error(err instanceof Error ? err : String(err), { path: filePath });
+        } catch (error_) {
+          return error(error_ instanceof Error ? error_ : String(error_), { path: filePath });
         }
       },
     }),
@@ -159,8 +157,8 @@ export function createFilesystemTools(workspaceRoot: string) {
             dryRun,
             message: dryRun ? 'Preview (not applied)' : 'Edits applied successfully',
           });
-        } catch (err) {
-          return error(err instanceof Error ? err : String(err), { path: filePath });
+        } catch (error_) {
+          return error(error_ instanceof Error ? error_ : String(error_), { path: filePath });
         }
       },
     }),
@@ -180,8 +178,8 @@ export function createFilesystemTools(workspaceRoot: string) {
             path: dirPath,
             message: 'Directory created',
           });
-        } catch (err) {
-          return error(err instanceof Error ? err : String(err), { path: dirPath });
+        } catch (error_) {
+          return error(error_ instanceof Error ? error_ : String(error_), { path: dirPath });
         }
       },
     }),
@@ -220,8 +218,8 @@ export function createFilesystemTools(workspaceRoot: string) {
             path: dirPath,
             entries: items,
           });
-        } catch (err) {
-          return error(err instanceof Error ? err : String(err), { path: dirPath });
+        } catch (error_) {
+          return error(error_ instanceof Error ? error_ : String(error_), { path: dirPath });
         }
       },
     }),
@@ -270,8 +268,8 @@ export function createFilesystemTools(workspaceRoot: string) {
             entries: items,
             sortBy,
           });
-        } catch (err) {
-          return error(err instanceof Error ? err : String(err), { path: dirPath });
+        } catch (error_) {
+          return error(error_ instanceof Error ? error_ : String(error_), { path: dirPath });
         }
       },
     }),
@@ -291,8 +289,8 @@ export function createFilesystemTools(workspaceRoot: string) {
             path: dirPath,
             tree,
           });
-        } catch (err) {
-          return error(err instanceof Error ? err : String(err), { path: dirPath });
+        } catch (error_) {
+          return error(error_ instanceof Error ? error_ : String(error_), { path: dirPath });
         }
       },
     }),
@@ -314,8 +312,8 @@ export function createFilesystemTools(workspaceRoot: string) {
             results,
             count: results.length,
           });
-        } catch (err) {
-          return error(err instanceof Error ? err : String(err), { path: searchPath });
+        } catch (error_) {
+          return error(error_ instanceof Error ? error_ : String(error_), { path: searchPath });
         }
       },
     }),
@@ -337,8 +335,8 @@ export function createFilesystemTools(workspaceRoot: string) {
               formattedSize: formatSize(info.size),
             },
           });
-        } catch (err) {
-          return error(err instanceof Error ? err : String(err), { path: filePath });
+        } catch (error_) {
+          return error(error_ instanceof Error ? error_ : String(error_), { path: filePath });
         }
       },
     }),
@@ -352,25 +350,25 @@ export function createFilesystemTools(workspaceRoot: string) {
       execute: async ({ source, destination }) => {
         try {
           const validSource = await validatePath(source);
-          const validDest = await validateNewPath(destination);
+          const validDestination = await validateNewPath(destination);
 
           try {
-            await fs.access(validDest);
+            await fs.access(validDestination);
             return error('Destination already exists', { source, destination });
           } catch {
             // Destination does not exist, safe to proceed
           }
 
-          await fs.rename(validSource, validDest);
-          await validateAfterOperation(validDest);
+          await fs.rename(validSource, validDestination);
+          await validateAfterOperation(validDestination);
 
           return success({
             source,
             destination,
             message: 'File moved successfully',
           });
-        } catch (err) {
-          return error(err instanceof Error ? err : String(err), { source, destination });
+        } catch (error_) {
+          return error(error_ instanceof Error ? error_ : String(error_), { source, destination });
         }
       },
     }),

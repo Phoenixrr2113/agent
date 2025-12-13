@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+
 import { DocumentChunkingStrategy } from './document-strategy.js';
 
 describe('DocumentChunkingStrategy', () => {
@@ -37,6 +38,7 @@ Third paragraph.`;
   it('should chunk by fixed size when content is large', async () => {
     const strategy = new DocumentChunkingStrategy({ 
       maxChunkSize: 100,
+      chunkOverlap: 20,
       splitByParagraph: true,
     });
     

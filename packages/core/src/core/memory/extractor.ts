@@ -1,6 +1,7 @@
-import type { ModelMessage } from 'ai';
-import type { MemoryProvider } from './types.js';
 import { logger } from '@agent/shared';
+
+import type { MemoryProvider } from './types.js';
+import type { ModelMessage } from 'ai';
 
 export interface MemoryExtractorConfig {
   memoryProvider: MemoryProvider;
@@ -59,7 +60,7 @@ function extractDialogueText(messages: ModelMessage[]): string {
 
 export function createMemoryExtractor(config: MemoryExtractorConfig): MemoryExtractor {
   const { memoryProvider, groupId = 'default' } = config;
-  const pendingExtractions: Promise<void>[] = [];
+  const pendingExtractions: Array<Promise<void>> = [];
   let lastProcessedIndex = -1;
   let lastAttemptedIndex = -1;
   let consecutiveFailures = 0;

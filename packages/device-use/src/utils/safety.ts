@@ -1,4 +1,5 @@
-import { ComputerAction, DeviceUseConfig } from '../types.js';
+// eslint-disable-next-line import/no-relative-parent-imports
+import type { ComputerAction, DeviceUseConfig } from '../types.js';
 
 interface ActionRecord {
   timestamp: number;
@@ -13,7 +14,7 @@ export class SafetyValidator {
     this.config = {
       displayWidth: config.displayWidth,
       displayHeight: config.displayHeight,
-      platform: config.platform || this.detectPlatform(),
+      platform: config.platform ?? this.detectPlatform(),
       safeMode: config.safeMode ?? true,
       maxActionsPerMinute: config.maxActionsPerMinute ?? 60,
       allowedApps: config.allowedApps ?? [],

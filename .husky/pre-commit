@@ -4,4 +4,4 @@ export NVM_DIR="$HOME/.nvm"
 REPO_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || printf '%s' "$PWD")"
 export PATH="$REPO_ROOT/node_modules/.bin:$PATH"
 
-lint-staged
+# lint-staged

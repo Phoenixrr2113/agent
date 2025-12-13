@@ -1,7 +1,8 @@
+import { logger } from '@agent/shared';
 import { generateObject } from 'ai';
 import { z } from 'zod';
+
 import type { ExtractionResult } from './types.js';
-import { logger } from '@agent/shared';
 
 const ExtractionSchema = z.object({
   entities: z.array(z.object({
@@ -101,15 +102,15 @@ export async function resolveEntityConflicts(
   newEntity: { name: string; type: string; attributes: Record<string, unknown> },
   existingEntity: { name: string; type: string; attributes: Record<string, unknown> },
   model: Parameters<typeof generateObject>[0]['model']
-): Promise<{ shouldMerge: boolean; mergedAttributes?: Record<string, unknown> }> {
+): Promise<{ shouldMerge: boolean; mergedAttributes?: Record<string, unknown> | undefined }> {
   const startTime = performance.now();
 
   const namesMatch = newEntity.name.toLowerCase() === existingEntity.name.toLowerCase();
   const typesMatch = newEntity.type.toLowerCase() === existingEntity.type.toLowerCase();
-  const newHasAttrs = Object.keys(newEntity.attributes).length > 0;
-  const existingHasAttrs = Object.keys(existingEntity.attributes).length > 0;
+  const newHasAttributes = Object.keys(newEntity.attributes).length > 0;
+  const existingHasAttributes = Object.keys(existingEntity.attributes).length > 0;
 
-  if (namesMatch && (typesMatch || !newHasAttrs || !existingHasAttrs)) {
+  if (namesMatch && (typesMatch || !newHasAttributes || !existingHasAttributes)) {
     const mergedAttributes = mergeAttributes(existingEntity.attributes, newEntity.attributes);
     const duration = performance.now() - startTime;
     logger.info('⏱️  [memory-extraction] Entity conflict resolved (fast path)', {
@@ -150,7 +151,7 @@ If they are the same entity, merge their attributes (prefer newer/more specific 
 
   return {
     shouldMerge: object.shouldMerge,
-    mergedAttributes: object.mergedAttributes as Record<string, unknown> | undefined,
+    mergedAttributes: object.mergedAttributes,
   };
 }
 
@@ -180,7 +181,7 @@ export async function detectContradictions(
 New fact: "${newFact}"
 
 Existing facts:
-${existingFacts.map((f, i) => `${i}: "${f}"`).join('\n')}
+${existingFacts.map((f, index) => `${index}: "${f}"`).join('\n')}
 
 - contradicts: Facts that cannot both be true (logical contradiction)
 - supersedes: Facts that the new fact updates (same topic, newer information)`,
@@ -195,8 +196,8 @@ ${existingFacts.map((f, i) => `${i}: "${f}"`).join('\n')}
   });
 
   return {
-    contradicts: object.contradicts.map(i => existingFacts[i]).filter(Boolean),
-    supersedes: object.supersedes.map(i => existingFacts[i]).filter(Boolean),
+    contradicts: object.contradicts.map(index => existingFacts[index]).filter((f): f is string => !!f),
+    supersedes: object.supersedes.map(index => existingFacts[index]).filter((f): f is string => !!f),
   };
 }
 
@@ -213,7 +214,7 @@ export async function detectContradictionsBatch(
 ): Promise<BatchContradictionResult[]> {
   if (existingFacts.length === 0 || newFacts.length === 0) {
     logger.debug('⏱️  [memory-extraction] Skipping batch contradiction detection (no facts)');
-    return newFacts.map((_, i) => ({ factIndex: i, contradicts: [], supersedes: [] }));
+    return newFacts.map((_, index) => ({ factIndex: index, contradicts: [], supersedes: [] }));
   }
 
   const startTime = performance.now();
@@ -234,10 +235,10 @@ export async function detectContradictionsBatch(
     prompt: `Analyze if any of the new facts contradict or supersede any existing facts.
 
 NEW FACTS:
-${newFacts.map((f, i) => `[${i}]: "${f}"`).join('\n')}
+${newFacts.map((f, index) => `[${index}]: "${f}"`).join('\n')}
 
 EXISTING FACTS:
-${existingFacts.map((f, i) => `[${i}]: "${f}"`).join('\n')}
+${existingFacts.map((f, index) => `[${index}]: "${f}"`).join('\n')}
 
 For each new fact, determine:
 - contradicts: Indices of existing facts that cannot both be true (logical contradiction)
@@ -258,12 +259,12 @@ Provide results for all ${newFacts.length} new facts.`,
     resultMap.set(r.newFactIndex, { contradicts: r.contradicts, supersedes: r.supersedes });
   }
 
-  return newFacts.map((_, i) => {
-    const result = resultMap.get(i) || { contradicts: [], supersedes: [] };
+  return newFacts.map((_, index) => {
+    const result = resultMap.get(index) || { contradicts: [], supersedes: [] };
     return {
-      factIndex: i,
-      contradicts: result.contradicts.map(idx => existingFacts[idx]).filter(Boolean),
-      supersedes: result.supersedes.map(idx => existingFacts[idx]).filter(Boolean),
+      factIndex: index,
+      contradicts: result.contradicts.map(idx => existingFacts[idx]).filter((f): f is string => !!f),
+      supersedes: result.supersedes.map(idx => existingFacts[idx]).filter((f): f is string => !!f),
     };
   });
 }

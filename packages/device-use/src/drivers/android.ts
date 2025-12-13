@@ -1,5 +1,6 @@
-import { DeviceDriver } from '../driver.js';
 import * as AgentAccessibility from '@agent/mobile-accessibility';
+
+import type { DeviceDriver } from '../driver.js';
 
 export class AndroidDriver implements DeviceDriver {
   async click(x: number, y: number): Promise<void> {

@@ -1,8 +1,10 @@
+import { mkdirSync, rmSync, existsSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
 import { PersistentTaskManager } from './task-manager.js';
-import { join } from 'path';
-import { tmpdir } from 'os';
-import { mkdirSync, rmSync, existsSync } from 'fs';
 
 describe('PersistentTaskManager', () => {
   let taskManager: PersistentTaskManager;
@@ -22,7 +24,7 @@ describe('PersistentTaskManager', () => {
       if (existsSync(workDir)) {
         rmSync(workDir, { recursive: true, force: true });
       }
-    } catch (e) {
+    } catch (error) {
       // Ignore cleanup errors
     }
   });

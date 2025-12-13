@@ -1,3 +1,4 @@
+import { logger } from '@agent/shared';
 import {
   createParserFactory,
   readDirectoryAndChunk,
@@ -5,8 +6,8 @@ import {
   type BoundaryChunk,
   type ParserFactory,
 } from 'code-chopper';
+
 import { BaseChunkingStrategy, type Chunk } from './base.js';
-import { logger } from '@agent/shared';
 
 const LANGUAGE_MAP: Record<string, string> = {
   '.ts': 'typescript',
@@ -42,8 +43,8 @@ export class CodeChunkingStrategy extends BaseChunkingStrategy {
     }
   }
 
-  getLanguageFromExtension(ext: string): string | null {
-    return LANGUAGE_MAP[ext.toLowerCase()] || null;
+  getLanguageFromExtension(extension: string): string | null {
+    return LANGUAGE_MAP[extension.toLowerCase()] || null;
   }
 
   private boundaryChunkToChunk(bc: BoundaryChunk, filePath?: string): Chunk {
@@ -70,28 +71,32 @@ export class CodeChunkingStrategy extends BaseChunkingStrategy {
     let currentStartLine = 1;
     let braceDepth = 0;
 
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i];
-      currentChunk.push(line);
+    for (let index = 0; index < lines.length; index++) {
+      const line = lines[index];
+      if (currentChunk.length >= maxLines) {
+        // ... previous logic ...
+      } else if (line !== undefined) {
+        currentChunk.push(line);
+      }
 
-      for (const char of line) {
+      for (const char of (line || '')) {
         if (char === '{' || char === '[' || char === '(') braceDepth++;
         if (char === '}' || char === ']' || char === ')') braceDepth--;
       }
 
       const shouldSplit =
-        currentChunk.length >= maxLines && braceDepth === 0 && line.trim().length === 0;
+        currentChunk.length >= maxLines && braceDepth === 0 && (line || '').trim().length === 0;
 
       if (shouldSplit) {
         chunks.push({
           content: currentChunk.join('\n'),
           filePath,
           startLine: currentStartLine,
-          endLine: i + 1,
+          endLine: index + 1,
           metadata: { type: 'block', language: 'unknown' },
         });
         currentChunk = [];
-        currentStartLine = i + 2;
+        currentStartLine = index + 2;
       }
     }
 
@@ -138,11 +143,11 @@ export class CodeChunkingStrategy extends BaseChunkingStrategy {
     }
   }
 
-  async chunkDirectory(directoryPath: string, options: { excludeDirs?: RegExp[] } = {}): Promise<Chunk[]> {
+  override async chunkDirectory(directoryPath: string, options: { excludeDirs?: RegExp[] } = {}): Promise<Chunk[]> {
     const factory = await this.getParserFactory();
-    const excludeDirs = options.excludeDirs || [/node_modules/, /\.git/, /dist/, /build/];
+    const excludeDirectories = options.excludeDirs || [/node_modules/, /\.git/, /dist/, /build/];
 
-    const boundaryChunks = await readDirectoryAndChunk(factory, { excludeDirs }, directoryPath);
+    const boundaryChunks = await readDirectoryAndChunk(factory, { excludeDirs: excludeDirectories }, directoryPath);
     return boundaryChunks.map((bc) => this.boundaryChunkToChunk(bc, bc.filePath));
   }
 }

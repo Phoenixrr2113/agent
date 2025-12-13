@@ -1,8 +1,11 @@
+import fs from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+
 import { chunkFile, chunkDirectory } from './chunking.js';
-import fs from 'fs/promises';
-import path from 'path';
-import os from 'os';
+
 
 describe('chunking', () => {
   let testDir: string;

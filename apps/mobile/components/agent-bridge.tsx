@@ -1,6 +1,6 @@
+import * as AgentAccessibility from '@agent/mobile-accessibility';
 import React, { useEffect, useState } from 'react';
 import { View, Text, StyleSheet, Platform } from 'react-native';
-import * as AgentAccessibility from '@agent/mobile-accessibility';
 
 export function AgentBridge() {
   const [status, setStatus] = useState('Disconnected');
@@ -30,9 +30,9 @@ export function AgentBridge() {
           const result = await AgentAccessibility.swipe(command.x1, command.y1, command.x2, command.y2, command.duration);
           ws.send(JSON.stringify({ type: 'result', success: result }));
         }
-      } catch (err) {
-        console.error('Error processing command:', err);
-        ws.send(JSON.stringify({ type: 'error', message: String(err) }));
+      } catch (error) {
+        console.error('Error processing command:', error);
+        ws.send(JSON.stringify({ type: 'error', message: String(error) }));
       }
     };
 

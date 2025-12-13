@@ -1,8 +1,12 @@
+import fs from 'node:fs/promises';
+
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { createMemoryLite } from './index.js';
+
 import { createInMemoryStorage } from './storage.js';
+
+import { createMemoryLite } from ".";
+
 import type { StorageAdapter, Entity, Fact } from './types.js';
-import fs from 'fs/promises';
 
 // Skip tests that require real API keys in CI
 const hasRealApiKeys =
