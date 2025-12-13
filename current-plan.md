@@ -1,240 +1,237 @@
+# Device Control Plan
+
 ## Current State Analysis
 
-### Backend (@agent/core + @agent/server)
+### Desktop (`@agent/device-use`)
 
-**Current Capabilities:**
+**Existing Capabilities:**
+- `DeviceDriver` interface: click, type, scroll, drag, screenshot, pressKey
+- `DesktopDriver` using NutJS for macOS/Windows/Linux
+- Anthropic computer_20250124, bash_20250124, textEditor_20250124 tools
+- SafetyValidator for rate limiting and blocked apps
 
-- Uses AI SDK's `ToolLoopAgent` with `agent.generate()` (non-streaming)
-- `onStepFinish` callback exists but only logs to console - doesn't emit events
-- Server has basic SSE endpoint (`/sessions/:id/chat/stream`) but it **only sends start/complete events**, not intermediate streaming data
-- WebSocket server exists for mobile commands but isn't used for chat streaming
+**Limitations:**
+1. Desktop-only (Node.js, NutJS)
+2. No mobile driver implementation
+3. No unified "use current device" abstraction
 
-**Key Limitations:**
+### Mobile (`@agent/mobile-accessibility`)
 
-1. No real-time streaming of text tokens during generation
-2. No real-time streaming of tool calls/results as they happen
-3. No structured event protocol for different message parts (reasoning, sources, tools, text)
+**Existing Capabilities:**
+- Native module scaffolding (Android/iOS)
+- `AgentBridge` component receives commands via WebSocket
+- Basic click/swipe implementation started
 
-### Frontends (Mobile, Desktop)
+**Limitations:**
+1. Requires accessibility service (Android) / permissions (iOS)
+2. Incomplete native implementations
+3. No screenshot capability
+4. No type/keyboard support
 
-**Current State:**
+### Server Command Flow
 
-- **Mobile (React Native/Expo)**: Basic chat UI, uses `AgentClient.sendMessage()` (non-streaming), shows "Agent is thinking..." during loading
-- **Desktop (Tauri/React)**: Nearly identical to mobile - basic chat, non-streaming
-- **Shared UI (`@agent/ui`)**: Basic components (ChatContainer, ChatInput, ChatList, ChatBubble) but no streaming or tool visualization support
-
-**Key Limitations:**
-
-1. No streaming text display
-2. No tool execution visualization
-3. No reasoning/thinking display
-4. No sources/citations display
-5. Web frontend doesn't exist yet
-
-### API Client (`@agent/api-client`)
-
-**Current State:**
-
-- Has `chatStream()` method that parses SSE events
-- But the server only sends `start` and `complete` events, so streaming is essentially useless
+**Current:** Mobile ↔ WebSocket ↔ Server (basic click/swipe only)
 
 ---
 
-## Holistic Plan: Backend-First Approach
+## Proposed Architecture
 
-The key insight from the AI SDK chatbot example is that it uses **structured message parts** that get streamed:
+```
+┌─────────────┐    ┌──────────────┐    ┌──────────────────┐
+│   Agent     │    │   Server     │    │    Device        │
+│   (LLM)     │───▶│   SSE/WS     │◀──▶│    Driver        │
+│   Core      │    │   Bridge     │    │   (Platform)     │
+└─────────────┘    └──────────────┘    └──────────────────┘
+                                              │
+                   ┌──────────────────────────┼──────────────┐
+                   │                          │              │
+              ┌────┴────┐            ┌────────┴───┐   ┌──────┴──────┐
+              │ Desktop │            │   Mobile   │   │    Web      │
+              │ NutJS   │            │ Access.    │   │ Puppeteer/  │
+              │         │            │ Service    │   │ Playwright  │
+              └─────────┘            └────────────┘   └─────────────┘
+```
 
-- `message.content` - the main text
-- `message.reasoning` - thinking/reasoning with duration
-- `message.sources` - citations/sources
-- `message.toolCalls` - tool invocations
+---
 
-### Phase 1: Backend Streaming Infrastructure
+## Phase 1: Unified Device Driver Protocol
 
-**1.1 Create Streaming Event Protocol** (`packages/shared`)
+### 1.1 Shared Types (`@agent/shared`)
 
 ```typescript
-// Shared types for all clients
-export type StreamEventType =
-  | 'session:start'
-  | 'step:start'
-  | 'step:finish'
-  | 'text:delta'
-  | 'text:finish'
-  | 'reasoning:delta'
-  | 'reasoning:finish'
-  | 'tool:call'
-  | 'tool:result'
-  | 'sources:add'
-  | 'error'
-  | 'complete';
+export interface DeviceAction {
+  type: 'tap' | 'type' | 'swipe' | 'scroll' | 'screenshot' | 'key' | 'gesture';
+  payload: TapPayload | TypePayload | SwipePayload | ...;
+}
 
-export interface StreamEvent {
-  type: StreamEventType;
-  data: unknown;
-  timestamp: number;
-  stepIndex?: number;
+export interface DeviceCapabilities {
+  platform: 'desktop' | 'mobile' | 'web';
+  canScreenshot: boolean;
+  canType: boolean;
+  canTap: boolean;
+  screenSize: { width: number; height: number };
 }
 ```
 
-**1.2 Create Streaming Runtime** (`packages/core`)
-
-- Switch from `agent.generate()` to `agent.stream()` (if available in AI SDK 5.x)
-- Or create a streaming wrapper that emits events via callback during `onStepFinish`
-- Add `onEvent` callback to `AgentSession` that fires during execution
-
-**1.3 Enhance Server Streaming** (`packages/server`)
+### 1.2 Update DeviceDriver Interface (`@agent/device-use`)
 
 ```typescript
-// Stream real events during execution
-app.get('/sessions/:id/chat/stream', async (c) => {
-  return streamSSE(c, async (stream) => {
-    const session = sessions.get(sessionId);
+export interface DeviceDriver {
+  getCapabilities(): Promise<DeviceCapabilities>;
+  execute(action: DeviceAction): Promise<ActionResult>;
+  getUITree?(): Promise<UIElement[]>;  // For mobile accessibility
+}
+```
 
-    // Set up event listener for streaming
-    session.runTaskWithEvents(message, async (event: StreamEvent) => {
-      await stream.writeSSE({
-        event: event.type,
-        data: JSON.stringify(event.data),
-      });
-    });
-  });
+---
+
+## Phase 2: Mobile Accessibility Implementation
+
+### 2.1 Android Accessibility Service
+
+- Create Android native module with AccessibilityService
+- Implement: tap, swipe, type (input dispatch), screenshot (MediaProjection)
+- Expose as `MobileDriver` implementing `DeviceDriver`
+
+### 2.2 iOS Accessibility Implementation
+
+- Use XCUITest/XCode accessibility API
+- Alternative: Use `expo-accessibility` for limited actions
+- Implement same DeviceDriver interface
+
+### 2.3 Mobile-Side Command Executor
+
+Update `AgentBridge` to handle full `DeviceAction` protocol:
+
+```typescript
+ws.onmessage = async (e) => {
+  const action: DeviceAction = JSON.parse(e.data);
+  const result = await mobileDriver.execute(action);
+  ws.send(JSON.stringify(result));
+};
+```
+
+---
+
+## Phase 3: Server-Side Device Routing
+
+### 3.1 Device Registry (`@agent/server`)
+
+```typescript
+interface ConnectedDevice {
+  id: string;
+  type: 'desktop' | 'mobile';
+  capabilities: DeviceCapabilities;
+  execute: (action: DeviceAction) => Promise<ActionResult>;
+}
+
+const devices = new Map<string, ConnectedDevice>();
+```
+
+### 3.2 Device Selection Tool (`@agent/core`)
+
+```typescript
+const selectDevice = tool({
+  name: 'select_device',
+  description: 'Select which device to control',
+  parameters: { deviceId: z.string() },
+  execute: ({ deviceId }) => {
+    currentDevice = devices.get(deviceId);
+  }
 });
 ```
 
-### Phase 2: API Client & Shared Types
-
-**2.1 Enhanced API Client** (`packages/api-client`)
+### 3.3 Unified Device Tool
 
 ```typescript
-interface StreamingChatOptions {
-  onTextDelta?: (text: string) => void;
-  onReasoningDelta?: (text: string) => void;
-  onToolCall?: (tool: ToolCallInfo) => void;
-  onToolResult?: (result: ToolResultInfo) => void;
-  onStepStart?: (stepIndex: number) => void;
-  onStepFinish?: (stepInfo: StepInfo) => void;
-  onComplete?: (result: ChatResponse) => void;
-  onError?: (error: Error) => void;
-}
-
-// In AgentClient
-async chat(message: string, options: StreamingChatOptions): Promise<void>
+const deviceControl = tool({
+  name: 'device_control',
+  description: 'Control the selected device',
+  parameters: DeviceActionSchema,
+  execute: (action) => currentDevice.execute(action)
+});
 ```
 
-**2.2 Shared Message Types** (`packages/shared`)
+---
+
+## Phase 4: UI Tree Integration (Optional)
+
+### Goal: Let agent see UI structure, not just pixels
+
+### 4.1 Mobile UI Tree
+
+- Android: Use AccessibilityNodeInfo.getChildren()
+- iOS: Use accessibility hierarchy
 
 ```typescript
-export interface MessagePart {
-  type: 'text' | 'reasoning' | 'tool-call' | 'tool-result' | 'source';
-  content: string;
-  metadata?: Record<string, unknown>;
-}
-
-export interface StreamingMessage {
+interface UIElement {
   id: string;
-  role: 'assistant';
-  parts: MessagePart[];
-  status: 'streaming' | 'complete';
-  stepIndex: number;
+  type: 'button' | 'text' | 'input' | 'container';
+  rect: { x, y, width, height };
+  text?: string;
+  clickable: boolean;
+  children: UIElement[];
 }
 ```
 
-### Phase 3: Shared UI Components
+### 4.2 Agent Uses UI Tree
 
-**3.1 Enhanced Message Types** (`packages/ui`)
-
-```typescript
-export interface RichMessage {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-  timestamp: number;
-  status: 'sending' | 'streaming' | 'complete' | 'error';
-  parts?: MessagePart[];
-  reasoning?: { content: string; duration?: number };
-  toolCalls?: ToolCallInfo[];
-  sources?: SourceInfo[];
-}
-```
-
-**3.2 New Components** (React Native compatible):
-
-- `<StreamingText>` - Displays text with typing effect
-- `<ReasoningCollapsible>` - Expandable reasoning section with duration
-- `<ToolCallCard>` - Shows tool name, inputs, and animated result
-- `<SourcesList>` - Citations with icons and links
-- `<StepIndicator>` - Shows current step in multi-step execution
-- `<ThinkingLoader>` - More informative loading state
-
-### Phase 4: Platform-Specific Implementations
-
-**4.1 Mobile (React Native)**
-
-- Use new streaming `useAgentChat` hook
-- Implement all new components with React Native primitives
-- Add haptic feedback for tool completions
-
-**4.2 Desktop (Tauri/React)**
-
-- Same components but with web DOM (can share more with web)
-- Potentially use web-specific features like syntax highlighting
-
-**4.3 Web (New - Next.js)**
-
-- Create `apps/web` using Next.js
-- SSR-compatible streaming
-- Can leverage more browser features
-
----
-
-## Implementation Order (Recommended)
+Instead of pixel coordinates, agent can reference elements:
 
 ```
-Week 1-2: Backend Streaming
-├── 1.1 Define streaming event protocol (shared types)
-├── 1.2 Enhance agent runtime with event emission
-└── 1.3 Update server SSE endpoint to stream real events
-
-Week 3: API Client & Hook
-├── 2.1 Update api-client with streaming support
-└── 2.2 Create useAgentChat hook with streaming state
-
-Week 4-5: Shared UI Components
-├── 3.1 StreamingText component
-├── 3.2 ReasoningCollapsible component
-├── 3.3 ToolCallCard component
-├── 3.4 SourcesList component
-└── 3.5 Update ChatContainer for rich messages
-
-Week 6: Platform Integration
-├── 4.1 Integrate into mobile app
-├── 4.2 Integrate into desktop app
-└── 4.3 (Optional) Create web app
+Agent: "Tap the button with text 'Submit'"
+→ Tool finds element, gets coordinates, taps
 ```
 
 ---
 
-## Key Architectural Decisions
+## Implementation Order
 
-1. **Backend-first**: No point building fancy UI if backend can't stream
-2. **Shared types in `@agent/shared`**: Single source of truth for all platforms
-3. **React Native as baseline**: UI components work on all platforms (iOS, Android, Web)
-4. **SSE over WebSocket for chat**: Simpler, HTTP-based, better for one-way streaming
-5. **Keep WebSocket for bidirectional**: Device control, real-time status updates
+```
+Week 1: Unified Protocol
+├── 1.1 Define DeviceAction types in @agent/shared
+├── 1.2 Update DeviceDriver interface
+└── 1.3 Refactor DesktopDriver to use new protocol
+
+Week 2-3: Mobile Android
+├── 2.1 Create AccessibilityService native module
+├── 2.2 Implement tap/swipe/type/screenshot
+└── 2.3 Wire up to AgentBridge WebSocket
+
+Week 3-4: Mobile iOS
+├── 2.4 Create iOS accessibility module
+├── 2.5 Implement same actions
+└── 2.6 Test on real device
+
+Week 4-5: Server Integration
+├── 3.1 Device registry in server
+├── 3.2 Multi-device WebSocket handling
+└── 3.3 Device selection tool
+
+Week 5-6: Polish
+├── 4.1 UI tree extraction (optional)
+├── 4.2 Safety controls for mobile
+└── 4.3 Documentation and testing
+```
 
 ---
 
-## Questions for You Before Proceeding
+## Key Decisions Needed
 
-1. **AI SDK streaming**: Should I investigate if AI SDK 5.x's `ToolLoopAgent` supports `stream()` method, or should we use `streamText` with manual multi-step handling?
+1. **Android AccessibilityService**: Requires enabling in system settings. Is this acceptable UX?
 
-2. **Web frontend priority**: Do you want to create `apps/web` with Next.js as part of this plan, or focus only on mobile/desktop?
+2. **iOS Strategy**: Full accessibility needs jailbreak or XCUITest. Should we use limited expo-accessibility instead?
 
-3. **Reasoning models**: Do you want to support streaming reasoning tokens from models like DeepSeek-R1? This affects the event protocol.
+3. **Screenshot on Mobile**: Requires screen capture permission. Handle async permission flow?
 
-4. **Tool result rendering**: For different tools (shell, web_search, fetch_page, etc.), do you want custom renderers, or a generic JSON view?
+4. **UI Tree vs Pixels**: Implement semantic UI tree for smarter element targeting?
 
-5. **Scope**: Should we tackle this as one large initiative, or break it into smaller PRs (e.g., Phase 1 first, then Phase 2)?
+5. **Multi-device**: Support controlling multiple devices simultaneously?
 
-Let me know how you'd like to proceed!
+---
+
+## Quick Wins (Start Here)
+
+1. **Complete Android AccessibilityService** - Most impactful
+2. **Add tap-by-text** - Agent says "tap Submit", we find and tap
+3. **Mobile screenshot** - Essential for vision-based agents
