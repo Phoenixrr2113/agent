@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { AgentClient } from '@agent/api-client';
+import { useSettings } from '@/context/settings';
 
 interface Message {
   id: string;
@@ -20,6 +21,7 @@ interface Message {
 }
 
 export default function ChatScreen() {
+  const { settings } = useSettings();
   const clientRef = useRef<AgentClient | null>(null);
   const flatListRef = useRef<FlatList<Message>>(null);
   const [messages, setMessages] = useState<Message[]>([]);
@@ -28,16 +30,9 @@ export default function ChatScreen() {
   const [isConnected, setIsConnected] = useState(false);
   const [serverError, setServerError] = useState<string | null>(null);
 
-  const getBaseUrl = useCallback(() => {
-    if (Platform.OS === 'android') {
-      return 'http://10.0.2.2:3000';
-    }
-    return 'http://localhost:3000';
-  }, []);
-
   useEffect(() => {
     const client = new AgentClient({
-      baseUrl: getBaseUrl(),
+      baseUrl: settings.serverUrl,
       onError: (error) => {
         console.error('Agent client error:', error);
         setServerError(error.message);
@@ -55,7 +50,7 @@ export default function ChatScreen() {
     return () => {
       client.endSession().catch(() => {});
     };
-  }, [getBaseUrl]);
+  }, [settings.serverUrl]);
 
   const handleSend = useCallback(async () => {
     const content = input.trim();
