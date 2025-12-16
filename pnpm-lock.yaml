@@ -430,6 +430,9 @@ importers:
       '@agent/core':
         specifier: workspace:*
         version: link:../core
+      '@agent/device-use':
+        specifier: workspace:*
+        version: link:../device-use
       '@agent/shared':
         specifier: workspace:*
         version: link:../shared
