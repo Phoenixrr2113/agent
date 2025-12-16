@@ -2,11 +2,9 @@
 
 ## Note
 
-This document previously contained continuation of the codebase documentation. As of the latest update, all codebase documentation has been consolidated into **`codebase.md`**, which now provides comprehensive coverage of the entire monorepo architecture.
+This document contains advanced topics, extended configurations, and detailed implementation guides that go beyond the core documentation in `codebase.md`.
 
-**Please refer to `codebase.md` for complete documentation.**
-
-This file is retained for any extended topics or advanced use cases not covered in the main documentation.
+**For fundamental understanding of the codebase, start with `codebase.md`.**
 
 ---
 
@@ -330,6 +328,340 @@ const result = await mobileTools.computer_use.execute({
   text: 'test@example.com',
   coordinate: [500, 800],
 });
+```
+
+### Server-side Device Management
+
+#### Device Registry Integration
+
+The server provides a WebSocket-based device registry for managing multiple connected devices.
+
+**Creating a Custom Device Client**:
+
+```typescript
+import WebSocket from 'ws';
+import type { DeviceCapabilities, DeviceAction, ActionResult } from '@agent/shared';
+
+class DeviceClient {
+  private ws: WebSocket;
+  private capabilities: DeviceCapabilities;
+
+  constructor(serverUrl: string, capabilities: DeviceCapabilities) {
+    this.capabilities = capabilities;
+    this.ws = new WebSocket(serverUrl.replace('http', 'ws'));
+  }
+
+  connect(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      this.ws.on('open', () => {
+        // Register device with server
+        this.ws.send(JSON.stringify({
+          type: 'device:register',
+          capabilities: this.capabilities,
+        }));
+        resolve();
+      });
+
+      this.ws.on('message', (data) => {
+        const message = JSON.parse(data.toString());
+        if (message.actionId && message.action) {
+          this.handleAction(message.actionId, message.action);
+        }
+      });
+
+      this.ws.on('error', reject);
+    });
+  }
+
+  private async handleAction(actionId: string, action: DeviceAction): Promise<void> {
+    try {
+      const result = await this.executeAction(action);
+      this.ws.send(JSON.stringify({
+        type: 'action:result',
+        actionId,
+        result,
+      }));
+    } catch (error) {
+      this.ws.send(JSON.stringify({
+        type: 'action:result',
+        actionId,
+        result: {
+          success: false,
+          error: error instanceof Error ? error.message : 'Unknown error',
+          code: 'UNKNOWN',
+        },
+      }));
+    }
+  }
+
+  private async executeAction(action: DeviceAction): Promise<ActionResult> {
+    // Implement platform-specific action execution
+    switch (action.type) {
+      case 'tap':
+        // Handle tap
+        return { success: true };
+      case 'screenshot':
+        // Handle screenshot
+        return {
+          success: true,
+          data: {
+            type: 'screenshot',
+            base64: '...',
+            format: 'png',
+            width: 1920,
+            height: 1080,
+          },
+        };
+      default:
+        return { success: false, error: 'Not implemented', code: 'NOT_SUPPORTED' };
+    }
+  }
+}
+
+// Usage
+const client = new DeviceClient('http://localhost:3000', {
+  platform: 'desktop',
+  deviceId: 'my-device-001',
+  deviceName: 'Development Machine',
+  screenSize: { width: 1920, height: 1080 },
+  supportedActions: ['tap', 'type', 'screenshot', 'key'],
+  hasKeyboard: true,
+  hasUITree: false,
+});
+
+await client.connect();
+```
+
+**Device Action Timeout Configuration**:
+
+The server uses a 30-second timeout for device actions. For long-running actions, implement progress reporting:
+
+```typescript
+// Server-side: Extend timeout for specific actions
+const EXTENDED_TIMEOUT_ACTIONS = ['get_ui_tree', 'screenshot'];
+const ACTION_TIMEOUT_MS = 30_000;
+const EXTENDED_TIMEOUT_MS = 60_000;
+```
+
+### Streaming Response Configuration
+
+#### Custom Streaming Client
+
+Build a custom streaming client with fine-grained control:
+
+```typescript
+import { AgentClient, StreamingChatCallbacks } from '@agent/api-client';
+
+class StreamingChatClient {
+  private client: AgentClient;
+  private currentText = '';
+  private currentReasoning = '';
+  private toolCalls: Map<string, ToolCallInfo> = new Map();
+
+  constructor(baseUrl: string) {
+    this.client = new AgentClient({ baseUrl });
+  }
+
+  async chat(message: string, options: StreamingOptions = {}): Promise<StreamingResult> {
+    this.reset();
+
+    const callbacks: StreamingChatCallbacks = {
+      onStepStart: ({ stepIndex }) => {
+        options.onStepStart?.(stepIndex);
+      },
+
+      onTextDelta: ({ delta }) => {
+        this.currentText += delta;
+        options.onTextUpdate?.(this.currentText);
+      },
+
+      onReasoningDelta: ({ delta }) => {
+        this.currentReasoning += delta;
+        options.onReasoningUpdate?.(this.currentReasoning);
+      },
+
+      onToolCall: (data) => {
+        this.toolCalls.set(data.toolCallId, {
+          ...data,
+          status: 'running',
+        });
+        options.onToolStart?.(data.toolName, data.args);
+      },
+
+      onToolResult: (data) => {
+        const call = this.toolCalls.get(data.toolCallId);
+        if (call) {
+          call.status = 'complete';
+          call.result = data.result;
+          call.durationMs = data.durationMs;
+        }
+        options.onToolComplete?.(data.toolName, data.result, data.durationMs);
+      },
+
+      onComplete: (data) => {
+        options.onComplete?.(data);
+      },
+
+      onError: (data) => {
+        options.onError?.(new Error(data.message));
+      },
+    };
+
+    await this.client.streamMessageWithCallbacks(message, callbacks);
+
+    return {
+      text: this.currentText,
+      reasoning: this.currentReasoning,
+      toolCalls: Array.from(this.toolCalls.values()),
+    };
+  }
+
+  private reset(): void {
+    this.currentText = '';
+    this.currentReasoning = '';
+    this.toolCalls.clear();
+  }
+}
+```
+
+#### Server-Side Streaming Events
+
+Customize streaming events on the server:
+
+```typescript
+import { createServer } from '@agent/server';
+
+const { app, runtime } = await createServer();
+
+// The server uses session.sendWithEvents() internally
+// Events are emitted via SSE to the client
+
+// Custom event handling example:
+app.get('/sessions/:sessionId/chat/stream', (c) => {
+  const session = sessions.get(c.req.param('sessionId'));
+  const message = c.req.query('message');
+
+  return streamSSE(c, async (stream) => {
+    await session.sendWithEvents(message, async (event) => {
+      // Transform or filter events before sending
+      if (event.type === 'tool:call') {
+        // Add custom metadata
+        event.data = {
+          ...event.data,
+          serverTimestamp: Date.now(),
+        };
+      }
+
+      await stream.writeSSE({
+        event: event.type,
+        data: JSON.stringify(event.data),
+      });
+    });
+  });
+});
+```
+
+### Desktop App Advanced Usage
+
+#### Custom Tauri Commands
+
+Extend the desktop app with native capabilities:
+
+```rust
+// src-tauri/src/main.rs
+#[tauri::command]
+fn get_system_info() -> SystemInfo {
+    SystemInfo {
+        os: std::env::consts::OS.to_string(),
+        arch: std::env::consts::ARCH.to_string(),
+    }
+}
+
+fn main() {
+    tauri::Builder::default()
+        .invoke_handler(tauri::generate_handler![get_system_info])
+        .run(tauri::generate_context!())
+        .expect("error while running tauri application");
+}
+```
+
+```typescript
+// src/app.tsx
+import { invoke } from '@tauri-apps/api/tauri';
+
+const systemInfo = await invoke('get_system_info');
+```
+
+#### Desktop-Specific Features
+
+**Native Notifications**:
+```typescript
+import { sendNotification } from '@tauri-apps/api/notification';
+
+sendNotification({
+  title: 'Agent Response',
+  body: 'Task completed successfully',
+});
+```
+
+**File System Access**:
+```typescript
+import { open, save } from '@tauri-apps/api/dialog';
+import { readTextFile, writeTextFile } from '@tauri-apps/api/fs';
+
+// Open file picker
+const filePath = await open({ filters: [{ name: 'Text', extensions: ['txt'] }] });
+
+// Read file
+const content = await readTextFile(filePath as string);
+
+// Save file
+const savePath = await save();
+await writeTextFile(savePath as string, content);
+```
+
+#### Streaming with Desktop UI
+
+Enhance the desktop app with real-time streaming:
+
+```typescript
+import { AgentClient } from '@agent/api-client';
+import { useState, useCallback } from 'react';
+
+function useStreamingChat() {
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [currentText, setCurrentText] = useState('');
+  const [isStreaming, setIsStreaming] = useState(false);
+  const clientRef = useRef<AgentClient | null>(null);
+
+  const sendMessage = useCallback(async (content: string) => {
+    const client = clientRef.current;
+    if (!client) return;
+
+    setIsStreaming(true);
+    setCurrentText('');
+
+    // Add user message
+    setMessages(prev => [...prev, { role: 'user', content }]);
+
+    await client.streamMessageWithCallbacks(content, {
+      onTextDelta: ({ delta }) => {
+        setCurrentText(prev => prev + delta);
+      },
+      onComplete: ({ text }) => {
+        setMessages(prev => [...prev, { role: 'assistant', content: text }]);
+        setCurrentText('');
+        setIsStreaming(false);
+      },
+      onError: ({ message }) => {
+        console.error('Stream error:', message);
+        setIsStreaming(false);
+      },
+    });
+  }, []);
+
+  return { messages, currentText, isStreaming, sendMessage };
+}
 ```
 
 ### Benchmark Integration

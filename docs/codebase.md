@@ -9,10 +9,13 @@
    - [@agent/core](#agentcore)
    - [@agent/server](#agentserver)
    - [@agent/device-use](#agentdevice-use)
+   - [@agent/api-client](#agentapi-client)
+   - [@agent/ui](#agentui)
    - [@agent/benchmarks](#agentbenchmarks)
    - [@agent/mobile-accessibility](#agentmobile-accessibility)
 4. [Applications](#applications)
    - [CLI App](#cli-app)
+   - [Desktop App](#desktop-app)
    - [Mobile App](#mobile-app)
 5. [Core Package Deep Dive](#core-package-deep-dive)
 6. [Development Workflow](#development-workflow)
@@ -72,14 +75,17 @@
 ```
 agent-platform/
 ├── packages/
-│   ├── shared/           # @agent/shared - Shared utilities & types
+│   ├── shared/           # @agent/shared - Shared utilities, types & schemas
 │   ├── core/             # @agent/core - Agent runtime engine
-│   ├── server/           # @agent/server - HTTP API server
+│   ├── server/           # @agent/server - HTTP API & WebSocket server
 │   ├── device-use/       # @agent/device-use - Cross-platform device control
+│   ├── api-client/       # @agent/api-client - HTTP/WebSocket client SDK
+│   ├── ui/               # @agent/ui - React Native shared UI components
 │   ├── benchmarks/       # @agent/benchmarks - Evaluation adapters
 │   └── mobile-accessibility/  # @agent/mobile-accessibility - Native mobile module
 ├── apps/
 │   ├── cli/              # @agent/cli - CLI applications
+│   ├── desktop/          # @agent/desktop - Desktop app (Tauri + React)
 │   └── mobile/           # Mobile app - React Native/Expo app
 ├── docs/                 # Documentation
 ├── scripts/              # Build and utility scripts
@@ -127,9 +133,126 @@ Packages reference each other using `workspace:*` protocol:
 ### @agent/shared
 
 **Location**: `packages/shared/`
-**Purpose**: Shared utilities and types used across all packages
+**Purpose**: Shared utilities, types, and schemas used across all packages
+
+#### Directory Structure
+
+```
+packages/shared/src/
+├── index.ts                    # Main exports
+├── utils/
+│   ├── logger.ts               # Structured logging
+│   └── performance.ts          # Performance tracking
+├── device/
+│   ├── types.ts                # Device action types
+│   ├── capabilities.ts         # Device capabilities interface
+│   ├── schemas.ts              # Zod validation schemas
+│   └── result.ts               # Action result types
+└── streaming/
+    └── types.ts                # Streaming event types
+```
 
 #### Key Exports
+
+##### Device Types (`packages/shared/src/device/`)
+
+Cross-platform device control types and schemas.
+
+**Device Platforms**:
+```typescript
+type DevicePlatform = 'desktop' | 'android' | 'ios' | 'web';
+```
+
+**Device Actions**:
+```typescript
+type DeviceActionType =
+  | 'tap'           // Tap at coordinates
+  | 'double_tap'    // Double tap
+  | 'long_press'    // Long press
+  | 'type'          // Type text
+  | 'key'           // Key press with modifiers
+  | 'swipe'         // Swipe gesture
+  | 'scroll'        // Scroll
+  | 'drag'          // Drag gesture
+  | 'screenshot'    // Capture screen
+  | 'get_ui_tree';  // Get UI element tree
+```
+
+**Device Capabilities**:
+```typescript
+interface DeviceCapabilities {
+  platform: DevicePlatform;
+  deviceId: string;
+  deviceName: string;
+  screenSize: { width: number; height: number };
+  supportedActions: DeviceActionType[];
+  hasKeyboard: boolean;
+  hasUITree: boolean;
+}
+```
+
+**Action Results**:
+```typescript
+type ActionResult = ActionSuccess | ActionError;
+
+interface ActionSuccess {
+  success: true;
+  data?: ScreenshotData | UITreeData | string;
+}
+
+interface ActionError {
+  success: false;
+  error: string;
+  code: 'NOT_SUPPORTED' | 'PERMISSION_DENIED' | 'ELEMENT_NOT_FOUND' | 'TIMEOUT' | 'NOT_FOUND' | 'UNKNOWN';
+}
+```
+
+**Zod Schemas**: All types have corresponding Zod schemas for runtime validation (`DeviceActionSchema`, `DeviceCapabilitiesSchema`, `ActionResultSchema`, etc.)
+
+##### Streaming Types (`packages/shared/src/streaming/types.ts`)
+
+Event-driven streaming types for real-time agent responses.
+
+**Stream Event Types**:
+```typescript
+type StreamEventType =
+  | 'session:start'      // Session initialized
+  | 'step:start'         // Agent step started
+  | 'step:finish'        // Agent step completed
+  | 'text:delta'         // Text chunk received
+  | 'text:finish'        // Text generation complete
+  | 'reasoning:delta'    // Reasoning chunk (extended thinking)
+  | 'reasoning:finish'   // Reasoning complete
+  | 'tool:call'          // Tool invocation started
+  | 'tool:result'        // Tool execution result
+  | 'sources:add'        // Source citation added
+  | 'error'              // Error occurred
+  | 'complete';          // Response complete
+```
+
+**Streaming Message**:
+```typescript
+interface StreamingMessage {
+  id: string;
+  role: 'assistant';
+  parts: MessagePart[];
+  status: 'streaming' | 'complete';
+  stepIndex: number;
+  text: string;
+  reasoning?: { content: string; durationMs?: number };
+  toolCalls: ToolCallInfo[];
+  sources: SourceInfo[];
+}
+
+interface ToolCallInfo {
+  toolCallId: string;
+  toolName: string;
+  args: Record<string, unknown>;
+  status: 'pending' | 'running' | 'complete' | 'error';
+  result?: unknown;
+  durationMs?: number;
+}
+```
 
 ##### `packages/shared/src/utils/logger.ts`
 
@@ -237,9 +360,11 @@ packages/core/src/
 │   ├── workflow.ts             # Planning and validation
 │   ├── codebase.ts             # Code search tools
 │   ├── agent.ts                # Agent control tools
-│   ├── filesystem.ts           # File operations (NEW)
+│   ├── filesystem.ts           # File operations
 │   ├── registry.ts             # Tool discovery
-│   └── tool-wrapper.ts         # Tool activation manager (NEW)
+│   ├── tool-wrapper.ts         # Tool activation manager
+│   └── device/                 # Device control tools
+│       └── index.ts            # Device tools factory
 ├── infrastructure/
 │   └── prompts/
 │       └── templates.ts        # System prompts
@@ -601,7 +726,7 @@ Dynamic tool discovery and activation system.
 - Embedding-based discovery
 - Lazy tool loading
 
-**`packages/core/src/core/tool-instrumentation.ts`** - Tool Instrumentation (NEW)
+**`packages/core/src/core/tool-instrumentation.ts`** - Tool Instrumentation
 
 Performance tracking for tools.
 
@@ -620,18 +745,58 @@ export function instrumentTool<TArgs, TResult>(
 export function instrumentTools(tools: Record<string, any>): Record<string, any>;
 ```
 
+**`packages/core/src/tools/device/index.ts`** - Device Control Tools
+
+Tools for controlling connected devices via the server's device registry.
+
+**Factory Function**:
+```typescript
+function createDeviceTools(config: { serverUrl: string }): DeviceTools;
+```
+
+**Tools**:
+1. `list_devices`: List all connected devices (desktop, mobile, web)
+2. `select_device`: Select a device to control by ID
+3. `device_action`: Execute raw action on selected device
+4. `tap`: Tap at specific coordinates
+5. `type_text`: Type text on selected device
+6. `device_screenshot`: Capture screenshot of selected device
+7. `swipe`: Swipe gesture from one point to another
+
+**Usage**:
+```typescript
+import { createDeviceTools } from '@agent/core';
+
+const deviceTools = createDeviceTools({ serverUrl: 'http://localhost:3000' });
+
+// List connected devices
+const devices = await deviceTools.list_devices.execute({});
+
+// Select a device
+await deviceTools.select_device.execute({ deviceId: 'device-123' });
+
+// Take a screenshot
+const screenshot = await deviceTools.device_screenshot.execute({});
+
+// Tap on screen
+await deviceTools.tap.execute({ x: 100, y: 200 });
+```
+
 ---
 
 ### @agent/server
 
 **Location**: `packages/server/`
-**Purpose**: HTTP server with REST API for agent interactions
+**Purpose**: HTTP API server with WebSocket support for agent interactions and device management
 
 #### Structure
 
 ```
 packages/server/src/
 ├── index.ts              # Server implementation and exports
+├── devices/
+│   ├── index.ts          # Device module exports
+│   └── registry.ts       # Device registry class
 └── types/                # Type definitions
 ```
 
@@ -640,6 +805,8 @@ packages/server/src/
 - Built on Hono (lightweight web framework)
 - Session-based conversation management
 - REST API and SSE streaming support
+- WebSocket server for device connections
+- Device registry for multi-device management
 - CORS configuration
 
 #### API Endpoints
@@ -699,6 +866,52 @@ Response: { sessionId: string, ...TaskResult }
 ```
 Auto-creates session if not provided.
 
+##### Device Management
+```
+GET /devices
+Response: { devices: DeviceCapabilities[] }
+
+POST /devices/:deviceId/action
+Body: DeviceAction
+Response: ActionResult
+```
+
+#### WebSocket Protocol
+
+Devices connect via WebSocket for real-time communication.
+
+**Device Registration**:
+```typescript
+// Client sends:
+{ type: 'device:register', capabilities: DeviceCapabilities }
+```
+
+**Action Execution**:
+```typescript
+// Server sends:
+{ actionId: string, action: DeviceAction }
+
+// Client responds:
+{ type: 'action:result', actionId: string, result: ActionResult }
+```
+
+**Device Registry**:
+```typescript
+class DeviceRegistry {
+  register(socket: WebSocket, capabilities: DeviceCapabilities): string;
+  unregister(deviceId: string): void;
+  getDevice(deviceId: string): ConnectedDevice | undefined;
+  listDevices(): DeviceCapabilities[];
+  executeAction(deviceId: string, action: DeviceAction): Promise<ActionResult>;
+  handleActionResult(deviceId: string, actionId: string, result: ActionResult): void;
+}
+```
+
+**Features**:
+- Automatic device tracking with last-seen timestamps
+- Promise-based action execution with 30s timeout
+- Graceful disconnection handling (rejects pending actions)
+
 ---
 
 ### @agent/device-use
@@ -754,6 +967,281 @@ type ComputerAction =
 - Safety validation for destructive actions
 - Coordinate normalization across screen sizes
 - Text editor integration
+
+---
+
+### @agent/api-client
+
+**Location**: `packages/api-client/`
+**Purpose**: HTTP and WebSocket client SDK for communicating with the agent server
+
+#### Structure
+
+```
+packages/api-client/src/
+├── index.ts              # Main exports
+├── agent-client.ts       # Main client class
+├── http-client.ts        # HTTP/REST client
+├── websocket-client.ts   # WebSocket client
+└── types.ts              # Type definitions
+```
+
+#### Key Features
+
+- HTTP client for REST API communication
+- WebSocket client for real-time connections
+- SSE streaming support with async generators
+- Callback-based streaming API
+- Session management
+- Health checks
+
+#### Main Client
+
+```typescript
+import { AgentClient } from '@agent/api-client';
+
+const client = new AgentClient({
+  baseUrl: 'http://localhost:3000',
+  enableWebSocket: true,
+  timeout: 120000,
+  onError: (error) => console.error(error),
+});
+
+// Initialize session
+await client.initialize();
+
+// Send message (single response)
+const response = await client.sendMessage('Hello, agent!');
+
+// Stream message with async generator
+for await (const event of client.streamMessage('Tell me a story')) {
+  console.log(event.event, event.data);
+}
+
+// Stream message with callbacks (recommended)
+await client.streamMessageWithCallbacks('Explain quantum computing', {
+  onTextDelta: ({ delta }) => process.stdout.write(delta),
+  onToolCall: ({ toolName, args }) => console.log('Tool:', toolName),
+  onToolResult: ({ result, durationMs }) => console.log('Result:', result),
+  onComplete: ({ text, stepsUsed, toolsUsed }) => console.log('Done!'),
+  onError: ({ message }) => console.error('Error:', message),
+});
+
+// Get/clear history
+const history = await client.getHistory();
+await client.clearHistory();
+
+// End session
+await client.endSession();
+```
+
+#### Streaming Callbacks
+
+```typescript
+interface StreamingChatCallbacks {
+  onSessionStart?: (data: { sessionId: string }) => void;
+  onStepStart?: (data: { stepIndex: number }) => void;
+  onStepFinish?: (data: { stepIndex: number; durationMs: number }) => void;
+  onTextDelta?: (data: { delta: string; stepIndex: number }) => void;
+  onReasoningDelta?: (data: { delta: string; stepIndex: number }) => void;
+  onToolCall?: (data: {
+    toolCallId: string;
+    toolName: string;
+    args: Record<string, unknown>;
+    stepIndex: number;
+  }) => void;
+  onToolResult?: (data: {
+    toolCallId: string;
+    toolName: string;
+    result: unknown;
+    durationMs: number;
+    stepIndex: number;
+  }) => void;
+  onComplete?: (data: {
+    text: string;
+    completed: boolean;
+    needsInput: boolean;
+    pendingQuestion?: string;
+    stepsUsed: number;
+    toolsUsed: string[];
+  }) => void;
+  onError?: (data: { message: string; code?: string }) => void;
+}
+```
+
+#### WebSocket Features
+
+```typescript
+// Connect WebSocket
+client.connectWebSocket();
+
+// Listen for messages
+const unsubscribe = client.onWebSocketMessage((message) => {
+  console.log('Received:', message);
+});
+
+// Listen for connection state changes
+client.onConnectionStateChange((state) => {
+  // 'disconnected' | 'connecting' | 'connected' | 'error'
+  console.log('Connection:', state);
+});
+
+// Send message
+client.sendWebSocketMessage({ type: 'custom', data: {} });
+
+// Disconnect
+client.disconnectWebSocket();
+```
+
+---
+
+### @agent/ui
+
+**Location**: `packages/ui/`
+**Purpose**: Shared React Native UI components for mobile and desktop applications
+
+#### Structure
+
+```
+packages/ui/src/
+├── index.ts                    # Main exports
+├── components/
+│   ├── index.ts                # Component exports
+│   ├── button.tsx              # Button component
+│   ├── text.tsx                # Text component
+│   ├── icon-button.tsx         # Icon button
+│   ├── scroll-view.tsx         # Scroll view wrapper
+│   ├── surface.tsx             # Surface/card component
+│   ├── text-input.tsx          # Text input
+│   ├── safe-area.tsx           # Safe area wrapper
+│   └── chat/                   # Chat-specific components
+│       ├── index.ts            # Chat component exports
+│       ├── chat-container.tsx  # Main chat container
+│       ├── chat-list.tsx       # Message list
+│       ├── chat-bubble.tsx     # Message bubble
+│       ├── chat-input.tsx      # Message input
+│       ├── streaming-text.tsx  # Animated streaming text
+│       ├── step-indicator.tsx  # Current step display
+│       ├── tool-call-card.tsx  # Tool call visualization
+│       ├── reasoning-collapsible.tsx  # Reasoning display
+│       ├── sources-list.tsx    # Citation display
+│       └── types.ts            # Chat types
+├── hooks/
+│   ├── index.ts                # Hook exports
+│   ├── use-agent-chat.tsx      # Main chat hook
+│   └── use-theme.tsx           # Theme hook
+└── themes/
+    ├── index.ts                # Theme exports
+    ├── colors.ts               # Color definitions
+    └── spacing.ts              # Spacing/sizing system
+```
+
+#### useAgentChat Hook
+
+Main hook for integrating agent chat with streaming support.
+
+```typescript
+import { useAgentChat } from '@agent/ui';
+import { AgentClient } from '@agent/api-client';
+
+function ChatScreen() {
+  const client = useMemo(() => new AgentClient({ baseUrl: 'http://localhost:3000' }), []);
+
+  const {
+    messages,       // StreamingMessage[]
+    isStreaming,    // boolean
+    error,          // string | null
+    sendMessage,    // (content: string) => Promise<void>
+    clearMessages,  // () => void
+    currentStep,    // number (current step index during streaming)
+  } = useAgentChat({ client });
+
+  return (
+    <View>
+      {messages.map((msg) => (
+        <MessageBubble key={msg.id} message={msg} />
+      ))}
+      <ChatInput onSend={sendMessage} disabled={isStreaming} />
+    </View>
+  );
+}
+```
+
+**StreamingMessage Type**:
+```typescript
+interface StreamingMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  timestamp: number;
+  status: 'sending' | 'streaming' | 'complete' | 'error';
+  stepIndex?: number;
+  reasoning?: { content: string; durationMs?: number };
+  toolCalls: ToolCallInfo[];
+  sources: SourceInfo[];
+  stepsUsed?: number;
+  toolsUsed?: string[];
+}
+```
+
+#### Streaming Components
+
+**StreamingText**: Animated text with blinking cursor during streaming
+
+```typescript
+import { StreamingText } from '@agent/ui';
+
+<StreamingText
+  text={message.content}
+  isStreaming={message.status === 'streaming'}
+  showCursor={true}
+/>
+```
+
+**ToolCallCard**: Expandable tool call display with status and results
+
+```typescript
+import { ToolCallCard } from '@agent/ui';
+
+<ToolCallCard
+  toolCall={{
+    toolCallId: 'call-123',
+    toolName: 'web_search',
+    args: { query: 'React hooks' },
+    status: 'complete',
+    result: { results: [...] },
+    durationMs: 1234,
+  }}
+/>
+```
+
+**Status Icons**: ⏳ pending, ⚙️ running, ✅ complete, ❌ error
+
+**StepIndicator**: Shows current step during multi-step responses
+
+**ReasoningCollapsible**: Expandable section for extended thinking/reasoning content
+
+**SourcesList**: Display citations and sources
+
+#### Theme System
+
+```typescript
+import { useTheme } from '@agent/ui';
+
+function ThemedComponent() {
+  const { colors, isDark, toggleTheme } = useTheme();
+
+  return (
+    <View style={{ backgroundColor: colors.background }}>
+      <Text style={{ color: colors.text }}>Hello</Text>
+    </View>
+  );
+}
+```
+
+**Color Keys**: `background`, `backgroundSecondary`, `text`, `textSecondary`, `textMuted`, `primary`, `border`, `error`, `success`
+
+**Spacing System**: `xs` (4), `sm` (8), `md` (16), `lg` (24), `xl` (32)
 
 ---
 
@@ -883,6 +1371,77 @@ WORKSPACE_ROOT=/path/to/project pnpm chat
 - Task completion status
 - Readline with history
 - Graceful shutdown (Ctrl+C)
+
+---
+
+### Desktop App
+
+**Location**: `apps/desktop/`
+**Purpose**: Desktop application built with Tauri and React
+
+#### Structure
+
+```
+apps/desktop/
+├── src/
+│   ├── main.tsx          # React entry point
+│   └── app.tsx           # Main App component
+├── src-tauri/            # Tauri (Rust) backend
+├── index.html            # HTML template
+├── vite.config.ts        # Vite configuration
+├── tailwind.config.ts    # Tailwind CSS config
+└── package.json
+```
+
+#### Technologies
+
+- **Tauri 2.0**: Rust-based desktop wrapper (lightweight alternative to Electron)
+- **React 19**: UI framework
+- **Vite 6**: Build tool and dev server
+- **Tailwind CSS**: Utility-first styling
+
+#### Features
+
+- Native desktop experience (macOS, Windows, Linux)
+- Agent client integration via `@agent/api-client`
+- Connection status indicator
+- Auto-scrolling message list
+- Keyboard shortcuts (Enter to send)
+- Light/dark mode support
+- Error handling with visual feedback
+
+#### Development
+
+```bash
+# Start desktop app in development
+pnpm desktop
+
+# Build for production
+pnpm --filter @agent/desktop build
+```
+
+#### Key Components
+
+**App Component** (`app.tsx`):
+- Manages chat messages and connection state
+- Uses `AgentClient` for server communication
+- Health check on startup
+- Auto-cleanup on unmount
+
+```typescript
+import { AgentClient } from '@agent/api-client';
+
+const client = new AgentClient({
+  baseUrl: 'http://localhost:3000',
+  onError: (err) => setError(err.message),
+});
+
+// Check server health
+const healthy = await client.checkHealth();
+
+// Send message
+const response = await client.sendMessage(content);
+```
 
 ---
 
@@ -1275,9 +1834,9 @@ export default defineConfig({
 ```
 User Input
   ↓
-HTTP Server OR CLI OR Mobile App
+HTTP Server OR CLI OR Desktop App OR Mobile App
   ↓
-AgentSession.send()
+AgentSession.send() OR AgentSession.sendWithEvents()
   ↓
 Agent.generate() [Vercel AI SDK]
   ├→ Reasoning Steps
@@ -1287,14 +1846,61 @@ Agent.generate() [Vercel AI SDK]
   │   ├→ web_search (fetch web data)
   │   ├→ memory_search (query knowledge graph)
   │   ├→ search_codebase (RAG retrieval)
-  │   ├→ device_control (automation)
+  │   ├→ device tools (list_devices, device_action, tap, etc.)
   │   └→ ... (other tools)
   └→ Response Generation
   ↓
-Task Result
+Task Result OR Streaming Events
   ├→ Update conversation history
   ├→ Re-index codebase (if files modified)
   └→ Extract memories (if no tool calls)
+```
+
+### Streaming Response Flow
+
+```
+Client Request: GET /sessions/:id/chat/stream?message=...
+  ↓
+AgentSession.sendWithEvents(message, callback)
+  ↓
+For each agent step:
+  ├→ session:start     { sessionId }
+  ├→ step:start        { stepIndex }
+  ├→ reasoning:delta   { delta, stepIndex } (if extended thinking)
+  ├→ text:delta        { delta, stepIndex }
+  ├→ tool:call         { toolCallId, toolName, args, stepIndex }
+  ├→ tool:result       { toolCallId, result, durationMs, stepIndex }
+  ├→ step:finish       { stepIndex, durationMs }
+  └→ (repeat for each step)
+  ↓
+complete { text, completed, stepsUsed, toolsUsed }
+```
+
+### Device Control Flow
+
+```
+Device Connects via WebSocket
+  ↓
+Send: { type: 'device:register', capabilities: DeviceCapabilities }
+  ↓
+Server: DeviceRegistry.register() → deviceId
+  ↓
+Agent uses device tools:
+  ├→ list_devices → GET /devices → DeviceRegistry.listDevices()
+  ├→ select_device → Store deviceId in tool context
+  └→ device_action → POST /devices/:id/action
+                      ↓
+                   DeviceRegistry.executeAction()
+                      ↓
+                   WebSocket: { actionId, action }
+                      ↓
+                   Device executes action
+                      ↓
+                   WebSocket: { type: 'action:result', actionId, result }
+                      ↓
+                   DeviceRegistry.handleActionResult() → resolve Promise
+                      ↓
+                   Return ActionResult to agent
 ```
 
 ### Memory Extraction Flow
