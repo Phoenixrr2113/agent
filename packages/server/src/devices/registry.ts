@@ -5,7 +5,7 @@ import type { DeviceCapabilities, DeviceAction, ActionResult } from '@agent/shar
 export interface ConnectedDevice {
   id: string
   capabilities: DeviceCapabilities
-  socket: WebSocket
+  socket: WebSocket | null
   lastSeen: number
   pendingActions: Map<
     string,
@@ -15,6 +15,15 @@ export interface ConnectedDevice {
       timeout: NodeJS.Timeout
     }
   >
+}
+
+export interface LocalDevice extends ConnectedDevice {
+  socket: null
+  executeLocal(action: DeviceAction): Promise<ActionResult>
+}
+
+function isLocalDevice(device: ConnectedDevice): device is LocalDevice {
+  return device.socket === null && 'executeLocal' in device
 }
 
 const ACTION_TIMEOUT_MS = 30_000
@@ -30,6 +39,11 @@ export class DeviceRegistry {
       lastSeen: Date.now(),
       pendingActions: new Map(),
     }
+    this.devices.set(device.id, device)
+    return device.id
+  }
+
+  registerLocal(device: LocalDevice): string {
     this.devices.set(device.id, device)
     return device.id
   }
@@ -59,6 +73,11 @@ export class DeviceRegistry {
       return { success: false, error: 'Device not found', code: 'NOT_FOUND' }
     }
 
+    if (isLocalDevice(device)) {
+      device.lastSeen = Date.now()
+      return device.executeLocal(action)
+    }
+
     const actionId = crypto.randomUUID()
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
@@ -67,7 +86,7 @@ export class DeviceRegistry {
       }, ACTION_TIMEOUT_MS)
 
       device.pendingActions.set(actionId, { resolve, reject, timeout })
-      device.socket.send(JSON.stringify({ actionId, action }))
+      device.socket!.send(JSON.stringify({ actionId, action }))
     })
   }
 
