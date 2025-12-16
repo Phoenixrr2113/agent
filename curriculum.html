@@ -1,0 +1,2612 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Agent Engineering Mastery Course</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      background: linear-gradient(135deg, #0f0f23 0%, #1a1a3e 100%);
+      color: #e0e0e0;
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+    
+    header {
+      text-align: center;
+      padding: 3rem 0;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+      margin-bottom: 3rem;
+    }
+    
+    h1 {
+      font-size: 2.5rem;
+      background: linear-gradient(135deg, #00d4ff, #7c3aed, #f472b6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 1rem;
+    }
+    
+    .subtitle {
+      color: #a0a0a0;
+      font-size: 1.2rem;
+    }
+    
+    .meta-info {
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      margin-top: 1.5rem;
+      flex-wrap: wrap;
+    }
+    
+    .meta-item {
+      background: rgba(255,255,255,0.05);
+      padding: 0.5rem 1rem;
+      border-radius: 20px;
+      font-size: 0.9rem;
+    }
+    
+    .overview {
+      background: rgba(255,255,255,0.03);
+      border-radius: 16px;
+      padding: 2rem;
+      margin-bottom: 3rem;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    
+    .overview h2 {
+      color: #00d4ff;
+      margin-bottom: 1rem;
+    }
+    
+    .learning-path {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem;
+      margin-top: 1.5rem;
+    }
+    
+    .path-item {
+      background: linear-gradient(135deg, rgba(124, 58, 237, 0.2), rgba(0, 212, 255, 0.1));
+      padding: 1rem;
+      border-radius: 12px;
+      text-align: center;
+      border: 1px solid rgba(124, 58, 237, 0.3);
+    }
+    
+    .path-item .number {
+      font-size: 2rem;
+      font-weight: bold;
+      color: #7c3aed;
+    }
+    
+    .module {
+      background: rgba(255,255,255,0.02);
+      border-radius: 16px;
+      margin-bottom: 2rem;
+      border: 1px solid rgba(255,255,255,0.08);
+      overflow: hidden;
+    }
+    
+    .module-header {
+      background: linear-gradient(90deg, rgba(124, 58, 237, 0.3), rgba(0, 212, 255, 0.1));
+      padding: 1.5rem 2rem;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .module-header:hover {
+      background: linear-gradient(90deg, rgba(124, 58, 237, 0.4), rgba(0, 212, 255, 0.2));
+    }
+    
+    .module-title {
+      font-size: 1.3rem;
+      font-weight: 600;
+    }
+    
+    .module-meta {
+      display: flex;
+      gap: 1rem;
+      font-size: 0.85rem;
+      color: #a0a0a0;
+    }
+    
+    .module-content {
+      padding: 2rem;
+    }
+    
+    .lesson {
+      background: rgba(255,255,255,0.03);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin-bottom: 1.5rem;
+      border-left: 3px solid #7c3aed;
+    }
+    
+    .lesson h4 {
+      color: #00d4ff;
+      margin-bottom: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .lesson-type {
+      font-size: 0.7rem;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      text-transform: uppercase;
+    }
+    
+    .type-theory { background: rgba(0, 212, 255, 0.2); color: #00d4ff; }
+    .type-hands-on { background: rgba(34, 197, 94, 0.2); color: #22c55e; }
+    .type-project { background: rgba(249, 115, 22, 0.2); color: #f97316; }
+    .type-deep-dive { background: rgba(168, 85, 247, 0.2); color: #a855f7; }
+    
+    .concepts {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin: 1rem 0;
+    }
+    
+    .concept-tag {
+      background: rgba(124, 58, 237, 0.2);
+      padding: 0.3rem 0.8rem;
+      border-radius: 15px;
+      font-size: 0.8rem;
+      color: #c4b5fd;
+    }
+    
+    .toy-problem {
+      background: rgba(34, 197, 94, 0.1);
+      border: 1px solid rgba(34, 197, 94, 0.3);
+      border-radius: 8px;
+      padding: 1rem;
+      margin: 1rem 0;
+    }
+    
+    .toy-problem h5 {
+      color: #22c55e;
+      margin-bottom: 0.5rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    
+    .code-example {
+      background: #1e1e2e;
+      border-radius: 8px;
+      padding: 1rem;
+      margin: 1rem 0;
+      font-family: 'Fira Code', 'Consolas', monospace;
+      font-size: 0.85rem;
+      overflow-x: auto;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    
+    .insight {
+      background: rgba(249, 115, 22, 0.1);
+      border-left: 3px solid #f97316;
+      padding: 1rem;
+      margin: 1rem 0;
+      border-radius: 0 8px 8px 0;
+    }
+    
+    .insight h5 {
+      color: #f97316;
+      margin-bottom: 0.5rem;
+    }
+    
+    .assessment {
+      background: rgba(236, 72, 153, 0.1);
+      border: 1px solid rgba(236, 72, 153, 0.3);
+      border-radius: 8px;
+      padding: 1rem;
+      margin: 1rem 0;
+    }
+    
+    .assessment h5 {
+      color: #ec4899;
+      margin-bottom: 0.5rem;
+    }
+    
+    .project-box {
+      background: linear-gradient(135deg, rgba(249, 115, 22, 0.15), rgba(236, 72, 153, 0.1));
+      border: 1px solid rgba(249, 115, 22, 0.3);
+      border-radius: 12px;
+      padding: 1.5rem;
+      margin: 1.5rem 0;
+    }
+    
+    .project-box h4 {
+      color: #f97316;
+      margin-bottom: 1rem;
+      font-size: 1.1rem;
+    }
+    
+    .requirements {
+      list-style: none;
+      margin: 1rem 0;
+    }
+    
+    .requirements li {
+      padding: 0.3rem 0;
+      padding-left: 1.5rem;
+      position: relative;
+    }
+    
+    .requirements li::before {
+      content: "→";
+      position: absolute;
+      left: 0;
+      color: #7c3aed;
+    }
+    
+    .resources {
+      background: rgba(255,255,255,0.03);
+      border-radius: 8px;
+      padding: 1rem;
+      margin-top: 1rem;
+    }
+    
+    .resources h5 {
+      color: #a0a0a0;
+      margin-bottom: 0.5rem;
+      font-size: 0.9rem;
+    }
+    
+    .resources ul {
+      list-style: none;
+    }
+    
+    .resources li {
+      padding: 0.2rem 0;
+      font-size: 0.85rem;
+    }
+    
+    .resources a {
+      color: #00d4ff;
+      text-decoration: none;
+    }
+    
+    .resources a:hover {
+      text-decoration: underline;
+    }
+    
+    .capstone {
+      background: linear-gradient(135deg, rgba(124, 58, 237, 0.2), rgba(236, 72, 153, 0.15));
+      border: 2px solid rgba(124, 58, 237, 0.4);
+      border-radius: 16px;
+      padding: 2rem;
+      margin: 2rem 0;
+    }
+    
+    .capstone h3 {
+      color: #c4b5fd;
+      margin-bottom: 1rem;
+      font-size: 1.5rem;
+    }
+    
+    .difficulty {
+      display: inline-block;
+      padding: 0.2rem 0.6rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      margin-left: 0.5rem;
+    }
+    
+    .diff-beginner { background: rgba(34, 197, 94, 0.3); color: #22c55e; }
+    .diff-intermediate { background: rgba(249, 115, 22, 0.3); color: #f97316; }
+    .diff-advanced { background: rgba(239, 68, 68, 0.3); color: #ef4444; }
+    
+    .timeline {
+      display: flex;
+      gap: 0.5rem;
+      margin: 1rem 0;
+      flex-wrap: wrap;
+    }
+    
+    .timeline-item {
+      background: rgba(255,255,255,0.05);
+      padding: 0.3rem 0.8rem;
+      border-radius: 4px;
+      font-size: 0.8rem;
+    }
+    
+    .section-divider {
+      text-align: center;
+      padding: 2rem 0;
+      color: #666;
+      font-size: 0.9rem;
+    }
+    
+    .prereqs {
+      background: rgba(0, 212, 255, 0.1);
+      border: 1px solid rgba(0, 212, 255, 0.3);
+      border-radius: 8px;
+      padding: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    
+    .prereqs h5 {
+      color: #00d4ff;
+      margin-bottom: 0.5rem;
+    }
+    
+    footer {
+      text-align: center;
+      padding: 3rem 0;
+      border-top: 1px solid rgba(255,255,255,0.1);
+      margin-top: 3rem;
+      color: #666;
+    }
+    
+    .expand-icon {
+      transition: transform 0.3s;
+    }
+    
+    .module.collapsed .expand-icon {
+      transform: rotate(-90deg);
+    }
+    
+    .module.collapsed .module-content {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>🤖 AI Agent Engineering Mastery</h1>
+      <p class="subtitle">From First Principles to Production Systems</p>
+      <div class="meta-info">
+        <span class="meta-item">📚 9 Modules</span>
+        <span class="meta-item">🛠️ 15+ Projects</span>
+        <span class="meta-item">💻 TypeScript/Python</span>
+      </div>
+    </header>
+
+    <section class="overview">
+      <h2>Course Overview</h2>
+      <p>Master the art of building production-grade AI agents. This course covers everything from vector embeddings to multi-agent orchestration, with hands-on projects building real systems.</p>
+      
+      <div class="learning-path">
+        <div class="path-item">
+          <div class="number">1-2</div>
+          <div>Foundations</div>
+        </div>
+        <div class="path-item">
+          <div class="number">3-4</div>
+          <div>RAG Systems</div>
+        </div>
+        <div class="path-item">
+          <div class="number">5-6</div>
+          <div>Agent Core</div>
+        </div>
+        <div class="path-item">
+          <div class="number">7-8</div>
+          <div>Production</div>
+        </div>
+        <div class="path-item">
+          <div class="number">9</div>
+          <div>MCP & Integration</div>
+        </div>
+      </div>
+    </section>
+
+    <section class="overview" style="margin-top: 2rem;">
+      <h2>🧭 AI Engineering Career Paths</h2>
+      <p>Understanding where AI Agent Engineering fits in the broader AI engineering landscape.</p>
+      
+      <div style="margin-top: 1.5rem;">
+        <h3 style="color: #00d4ff; margin-bottom: 1rem;">Model-Focused Roles</h3>
+        
+        <div class="lesson" style="margin-bottom: 1rem;">
+          <h4>🧠 Machine Learning Engineer</h4>
+          <p><strong>Focus:</strong> Training, optimizing, and deploying machine learning models from scratch.</p>
+          <p>ML Engineers are the craftspeople who build the models themselves. They design neural network architectures, prepare training datasets, run experiments, and optimize model performance. They bridge the gap between research (what's theoretically possible) and production (what actually works at scale).</p>
+          <p><strong>Key Skills:</strong> Python, PyTorch/TensorFlow, statistics, linear algebra, feature engineering, MLOps</p>
+          <p><strong>Day-to-day:</strong> Training custom models, A/B testing architectures, optimizing inference latency, building data pipelines</p>
+        </div>
+
+        <div class="lesson" style="margin-bottom: 1rem;">
+          <h4>📚 LLM Engineer</h4>
+          <p><strong>Focus:</strong> Fine-tuning, optimizing, and deploying Large Language Models for specific use cases.</p>
+          <p>LLM Engineers specialize in the transformer models (GPT, Claude, LLaMA) that power modern AI. They fine-tune pre-trained models on domain-specific data, implement efficient inference, manage model serving, and ensure outputs meet quality standards. They're experts in what these models can and cannot do.</p>
+          <p><strong>Key Skills:</strong> Transformer architecture, fine-tuning techniques (LoRA, RLHF), prompt engineering, tokenization, model evaluation</p>
+          <p><strong>Day-to-day:</strong> Fine-tuning models on company data, reducing hallucinations, optimizing context windows, building evaluation pipelines</p>
+        </div>
+
+        <div class="lesson" style="margin-bottom: 1rem;">
+          <h4>🔬 AI Research Scientist</h4>
+          <p><strong>Focus:</strong> Developing new algorithms, architectures, and techniques that advance the state of the art.</p>
+          <p>Research Scientists work at the frontier—creating the innovations that everyone else implements. They publish papers, run large-scale experiments, and develop novel approaches to unsolved problems. Most work at AI labs or research-focused companies.</p>
+          <p><strong>Key Skills:</strong> Deep mathematical foundations, paper reading/writing, experimental design, novel algorithm development</p>
+          <p><strong>Day-to-day:</strong> Reading papers, designing experiments, writing proofs, publishing research, collaborating across teams</p>
+        </div>
+      </div>
+
+      <div style="margin-top: 2rem;">
+        <h3 style="color: #00d4ff; margin-bottom: 1rem;">Application-Focused Roles</h3>
+        
+        <div class="lesson" style="margin-bottom: 1rem; border-left: 4px solid #00d4ff;">
+          <h4>🤖 AI Agent Engineer <span style="background: linear-gradient(90deg, #00d4ff, #7c3aed); padding: 2px 8px; border-radius: 4px; font-size: 0.8rem; margin-left: 0.5rem;">THIS COURSE</span></h4>
+          <p><strong>Focus:</strong> Building autonomous systems that can reason, use tools, and take multi-step actions to achieve goals.</p>
+          <p>AI Agent Engineers are the <strong>fullstack developers of AI</strong>. They don't train models from scratch—they orchestrate them. They build the reasoning loops, tool integrations, memory systems, and safety guardrails that transform a "dumb" LLM into an intelligent agent that can actually DO things. This is one of the fastest-growing and highest-demand specializations in AI.</p>
+          <p><strong>Key Skills:</strong> LLM orchestration (AI SDK, LangChain), tool design, RAG systems, prompt engineering, streaming, multi-agent patterns</p>
+          <p><strong>Day-to-day:</strong> Building agent loops, designing tool APIs, implementing memory systems, debugging agent behavior, optimizing token usage</p>
+          <p><strong>Why it's hot:</strong> Every company wants AI that takes actions, not just answers questions. Agent engineers make that happen.</p>
+        </div>
+
+        <div class="lesson" style="margin-bottom: 1rem;">
+          <h4>🛠️ AI Product Engineer</h4>
+          <p><strong>Focus:</strong> Integrating AI capabilities into user-facing products and applications.</p>
+          <p>AI Product Engineers work at the intersection of AI and product development. They take AI capabilities (whether from APIs, fine-tuned models, or agent systems) and weave them into products that users love. They care deeply about UX, latency, and making AI feel natural.</p>
+          <p><strong>Key Skills:</strong> Full-stack development, API integration, UX design for AI, A/B testing, product thinking</p>
+          <p><strong>Day-to-day:</strong> Building AI features, designing loading states for LLM responses, handling edge cases, measuring user satisfaction</p>
+        </div>
+
+        <div class="lesson" style="margin-bottom: 1rem;">
+          <h4>💬 Conversational AI Engineer</h4>
+          <p><strong>Focus:</strong> Building chatbots, voice assistants, and dialog systems that feel natural and helpful.</p>
+          <p>Conversational AI Engineers specialize in the nuances of human-AI dialog. They design conversation flows, handle multi-turn context, manage intents and entities, and ensure the AI sounds human. They work on everything from customer support bots to voice assistants.</p>
+          <p><strong>Key Skills:</strong> Dialog management, NLU/NLP, intent classification, speech-to-text, conversation design</p>
+          <p><strong>Day-to-day:</strong> Designing conversation trees, training intent classifiers, A/B testing responses, analyzing conversation logs</p>
+        </div>
+      </div>
+
+      <div style="margin-top: 2rem;">
+        <h3 style="color: #00d4ff; margin-bottom: 1rem;">Infrastructure-Focused Roles</h3>
+        
+        <div class="lesson" style="margin-bottom: 1rem;">
+          <h4>☁️ AI Infrastructure Engineer</h4>
+          <p><strong>Focus:</strong> Building and maintaining the computing platforms that power AI workloads.</p>
+          <p>AI Infrastructure Engineers are the backbone of AI operations. They manage GPU clusters, optimize model serving, ensure high availability, and build the platforms that other AI engineers use. Without them, models can't train or run at scale.</p>
+          <p><strong>Key Skills:</strong> Cloud platforms (AWS/GCP/Azure), Kubernetes, GPU optimization, distributed systems, infrastructure as code</p>
+          <p><strong>Day-to-day:</strong> Provisioning GPU clusters, optimizing model serving latency, managing cloud costs, building deployment pipelines</p>
+        </div>
+
+        <div class="lesson" style="margin-bottom: 1rem;">
+          <h4>🔄 MLOps Engineer</h4>
+          <p><strong>Focus:</strong> Automating the lifecycle of ML models from training to deployment to monitoring.</p>
+          <p>MLOps Engineers bring DevOps practices to machine learning. They build CI/CD pipelines for models, automate retraining, monitor model drift, and ensure reproducibility. They're essential for getting models from notebooks to production reliably.</p>
+          <p><strong>Key Skills:</strong> CI/CD, ML pipelines (Airflow, Kubeflow), model monitoring, experiment tracking (MLflow, W&B), containerization</p>
+          <p><strong>Day-to-day:</strong> Building training pipelines, setting up model monitoring, automating deployments, debugging production issues</p>
+        </div>
+
+        <div class="lesson" style="margin-bottom: 1rem;">
+          <h4>📊 AI Data Engineer</h4>
+          <p><strong>Focus:</strong> Building data pipelines that feed AI/ML systems with clean, reliable data.</p>
+          <p>AI Data Engineers ensure that AI systems have the data they need. They build ETL pipelines, manage data quality, create feature stores, and handle the massive scale of AI training data. They're the unsung heroes of every successful AI project.</p>
+          <p><strong>Key Skills:</strong> Data pipelines (Spark, Flink), SQL, data quality, feature stores, data versioning</p>
+          <p><strong>Day-to-day:</strong> Building data pipelines, ensuring data quality, creating features, optimizing query performance</p>
+        </div>
+      </div>
+
+      <div style="margin-top: 2rem;">
+        <h3 style="color: #00d4ff; margin-bottom: 1rem;">Interaction-Focused Roles</h3>
+        
+        <div class="lesson" style="margin-bottom: 1rem;">
+          <h4>✍️ Prompt Engineer</h4>
+          <p><strong>Focus:</strong> Crafting prompts that elicit desired behaviors from AI models.</p>
+          <p>Prompt Engineers are the linguists of AI. They understand how subtle changes in wording affect model outputs. They build prompt libraries, optimize for specific tasks, and reduce failure modes. While some see this as a subset of other roles, dedicated Prompt Engineers are in high demand.</p>
+          <p><strong>Key Skills:</strong> Natural language intuition, systematic testing, understanding of model behavior, creativity, documentation</p>
+          <p><strong>Day-to-day:</strong> A/B testing prompts, building prompt templates, documenting best practices, reducing hallucinations</p>
+        </div>
+
+        <div class="lesson" style="margin-bottom: 1rem;">
+          <h4>🎨 AI UX Designer</h4>
+          <p><strong>Focus:</strong> Designing human-AI interactions that feel intuitive and trustworthy.</p>
+          <p>AI UX Designers think about how humans should interact with AI systems. They design for uncertainty (AI can be wrong), latency (AI can be slow), and trust (users need to understand AI decisions). They're increasingly important as AI becomes ubiquitous.</p>
+          <p><strong>Key Skills:</strong> UX research, interaction design, understanding AI capabilities/limitations, prototyping, accessibility</p>
+          <p><strong>Day-to-day:</strong> Designing AI interactions, user testing, creating loading/thinking states, building trust indicators</p>
+        </div>
+      </div>
+
+      <div style="margin-top: 2rem; padding: 1.5rem; background: rgba(0, 212, 255, 0.1); border-radius: 8px;">
+        <h3 style="color: #00d4ff; margin-bottom: 1rem;">📈 Where Does This Course Lead?</h3>
+        <p>This course prepares you for <strong>AI Agent Engineer</strong> roles, which combine skills from multiple disciplines:</p>
+        <ul style="margin-top: 1rem;">
+          <li><strong>From LLM Engineering:</strong> Understanding model capabilities, prompt optimization, token management</li>
+          <li><strong>From Software Engineering:</strong> System design, API development, production patterns</li>
+          <li><strong>From ML Engineering:</strong> Embeddings, retrieval, evaluation metrics</li>
+          <li><strong>From Product Engineering:</strong> User-facing features, streaming UX, error handling</li>
+        </ul>
+        <p style="margin-top: 1rem;">After completing this course, you'll be qualified for roles like: <strong>AI Agent Engineer, AI Application Engineer, LLM Engineer, AI Product Engineer, Solutions Architect (AI)</strong></p>
+      </div>
+    </section>
+
+    <!-- MODULE 1 -->
+    <div class="module">
+      <div class="module-header" onclick="toggleModule(this)">
+        <div>
+          <span class="module-title">Module 1: Embeddings & Vector Search Fundamentals</span>
+          <span class="difficulty diff-beginner">Beginner</span>
+        </div>
+        <div class="module-meta">
+          <span>🕐 2 weeks</span>
+          <span class="expand-icon">▼</span>
+        </div>
+      </div>
+      <div class="module-content">
+        <div class="prereqs">
+          <h5>Prerequisites</h5>
+          <p>Basic Python/TypeScript, linear algebra basics (vectors, dot products), API experience</p>
+        </div>
+
+        <div class="lesson">
+          <h4><span class="lesson-type type-theory">Theory</span> What Are Embeddings?</h4>
+          <p>Understanding how transformers convert text into dense vector representations that capture semantic meaning.</p>
+          <div class="concepts">
+            <span class="concept-tag">Word2Vec</span>
+            <span class="concept-tag">Transformer Architecture</span>
+            <span class="concept-tag">Attention Mechanism</span>
+            <span class="concept-tag">Dimensionality</span>
+          </div>
+          <div class="insight">
+            <h5>💡 Key Insight</h5>
+            <p>Embeddings aren't magic—they're learned representations where similar concepts cluster together in high-dimensional space. "King - Man + Woman ≈ Queen" works because these relationships are encoded geometrically.</p>
+          </div>
+        </div>
+
+        <div class="lesson">
+          <h4><span class="lesson-type type-hands-on">Hands-On</span> Building Your First Semantic Search</h4>
+          <p>Implement a simple document search using OpenAI embeddings and cosine similarity.</p>
+          
+          <div class="toy-problem">
+            <h5>🧪 Toy Problem: Movie Recommender</h5>
+            <p>Build a movie recommendation system using plot embeddings. Given 100 movie descriptions, find the 5 most similar to a user query like "space adventure with robots".</p>
+            <ul class="requirements">
+              <li>Embed all movie descriptions using text-embedding-3-small</li>
+              <li>Implement cosine similarity from scratch (no libraries)</li>
+              <li>Return top-k results with similarity scores</li>
+              <li>Measure: What's the token cost for 100 movies?</li>
+            </ul>
+          </div>
+
+          <div class="code-example">
+<pre>// Cosine similarity implementation
+function cosineSimilarity(a: number[], b: number[]): number {
+  const dotProduct = a.reduce((sum, val, i) => sum + val * b[i], 0);
+  const magnitudeA = Math.sqrt(a.reduce((sum, val) => sum + val * val, 0));
+  const magnitudeB = Math.sqrt(b.reduce((sum, val) => sum + val * val, 0));
+  return dotProduct / (magnitudeA * magnitudeB);
+}</pre>
+          </div>
+        </div>
+
+        <div class="lesson">
+          <h4><span class="lesson-type type-deep-dive">Deep Dive</span> Embedding Model Comparison</h4>
+          <p>Compare OpenAI, Cohere, and open-source embedding models. Understand trade-offs between quality, speed, cost, and dimensionality.</p>
+          
+          <div class="concepts">
+            <span class="concept-tag">text-embedding-3-small (1536d)</span>
+            <span class="concept-tag">nomic-embed-text (768d)</span>
+            <span class="concept-tag">BGE-M3 (1024d)</span>
+            <span class="concept-tag">Cohere embed-v3</span>
+          </div>
+
+          <div class="toy-problem">
+            <h5>🧪 Experiment: Quality vs Speed Trade-off</h5>
+            <p>Using the same 100 queries, compare retrieval accuracy across 3 different embedding models. Create a benchmark report.</p>
+          </div>
+        </div>
+
+        <div class="lesson">
+          <h4><span class="lesson-type type-hands-on">Hands-On</span> Vector Databases & Indexing</h4>
+          <p>Learn why naive O(n) search doesn't scale. Implement approximate nearest neighbor search with HNSW.</p>
+          
+          <div class="insight">
+            <h5>💡 Key Insight</h5>
+            <p>With 1M vectors, brute-force search takes seconds. HNSW reduces this to milliseconds by building a navigable graph—trading perfect accuracy for massive speedup (typically 95%+ recall).</p>
+          </div>
+
+          <div class="toy-problem">
+            <h5>🧪 Toy Problem: Build a Mini Vector DB</h5>
+            <p>Implement a simple vector store with:</p>
+            <ul class="requirements">
+              <li>In-memory storage with persistence to JSON</li>
+              <li>Add/delete/update operations</li>
+              <li>Metadata filtering (e.g., "only search documents from 2024")</li>
+              <li>Benchmark: 10k vectors, measure query latency</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="project-box">
+          <h4>🚀 Module Project: Personal Knowledge Base</h4>
+          <p>Build a semantic search engine for your personal notes/documents.</p>
+          <ul class="requirements">
+            <li>Ingest markdown files from a folder</li>
+            <li>Chunk documents by paragraph</li>
+            <li>Generate and store embeddings</li>
+            <li>Build CLI for natural language search</li>
+            <li>Add metadata (filename, date, tags) filtering</li>
+          </ul>
+          <div class="timeline">
+            <span class="timeline-item">Day 1-2: Ingestion</span>
+            <span class="timeline-item">Day 3-4: Embedding</span>
+            <span class="timeline-item">Day 5-6: Search CLI</span>
+            <span class="timeline-item">Day 7: Polish</span>
+          </div>
+        </div>
+
+        <div class="assessment">
+          <h5>✅ Module Assessment</h5>
+          <ul>
+            <li>Explain why cosine similarity is preferred over Euclidean distance for text</li>
+            <li>Calculate the memory footprint of 100k embeddings at 1536 dimensions</li>
+            <li>Demonstrate your knowledge base with 5 complex queries</li>
+          </ul>
+        </div>
+
+        <div class="resources">
+          <h5>📖 Resources</h5>
+          <ul>
+            <li>Paper: "Efficient Estimation of Word Representations in Vector Space" (Word2Vec)</li>
+            <li>Paper: "Sentence-BERT: Sentence Embeddings using Siamese BERT-Networks"</li>
+            <li>Tool: OpenAI Embeddings API documentation</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODULE 2 -->
+    <div class="module">
+      <div class="module-header" onclick="toggleModule(this)">
+        <div>
+          <span class="module-title">Module 2: Keyword Search & Hybrid Retrieval</span>
+          <span class="difficulty diff-beginner">Beginner</span>
+        </div>
+        <div class="module-meta">
+          <span>🕐 2 weeks</span>
+          <span class="expand-icon">▼</span>
+        </div>
+      </div>
+      <div class="module-content">
+        <div class="lesson">
+          <h4><span class="lesson-type type-theory">Theory</span> Why Embeddings Aren't Enough</h4>
+          <p>Understand the limitations of pure semantic search and when keyword matching is essential.</p>
+          
+          <div class="insight">
+            <h5>💡 Key Insight</h5>
+            <p>Vector search finds "login authentication" when you search "user signin"—great! But it might miss exact matches like error code "ERR_AUTH_401" or function name "validateJWT()". You need both.</p>
+          </div>
+
+          <div class="toy-problem">
+            <h5>🧪 Experiment: Semantic vs Keyword Failure Cases</h5>
+            <p>Create 20 queries that semantic search handles well and 20 that keyword search handles better. Analyze the patterns.</p>
+          </div>
+        </div>
+
+        <div class="lesson">
+          <h4><span class="lesson-type type-hands-on">Hands-On</span> Implementing BM25</h4>
+          <p>Build BM25 from scratch to understand term frequency, inverse document frequency, and document length normalization.</p>
+          
+          <div class="code-example">
+<pre>// BM25 Score Formula
+// score(D,Q) = Σ IDF(qi) × [f(qi,D) × (k1+1)] / [f(qi,D) + k1 × (1-b+b×|D|/avgdl)]
+
+interface BM25Config {
+  k1: number;  // 1.2-2.0: term frequency saturation
+  b: number;   // 0.75: document length normalization
+}
+
+// Why these parameters matter:
+// - Higher k1 = more weight to term frequency
+// - Higher b = more penalty for long documents</pre>
+          </div>
+
+          <div class="toy-problem">
+            <h5>🧪 Toy Problem: Build BM25 Engine</h5>
+            <ul class="requirements">
+              <li>Implement tokenization with stopword removal</li>
+              <li>Build inverted index for fast lookup</li>
+              <li>Calculate IDF for each term in corpus</li>
+              <li>Implement BM25 scoring function</li>
+              <li>Test on 1000 Wikipedia articles</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="lesson">
+          <h4><span class="lesson-type type-theory">Theory</span> Reciprocal Rank Fusion (RRF)</h4>
+          <p>Learn how to combine results from multiple retrieval methods without normalizing incompatible scores.</p>
+          
+          <div class="code-example">
+<pre>// RRF Algorithm
+function reciprocalRankFusion(
+  rankings: Map&lt;string, number&gt;[],  // docId -> rank (1-indexed)
+  k: number = 60  // constant, typically 60
+): Map&lt;string, number&gt; {
+  const scores = new Map&lt;string, number&gt;();
+  
+  for (const ranking of rankings) {
+    for (const [docId, rank] of ranking) {
+      const current = scores.get(docId) || 0;
+      scores.set(docId, current + 1 / (k + rank));
+    }
+  }
+  
+  return scores;  // Higher = better
+}
+
+// Why RRF works:
+// - Rank-based (ignores raw scores)
+// - No normalization needed
+// - Documents ranked highly by multiple methods bubble up</pre>
+          </div>
+
+          <div class="insight">
+            <h5>💡 Key Insight</h5>
+            <p>RRF is "embarrassingly simple" but remarkably effective. It outperforms learned fusion methods in many cases because it doesn't overfit to specific score distributions.</p>
+          </div>
+        </div>
+
+        <div class="lesson">
+          <h4><span class="lesson-type type-hands-on">Hands-On</span> Building Hybrid Search</h4>
+          <p>Combine your vector search and BM25 implementations with RRF fusion.</p>
+          
+          <div class="toy-problem">
+            <h5>🧪 Toy Problem: Code Search Engine</h5>
+            <p>Build a hybrid search for a code repository:</p>
+            <ul class="requirements">
+              <li>Vector search captures "authentication logic" → finds auth code</li>
+              <li>BM25 captures exact function names like "validateToken"</li>
+              <li>RRF combines both result sets</li>
+              <li>Compare hybrid vs vector-only vs BM25-only on 50 queries</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="lesson">
+          <h4><span class="lesson-type type-deep-dive">Deep Dive</span> Reranking with Cross-Encoders</h4>
+          <p>Understand why two-stage retrieval (retrieve → rerank) produces better results than single-stage.</p>
+          
+          <div class="concepts">
+            <span class="concept-tag">Bi-encoders vs Cross-encoders</span>
+            <span class="concept-tag">Cohere Rerank</span>
+            <span class="concept-tag">BGE-reranker</span>
+            <span class="concept-tag">ColBERT</span>
+          </div>
+
+          <div class="insight">
+            <h5>💡 Key Insight</h5>
+            <p>Bi-encoders (embeddings) process query and document independently—fast but less accurate. Cross-encoders process them together—slow but much more accurate. Use bi-encoders to get 100 candidates, then cross-encoder to pick top 10.</p>
+          </div>
+        </div>
+
+        <div class="project-box">
+          <h4>🚀 Module Project: Full-Stack Hybrid Search API</h4>
+          <p>Build a production-ready search API with hybrid retrieval.</p>
+          <ul class="requirements">
+            <li>REST API with /index and /search endpoints</li>
+            <li>Parallel vector + BM25 search</li>
+            <li>RRF fusion with configurable weights</li>
+            <li>Optional Cohere reranking</li>
+            <li>Latency metrics and caching</li>
+            <li>Benchmark: &lt;200ms p95 latency on 10k docs</li>
+          </ul>
+        </div>
+
+        <div class="resources">
+          <h5>📖 Resources</h5>
+          <ul>
+            <li>Paper: "Reciprocal Rank Fusion Outperforms Condorcet and Individual Rank Learning Methods"</li>
+            <li>Library: wink-bm25-text-search documentation</li>
+            <li>API: Cohere Rerank documentation</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODULE 3 -->
+    <div class="module">
+      <div class="module-header" onclick="toggleModule(this)">
+        <div>
+          <span class="module-title">Module 3: Advanced RAG - Chunking & Context Engineering</span>
+          <span class="difficulty diff-intermediate">Intermediate</span>
+        </div>
+        <div class="module-meta">
+          <span>🕐 2 weeks</span>
+          <span class="expand-icon">▼</span>
+        </div>
+      </div>
+      <div class="module-content">
+        <div class="lesson">
+          <h4><span class="lesson-type type-theory">Theory</span> The Chunking Problem</h4>
+          <p>Why how you split documents matters more than which embedding model you use.</p>
+          
+          <div class="insight">
+            <h5>💡 Key Insight</h5>
+            <p>Bad chunking can split a function in half, break context, or merge unrelated code. A perfectly relevant chunk that's been mangled is useless. Garbage in, garbage out.</p>
+          </div>
+
+          <div class="concepts">
+            <span class="concept-tag">Fixed-size chunking</span>
+            <span class="concept-tag">Semantic chunking</span>
+            <span class="concept-tag">AST-based chunking</span>
+            <span class="concept-tag">Recursive chunking</span>
+          </div>
+        </div>
+
+        <div class="lesson">
+          <h4><span class="lesson-type type-hands-on">Hands-On</span> AST-Based Code Chunking</h4>
+          <p>Use tree-sitter to parse code into semantically meaningful chunks (functions, classes, methods).</p>
+          
+          <div class="code-example">
+<pre>// Tree-sitter parses code into AST
+import Parser from 'tree-sitter';
+import TypeScript from 'tree-sitter-typescript';
+
+const parser = new Parser();
+parser.setLanguage(TypeScript.typescript);
+
+const tree = parser.parse(sourceCode);
+// Walk AST to extract functions, classes, etc.
+
+// Result: Each chunk is a complete syntactic unit
+// - Function with all its code
+// - Class with all methods
+// - Import block</pre>
+          </div>
+
+          <div class="toy-problem">
+            <h5>🧪 Toy Problem: Multi-Language Chunker</h5>
+            <p>Build a chunker that handles TypeScript, Python, and Markdown:</p>
+            <ul class="requirements">
+              <li>TypeScript/Python: AST-based (functions, classes)</li>
+              <li>Markdown: Heading-based (## sections)</li>
+              <li>Fallback: Recursive character splitting</li>
+              <li>Max chunk size: 1000 tokens</li>
+              <li>Overlap handling for large functions</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="lesson">
+          <h4><span class="lesson-type type-deep-dive">Deep Dive</span> Contextual Retrieval (Anthropic's Approach)</h4>
+          <p>Generate LLM-powered context descriptions for each chunk to improve searchability.</p>
+          
+          <div class="insight">
+            <h5>💡 Key Insight</h5>
+            <p>A chunk containing `export function validateJWT(token: string)` is hard to find with "authentication logic". But prepend "This function validates JSON Web Tokens for user authentication" and it becomes searchable by intent.</p>
+          </div>
+
+          <div class="code-example">
+<pre>// Context generation prompt
+const contextPrompt = `
+You are analyzing code for a retrieval system.
+File: ${filePath}
+Parent scope: ${parentFunction || 'module level'}
+
+Code:
+${chunkContent}
+
+Write 2-3 sentences explaining:
+1. What this code does
+2. When/why it would be called
+3. Key functions/variables defined
+
+Be concise and technical.
+`;
+
+// Prepend context to chunk before embedding
+const enrichedChunk = `${generatedContext}\n\n${chunkContent}`;</pre>
+          </div>
+
+          <div class="toy-problem">
+            <h5>🧪 Experiment: Context Impact Measurement</h5>
+            <p>Compare retrieval accuracy with and without contextual descriptions on 50 code queries.</p>
+          </div>
+        </div>
+
+        <div class="lesson">
+          <h4><span class="lesson-type type-hands-on">Hands-On</span> Token-Aware Result Filtering</h4>
+          <p>Ensure retrieved chunks fit within LLM context limits.</p>
+          
+          <div class="code-example">
+<pre>import { encode } from 'gpt-tokenizer';
+
+function filterToTokenBudget(
+  chunks: Chunk[],
+  maxTokens: number
+): Chunk[] {
+  let totalTokens = 0;
+  const selected: Chunk[] = [];
+  
+  for (const chunk of chunks) {
+    const chunkTokens = encode(chunk.content).length;
+    if (totalTokens + chunkTokens > maxTokens) break;
+    selected.push(chunk);
+    totalTokens += chunkTokens;
+  }
+  
+  return selected;
+}</pre>
+          </div>
+        </div>
+
+        <div class="lesson">
+          <h4><span class="lesson-type type-deep-dive">Deep Dive</span> RAG Caching Strategies</h4>
+          <p>Production RAG systems must cache embeddings efficiently. Learn file-hash based invalidation, incremental indexing, and cache warming strategies.</p>
+          
+          <div class="insight">
+            <h5>💡 Key Insight</h5>
+            <p>Re-generating embeddings and context for unchanged files is wasteful. A 10,000 file codebase might take 30 minutes to fully index—but with smart caching, incremental updates take seconds.</p>
+          </div>
+
+          <div class="code-example">
+<pre>// Hash-based cache invalidation
+import { createHash } from 'node:crypto';
+
+interface CachedFileData {
+  chunks: EmbeddedChunk[];
+  hash: string;  // Content hash for invalidation
+}
+
+interface Cache&lt;T&gt; {
+  get(key: string): Promise&lt;T | null&gt;;
+  set(key: string, value: T, hash: string): Promise&lt;void&gt;;
+  isValid(key: string, currentHash: string): Promise&lt;boolean&gt;;
+  clear(): Promise&lt;void&gt;;
+}
+
+// Usage in indexing pipeline
+for (const [filePath, fileChunks] of fileChunksMap.entries()) {
+  const fileContent = fileChunks.map(c => c.content).join('\n');
+  const fileHash = createHash('sha256').update(fileContent).digest('hex');
+  
+  // Check if cached version is still valid
+  if (await cache.isValid(filePath, fileHash)) {
+    const cached = await cache.get(filePath);
+    if (cached) {
+      allEmbedded.push(...cached.chunks);
+      continue;  // Skip expensive embedding generation
+    }
+  }
+  
+  // Only regenerate if file changed
+  const processed = await processChunks(fileChunks, enableContext);
+  await cache.set(filePath, { chunks: processed, hash: fileHash }, fileHash);
+  allEmbedded.push(...processed);
+}</pre>
+          </div>
+
+          <div class="concepts">
+            <span class="concept-tag">Content Hashing</span>
+            <span class="concept-tag">Incremental Indexing</span>
+            <span class="concept-tag">Cache Warming</span>
+            <span class="concept-tag">TTL Strategies</span>
+          </div>
+
+          <div class="toy-problem">
+            <h5>🧪 Toy Problem: Smart Cache System</h5>
+            <p>Build a caching layer for your RAG system:</p>
+            <ul class="requirements">
+              <li>File-based persistence (SQLite or JSON files)</li>
+              <li>SHA-256 hash-based invalidation</li>
+              <li>LRU eviction for memory-bound caches</li>
+              <li>Measure: Compare indexing time with/without cache on 1000 files</li>
+              <li>Bonus: Background cache warming on startup</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="project-box">
+          <h4>🚀 Module Project: Production RAG Pipeline</h4>
+          <p>Build a complete RAG system for a codebase with all optimizations.</p>
+          <ul class="requirements">
+            <li>AST-based chunking with tree-sitter</li>
+            <li>LLM-generated contextual descriptions</li>
+            <li>Hybrid search (embeddings + BM25)</li>
+            <li>Reranking with Cohere</li>
+            <li>Token-aware result filtering</li>
+            <li>File-based caching for embeddings</li>
+            <li>Incremental indexing (only re-index changed files)</li>
+          </ul>
+          <div class="timeline">
+            <span class="timeline-item">Week 1: Chunking + Context</span>
+            <span class="timeline-item">Week 2: Search + Caching</span>
+          </div>
+        </div>
+
+        <div class="resources">
+          <h5>📖 Resources</h5>
+          <ul>
+            <li>Paper: "cAST: Enhancing Code RAG with AST Chunking" (2025)</li>
+            <li>Blog: Anthropic's "Contextual Retrieval"</li>
+            <li>Library: tree-sitter, code-chopper</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODULE 4 -->
+    <div class="module">
+      <div class="module-header" onclick="toggleModule(this)">
+        <div>
+          <span class="module-title">Module 4: Knowledge Graphs & Agent Memory</span>
+          <span class="difficulty diff-intermediate">Intermediate</span>
+        </div>
+        <div class="module-meta">
+          <span>🕐 2 weeks</span>
+          <span class="expand-icon">▼</span>
+        </div>
+      </div>
+      <div class="module-content">
+        <div class="lesson">
+          <h4><span class="lesson-type type-theory">Theory</span> Why RAG Isn't Enough for Agents</h4>
+          <p>RAG retrieves similar content, but agents need to understand relationships, track changes over time, and reason about entities.</p>
+          
+          <div class="insight">
+            <h5>💡 Key Insight</h5>
+            <p>RAG: "Find documents about Randy"<br>
+            Knowledge Graph: "Randy works at PMI, has son Phoenix, bought property at Cape Harbour in 2024, previously worked at..."<br>
+            The graph captures relationships and temporal evolution.</p>
+          </div>
+        </div>
+
+        <div class="lesson">
+          <h4><span class="lesson-type type-hands-on">Hands-On</span> Building a Knowledge Graph Schema</h4>
+          <p>Design and implement an Entity-Relation-Fact model for agent memory.</p>
+          
+          <div class="code-example">
+<pre>// Core types for knowledge graph
+interface Entity {
+  id: string;
+  name: string;
+  type: 'person' | 'company' | 'project' | 'concept';
+  attributes: Record&lt;string, unknown&gt;;
+  embedding?: number[];  // For semantic search
+}
+
+interface Relation {
+  id: string;
+  fromEntityId: string;
+  toEntityId: string;
+  type: 'WORKS_AT' | 'CREATED' | 'PART_OF' | 'KNOWS';
+  weight: number;  // Confidence/strength
+}
+
+interface Fact {
+  id: string;
+  content: string;  // "Randy works at PMI as Senior Engineer"
+  entityIds: string[];
+  validFrom: Date;
+  validTo: Date | null;  // null = still valid
+  confidence: number;
+}</pre>
+          </div>
+
+          <div class="toy-problem">
+            <h5>🧪 Toy Problem: Personal CRM Graph</h5>
+            <p>Build a knowledge graph from email/calendar data:</p>
+            <ul class="requirements">
+              <li>Extract people, companies, meetings as entities</li>
+              <li>Create relations (works_at, met_with, discussed)</li>
+              <li>Query: "Who do I know at Company X?"</li>
+              <li>Query: "What did I discuss with John last month?"</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="lesson">
+          <h4><span class="lesson-type type-deep-dive">Deep Dive</span> LLM-Based Entity Extraction</h4>
+          <p>Use LLMs to automatically extract entities, relations, and facts from unstructured text.</p>
+          
+          <div class="code-example">
+<pre>// Extraction prompt
+const extractionPrompt = `
+Extract entities and relationships from this conversation:
+
+${conversationText}
+
+Return JSON:
+{
+  "entities": [
+    { "name": "...", "type": "person|company|project", "attributes": {} }
+  ],
+  "relations": [
+    { "from": "...", "to": "...", "type": "WORKS_AT|CREATED|..." }
+  ],
+  "facts": [
+    { "content": "...", "entities": ["..."], "temporal": "ongoing|past" }
+  ]
+}
+`;</pre>
+          </div>
+        </div>
+
+        <div class="lesson">
+          <h4><span class="lesson-type type-theory">Theory</span> Temporal Knowledge Graphs</h4>
+          <p>Facts change over time. A good memory system tracks when things were true, not just what is true now.</p>
+          
+          <div class="concepts">
+            <span class="concept-tag">Bi-temporal modeling</span>
+            <span class="concept-tag">Valid time vs Transaction time</span>
+            <span class="concept-tag">Fact invalidation</span>
+            <span class="concept-tag">Contradiction detection</span>
+          </div>
+
+          <div class="insight">
+            <h5>💡 Key Insight</h5>
+            <p><strong>Valid time:</strong> When was this true in the real world?<br>
+            <strong>Transaction time:</strong> When did we record this?<br>
+            Both matter: "Randy worked at Company X (valid: 2020-2023, recorded: 2024-01-15)"</p>
+          </div>
+
+          <div class="toy-problem">
+            <h5>🧪 Toy Problem: Contradiction Detection</h5>
+            <p>Given existing fact "Randy works at PMI" and new fact "Randy works at Google", detect contradiction and update appropriately:</p>
+            <ul class="requirements">
+              <li>Semantic similarity check between facts</li>
+              <li>LLM-based contradiction analysis</li>
+              <li>Invalidate old fact (set validTo)</li>
+              <li>Insert new fact with validFrom = now</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="lesson">
+          <h4><span class="lesson-type type-hands-on">Hands-On</span> Entity Resolution</h4>
+          <p>Handle the same entity mentioned different ways: "Randy", "Randy Wilson", "R. Wilson".</p>
+          
+          <div class="code-example">
+<pre>// Entity resolution strategies
+async function resolveEntity(
+  newEntity: Entity,
+  existingEntities: Entity[]
+): Promise&lt;Entity&gt; {
+  // 1. Exact name match
+  const exactMatch = existingEntities.find(
+    e => e.name.toLowerCase() === newEntity.name.toLowerCase()
+  );
+  if (exactMatch) return exactMatch;
+  
+  // 2. Fuzzy name match (Jaro-Winkler)
+  const fuzzyMatches = existingEntities.filter(
+    e => jaroWinkler(e.name, newEntity.name) > 0.85
+  );
+  
+  // 3. LLM-based resolution for ambiguous cases
+  if (fuzzyMatches.length > 0) {
+    const resolution = await llm.resolve(newEntity, fuzzyMatches);
+    if (resolution.isSameEntity) {
+      return mergeEntities(resolution.matchedEntity, newEntity);
+    }
+  }
+  
+  // 4. Create new entity
+  return newEntity;
+}</pre>
+          </div>
+        </div>
+
+        <div class="project-box">
+          <h4>🚀 Module Project: Conversational Memory System</h4>
+          <p>Build a memory system that extracts and maintains knowledge from conversations.</p>
+          <ul class="requirements">
+            <li>SQLite storage for entities, relations, facts, episodes</li>
+            <li>LLM extraction pipeline for conversations</li>
+            <li>Entity resolution with fuzzy matching + LLM</li>
+            <li>Contradiction detection and resolution</li>
+            <li>Semantic search over facts</li>
+            <li>Graph traversal queries ("Who does Randy know at company X?")</li>
+          </ul>
+        </div>
+
+        <div class="resources">
+          <h5>📖 Resources</h5>
+          <ul>
+            <li>Paper: "Zep: A Temporal Knowledge Graph Architecture for Agent Memory"</li>
+            <li>Project: Graphiti by Zep AI</li>
+            <li>Book: "Graph Databases" (O'Reilly)</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODULE 5 -->
+    <div class="module">
+      <div class="module-header" onclick="toggleModule(this)">
+        <div>
+          <span class="module-title">Module 5: Tool Calling & Agent Architecture</span>
+          <span class="difficulty diff-intermediate">Intermediate</span>
+        </div>
+        <div class="module-meta">
+          <span>🕐 2 weeks</span>
+          <span class="expand-icon">▼</span>
+        </div>
+      </div>
+      <div class="module-content">
+        <div class="lesson">
+          <h4><span class="lesson-type type-theory">Theory</span> From Chat to Agent</h4>
+          <p>Understand the difference between a chatbot (responds to queries) and an agent (takes actions to achieve goals).</p>
+          
+          <div class="insight">
+            <h5>💡 Key Insight</h5>
+            <p><strong>Chatbot:</strong> User asks → Model responds → Done<br>
+            <strong>Agent:</strong> User gives goal → Model reasons → Calls tool → Gets result → Reasons again → Calls another tool → ... → Goal achieved</p>
+          </div>
+
+          <div class="concepts">
+            <span class="concept-tag">ReAct Pattern</span>
+            <span class="concept-tag">Tool Loop</span>
+            <span class="concept-tag">Stop Conditions</span>
+            <span class="concept-tag">Multi-step Reasoning</span>
+          </div>
+        </div>
+
+        <div class="lesson">
+          <h4><span class="lesson-type type-hands-on">Hands-On</span> Building Your First Tool</h4>
+          <p>Create tools with proper schemas, descriptions, and error handling.</p>
+          
+          <div class="code-example">
+<pre>import { tool } from 'ai';
+import { z } from 'zod';
+
+const weatherTool = tool({
+  description: `Get current weather for a location. 
+    Use this when the user asks about weather conditions.
+    Returns temperature, conditions, and humidity.`,
+  
+  parameters: z.object({
+    location: z.string().describe('City name or coordinates'),
+    units: z.enum(['celsius', 'fahrenheit']).default('celsius')
+      .describe('Temperature units'),
+  }),
+  
+  execute: async ({ location, units }) => {
+    try {
+      const weather = await fetchWeatherAPI(location, units);
+      return JSON.stringify({
+        success: true,
+        temperature: weather.temp,
+        conditions: weather.description,
+        humidity: weather.humidity,
+      });
+    } catch (error) {
+      return JSON.stringify({
+        success: false,
+        error: `Failed to fetch weather: ${error.message}`,
+      });
+    }
+  },
+});</pre>
+          </div>
+
+          <div class="insight">
+            <h5>💡 Key Insight</h5>
+            <p>The <code>description</code> is critical—it's what the model reads to decide when to use the tool. Be specific about inputs, outputs, and use cases. Poor descriptions = poor tool selection.</p>
+          </div>
+        </div>
+
+        <div class="lesson">
+          <h4><span class="lesson-type type-deep-dive">Deep Dive</span> The AI SDK Agent Loop</h4>
+          <p>Understand how generateText/streamText orchestrates the tool-calling loop.</p>
+          
+          <div class="code-example">
+<pre>// The agent loop (simplified)
+while (!shouldStop) {
+  // 1. Send messages + tools to model
+  const response = await model.generate({
+    messages: conversationHistory,
+    tools: availableTools,
+  });
+  
+  // 2. Process response
+  if (response.hasToolCalls) {
+    for (const toolCall of response.toolCalls) {
+      // 3. Execute tool
+      const result = await tools[toolCall.name].execute(toolCall.args);
+      
+      // 4. Add to history
+      conversationHistory.push(
+        { role: 'assistant', content: [toolCall] },
+        { role: 'tool', content: [{ toolCallId: toolCall.id, result }] }
+      );
+    }
+    // 5. Loop continues - model sees tool results
+  } else {
+    // 6. Model responded with text - we're done
+    shouldStop = true;
+  }
+}</pre>
+          </div>
+        </div>
+
+        <div class="lesson">
+          <h4><span class="lesson-type type-hands-on">Hands-On</span> Dynamic Tool Management</h4>
+          <p>Implement tool activation/deactivation to manage context window usage. Build a registry with semantic search for tool discovery.</p>
+          
+          <div class="insight">
+            <h5>💡 Key Insight</h5>
+            <p>Tool schemas consume ~100-150 tokens each. With 40 tools, that's 4,000-6,000 tokens per API call—before any conversation history! The solution: only send schemas for tools the agent actually needs right now.</p>
+          </div>
+
+          <div class="code-example">
+<pre>// Tool Registry with Semantic Search
+interface ToolMetadata {
+  name: string;
+  description: string;
+  keywords: string[];
+  embedding?: number[];  // For semantic search
+  active: boolean;
+}
+
+class ToolRegistry {
+  private tools = new Map&lt;string, ToolMetadata&gt;();
+  
+  register(name: string, tool: any, metadata: Partial&lt;ToolMetadata&gt;) {
+    this.tools.set(name, {
+      name,
+      description: tool.description || '',
+      keywords: metadata.keywords || [],
+      active: false,
+    });
+  }
+  
+  // Generate embeddings for semantic search
+  async generateEmbeddings() {
+    for (const [name, meta] of this.tools) {
+      const searchText = `${name} ${meta.description} ${meta.keywords.join(' ')}`;
+      meta.embedding = await embed(searchText);
+    }
+  }
+  
+  // Semantic search for relevant tools
+  async searchSemantic(query: string, topK = 5): Promise&lt;ToolMetadata[]&gt; {
+    const queryEmbedding = await embed(query);
+    
+    return [...this.tools.values()]
+      .map(tool => ({
+        tool,
+        score: cosineSimilarity(queryEmbedding, tool.embedding!),
+      }))
+      .sort((a, b) => b.score - a.score)
+      .slice(0, topK)
+      .map(r => r.tool);
+  }
+  
+  activate(name: string) { this.tools.get(name)!.active = true; }
+  deactivate(name: string) { this.tools.get(name)!.active = false; }
+  getActive(): string[] { 
+    return [...this.tools.values()].filter(t => t.active).map(t => t.name);
+  }
+}
+
+// Dynamic tool filtering with prepareStep
+prepareStep: async ({ stepNumber }) => {
+  const coreTools = ['plan', 'ask_user', 'task_complete',
+                     'tool_search', 'activate_tool', 'deactivate_tool'];
+  const activeTools = registry.getActive();
+  
+  return {
+    activeTools: [...coreTools, ...activeTools],
+  };
+}</pre>
+          </div>
+
+          <div class="concepts">
+            <span class="concept-tag">prepareStep</span>
+            <span class="concept-tag">Tool Registry</span>
+            <span class="concept-tag">Semantic Tool Search</span>
+            <span class="concept-tag">Token Optimization</span>
+          </div>
+
+          <div class="toy-problem">
+            <h5>🧪 Toy Problem: Full Tool Registry</h5>
+            <ul class="requirements">
+              <li>Register 20+ tools with descriptions and keywords</li>
+              <li>Generate embeddings for all tool descriptions</li>
+              <li>Implement tool_search tool that returns relevant tools</li>
+              <li>Implement activate_tool and deactivate_tool</li>
+              <li>Wrap deferred tools to return "activate first" message</li>
+              <li>Measure: Compare token usage with all tools vs 5 active tools</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="lesson">
+          <h4><span class="lesson-type type-hands-on">Hands-On</span> Tool Safety Patterns</h4>
+          <p>Implement safety checks for dangerous operations.</p>
+          
+          <div class="code-example">
+<pre>// Shell tool safety
+const DANGEROUS_PATTERNS = [
+  /rm\s+-rf\s+\//,           // rm -rf /
+  /dd\s+if=.*of=\/dev/,       // disk wipe
+  /mkfs\./,                   // format filesystem
+  /:\(\)\s*{\s*:\s*\|\s*:/,   // fork bomb
+];
+
+function isSafeCommand(command: string): boolean {
+  return !DANGEROUS_PATTERNS.some(p => p.test(command));
+}
+
+// Filesystem tool safety
+function isPathAllowed(path: string, allowedDirs: string[]): boolean {
+  const resolved = path.resolve(path);
+  return allowedDirs.some(dir => resolved.startsWith(dir));
+}</pre>
+          </div>
+        </div>
+
+        <div class="lesson">
+          <h4><span class="lesson-type type-deep-dive">Deep Dive</span> Extended Thinking & Reasoning</h4>
+          <p>Some models (like Claude) support "extended thinking" where they reason extensively before responding. Learn to leverage this for complex problem-solving.</p>
+          
+          <div class="insight">
+            <h5>💡 Key Insight</h5>
+            <p>Extended thinking allocates extra compute for thorough reasoning. The model "thinks out loud" internally, considering multiple approaches before committing to an answer. This is especially powerful for complex code generation, debugging, and multi-step planning.</p>
+          </div>
+
+          <div class="code-example">
+<pre>import { streamText } from 'ai';
+import { anthropic } from '@ai-sdk/anthropic';
+
+// Enable extended thinking
+const result = await streamText({
+  model: anthropic('claude-sonnet-4-20250514'),
+  maxThinkingTokens: 10000,  // Budget for internal reasoning
+  messages: [
+    { 
+      role: 'user', 
+      content: 'Design a distributed caching system that handles...'
+    }
+  ],
+});
+
+// Stream both thinking and response
+for await (const part of result.fullStream) {
+  switch (part.type) {
+    case 'reasoning':
+      // Model's internal reasoning (can show as "thinking...")
+      console.log('[Thinking]', part.textDelta);
+      break;
+    case 'text-delta':
+      // Final response to user
+      console.log(part.textDelta);
+      break;
+  }
+}</pre>
+          </div>
+
+          <div class="concepts">
+            <span class="concept-tag">Extended Thinking</span>
+            <span class="concept-tag">Chain of Thought</span>
+            <span class="concept-tag">Reasoning Tokens</span>
+            <span class="concept-tag">Thinking UI</span>
+          </div>
+
+          <div class="toy-problem">
+            <h5>🧪 Toy Problem: Thinking-Aware Agent</h5>
+            <p>Build an agent that exposes reasoning to users:</p>
+            <ul class="requirements">
+              <li>Enable extended thinking for complex queries</li>
+              <li>Show collapsible "Thinking..." UI during reasoning</li>
+              <li>Adjust maxThinkingTokens based on query complexity</li>
+              <li>Compare solution quality with/without extended thinking</li>
+              <li>Track and display thinking token usage in metrics</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="project-box">
+          <h4>🚀 Module Project: Research Assistant Agent</h4>
+          <p>Build an agent that can research topics using web search, read pages, and produce summaries.</p>
+          <ul class="requirements">
+            <li>Tools: web_search, fetch_page, write_file, read_file</li>
+            <li>Planning tool for multi-step research</li>
+            <li>ask_user tool for clarification</li>
+            <li>task_complete tool to signal done</li>
+            <li>Max 10 steps before requiring user input</li>
+            <li>Streaming responses for real-time feedback</li>
+          </ul>
+        </div>
+
+        <div class="resources">
+          <h5>📖 Resources</h5>
+          <ul>
+            <li>Paper: "ReAct: Synergizing Reasoning and Acting in Language Models"</li>
+            <li>Docs: Vercel AI SDK Tool Calling</li>
+            <li>Paper: "Toolformer: Language Models Can Teach Themselves to Use Tools"</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODULE 6 -->
+    <div class="module">
+      <div class="module-header" onclick="toggleModule(this)">
+        <div>
+          <span class="module-title">Module 6: Streaming, Sessions & Real-Time Communication</span>
+          <span class="difficulty diff-intermediate">Intermediate</span>
+        </div>
+        <div class="module-meta">
+          <span>🕐 1.5 weeks</span>
+          <span class="expand-icon">▼</span>
+        </div>
+      </div>
+      <div class="module-content">
+        <div class="lesson">
+          <h4><span class="lesson-type type-theory">Theory</span> Why Streaming Matters</h4>
+          <p>Users perceive streaming responses as faster, even when total time is the same.</p>
+          
+          <div class="insight">
+            <h5>💡 Key Insight</h5>
+            <p>Without streaming: User waits 5 seconds → sees full response<br>
+            With streaming: User sees first token in 200ms → reads as it generates<br>
+            Same 5 seconds, but streaming feels interactive.</p>
+          </div>
+        </div>
+
+        <div class="lesson">
+          <h4><span class="lesson-type type-hands-on">Hands-On</span> Server-Sent Events (SSE)</h4>
+          <p>Implement SSE streaming for agent responses.</p>
+          
+          <div class="code-example">
+<pre>// Server (Hono)
+app.get('/chat/stream', async (c) => {
+  return streamSSE(c, async (stream) => {
+    await session.sendWithEvents(message, async (event) => {
+      await stream.writeSSE({
+        event: event.type,  // 'text:delta', 'tool:call', etc.
+        data: JSON.stringify(event.data),
+      });
+    });
+  });
+});
+
+// Client
+const eventSource = new EventSource('/chat/stream?message=...');
+
+eventSource.addEventListener('text:delta', (e) => {
+  const { delta } = JSON.parse(e.data);
+  appendToUI(delta);
+});
+
+eventSource.addEventListener('tool:call', (e) => {
+  const { toolName, args } = JSON.parse(e.data);
+  showToolIndicator(toolName);
+});</pre>
+          </div>
+        </div>
+
+        <div class="lesson">
+          <h4><span class="lesson-type type-hands-on">Hands-On</span> Structured Streaming Events</h4>
+          <p>Design a comprehensive event schema for agent communication.</p>
+          
+          <div class="code-example">
+<pre>type StreamEventType =
+  | 'session:start'      // Session initialized
+  | 'step:start'         // Agent step started
+  | 'step:finish'        // Agent step completed
+  | 'text:delta'         // Text chunk received
+  | 'text:finish'        // Text generation complete
+  | 'reasoning:delta'    // Extended thinking chunk
+  | 'reasoning:finish'   // Reasoning complete
+  | 'tool:call'          // Tool invocation started
+  | 'tool:result'        // Tool execution result
+  | 'sources:add'        // Source citation added
+  | 'error'              // Error occurred
+  | 'complete';          // Response complete</pre>
+          </div>
+
+          <div class="toy-problem">
+            <h5>🧪 Toy Problem: Streaming UI</h5>
+            <p>Build a chat UI that handles all stream event types:</p>
+            <ul class="requirements">
+              <li>Animated text appearance with blinking cursor</li>
+              <li>Tool call cards with status indicators</li>
+              <li>Collapsible reasoning sections</li>
+              <li>Step progress indicator</li>
+              <li>Error state handling</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="lesson">
+          <h4><span class="lesson-type type-deep-dive">Deep Dive</span> WebSocket for Device Control</h4>
+          <p>When SSE isn't enough—bidirectional communication for device automation.</p>
+          
+          <div class="code-example">
+<pre>// Device connects and registers
+ws.on('open', () => {
+  ws.send(JSON.stringify({
+    type: 'device:register',
+    capabilities: {
+      platform: 'desktop',
+      deviceId: 'my-mac',
+      supportedActions: ['tap', 'type', 'screenshot'],
+    }
+  }));
+});
+
+// Server sends action
+ws.send(JSON.stringify({
+  actionId: 'action-123',
+  action: { type: 'screenshot' }
+}));
+
+// Device responds with result
+ws.send(JSON.stringify({
+  type: 'action:result',
+  actionId: 'action-123',
+  result: { success: true, data: { base64: '...' } }
+}));</pre>
+          </div>
+        </div>
+
+        <div class="project-box">
+          <h4>🚀 Module Project: Real-Time Agent Dashboard</h4>
+          <p>Build a web dashboard showing live agent activity.</p>
+          <ul class="requirements">
+            <li>SSE streaming for chat responses</li>
+            <li>Real-time tool execution visualization</li>
+            <li>Step-by-step progress tracking</li>
+            <li>Multiple concurrent sessions</li>
+            <li>Reconnection handling on network drop</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODULE 7 -->
+    <div class="module">
+      <div class="module-header" onclick="toggleModule(this)">
+        <div>
+          <span class="module-title">Module 7: Production Systems - Observability & Evaluation</span>
+          <span class="difficulty diff-advanced">Advanced</span>
+        </div>
+        <div class="module-meta">
+          <span>🕐 2 weeks</span>
+          <span class="expand-icon">▼</span>
+        </div>
+      </div>
+      <div class="module-content">
+        <div class="lesson">
+          <h4><span class="lesson-type type-theory">Theory</span> Why Observability is Non-Negotiable</h4>
+          <p>AI systems fail in unpredictable ways. Without observability, debugging is impossible.</p>
+          
+          <div class="insight">
+            <h5>💡 Key Insight</h5>
+            <p>"The agent gave a wrong answer" tells you nothing.<br>
+            "Step 3 retrieved irrelevant chunks (cosine sim 0.4), causing hallucination in step 4" is actionable.</p>
+          </div>
+
+          <div class="concepts">
+            <span class="concept-tag">Distributed Tracing</span>
+            <span class="concept-tag">OpenTelemetry</span>
+            <span class="concept-tag">Metrics</span>
+            <span class="concept-tag">Structured Logging</span>
+          </div>
+        </div>
+
+        <div class="lesson">
+          <h4><span class="lesson-type type-hands-on">Hands-On</span> Instrumenting the Agent Pipeline</h4>
+          <p>Add OpenTelemetry tracing to every component.</p>
+          
+          <div class="code-example">
+<pre>import { trace, SpanStatusCode } from '@opentelemetry/api';
+
+const tracer = trace.getTracer('agent-core');
+
+async function executeToolWithTracing(
+  toolName: string,
+  args: unknown
+): Promise&lt;unknown&gt; {
+  return tracer.startActiveSpan(`tool.${toolName}`, async (span) => {
+    span.setAttribute('tool.name', toolName);
+    span.setAttribute('tool.args', JSON.stringify(args));
+    
+    try {
+      const result = await tools[toolName].execute(args);
+      span.setAttribute('tool.result_size', JSON.stringify(result).length);
+      span.setStatus({ code: SpanStatusCode.OK });
+      return result;
+    } catch (error) {
+      span.setStatus({ code: SpanStatusCode.ERROR, message: error.message });
+      span.recordException(error);
+      throw error;
+    } finally {
+      span.end();
+    }
+  });
+}</pre>
+          </div>
+
+          <div class="toy-problem">
+            <h5>🧪 Toy Problem: Full Trace Visualization</h5>
+            <ul class="requirements">
+              <li>Trace: User query → RAG retrieval → Tool calls → Response</li>
+              <li>Capture: Latency, token counts, error rates</li>
+              <li>Visualize in Jaeger or similar tool</li>
+              <li>Create dashboard with p50/p95/p99 latencies</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="lesson">
+          <h4><span class="lesson-type type-deep-dive">Deep Dive</span> Tool Instrumentation Wrapper</h4>
+          <p>Create a higher-order function that wraps all tools with consistent logging, timing, and tracing—without modifying each tool individually.</p>
+          
+          <div class="code-example">
+<pre>// Generic tool instrumentation wrapper
+function instrumentTool&lt;T&gt;(
+  toolName: string,
+  fn: (...args: any[]) => Promise&lt;any&gt;
+): typeof fn {
+  return async (...args) => {
+    const startTime = performance.now();
+    const span = tracer.startSpan(`tool.${toolName}`);
+    
+    try {
+      logger.info(`[${toolName}] Starting`, { args: sanitizeArgs(args) });
+      
+      const result = await fn(...args);
+      const duration = performance.now() - startTime;
+      
+      metrics.recordToolLatency(toolName, duration);
+      logger.info(`[${toolName}] Completed`, { duration: `${duration.toFixed(2)}ms` });
+      span.setStatus({ code: SpanStatusCode.OK });
+      
+      return result;
+    } catch (error) {
+      span.setStatus({ code: SpanStatusCode.ERROR });
+      span.recordException(error);
+      metrics.incrementToolErrors(toolName);
+      throw error;
+    } finally {
+      span.end();
+    }
+  };
+}
+
+// Apply to all tools automatically at initialization
+function instrumentTools(tools: Record&lt;string, CoreTool&gt;): Record&lt;string, CoreTool&gt; {
+  return Object.fromEntries(
+    Object.entries(tools).map(([name, tool]) => [
+      name,
+      { ...tool, execute: instrumentTool(name, tool.execute) }
+    ])
+  );
+}
+
+// Usage: wrap once, observe everything
+const tools = instrumentTools({ shell, filesystem, memory, ... });</pre>
+          </div>
+
+          <div class="concepts">
+            <span class="concept-tag">Higher-Order Functions</span>
+            <span class="concept-tag">Decorator Pattern</span>
+            <span class="concept-tag">Metrics Collection</span>
+          </div>
+        </div>
+
+        <div class="lesson">
+          <h4><span class="lesson-type type-deep-dive">Deep Dive</span> Evaluating RAG Quality</h4>
+          <p>Metrics and benchmarks for retrieval systems.</p>
+          
+          <div class="concepts">
+            <span class="concept-tag">Recall@k</span>
+            <span class="concept-tag">MRR (Mean Reciprocal Rank)</span>
+            <span class="concept-tag">NDCG</span>
+            <span class="concept-tag">Context Sufficiency</span>
+          </div>
+
+          <div class="code-example">
+<pre>// Recall@k: What % of relevant docs are in top-k?
+function recallAtK(
+  retrieved: string[],
+  relevant: string[],
+  k: number
+): number {
+  const topK = new Set(retrieved.slice(0, k));
+  const found = relevant.filter(doc => topK.has(doc)).length;
+  return found / relevant.length;
+}
+
+// MRR: Average of 1/rank of first relevant result
+function mrr(queries: QueryResult[]): number {
+  const reciprocalRanks = queries.map(q => {
+    const rank = q.retrieved.findIndex(d => q.relevant.includes(d));
+    return rank >= 0 ? 1 / (rank + 1) : 0;
+  });
+  return reciprocalRanks.reduce((a, b) => a + b) / queries.length;
+}</pre>
+          </div>
+        </div>
+
+        <div class="lesson">
+          <h4><span class="lesson-type type-hands-on">Hands-On</span> Agent Benchmarking</h4>
+          <p>Evaluate agent performance against standard benchmarks. These provide objective metrics for comparing agent capabilities.</p>
+          
+          <div class="insight">
+            <h5>💡 Key Insight</h5>
+            <p>Industry benchmarks like SWE-bench (code fixing) and GAIA (multi-step reasoning) let you compare your agent against state-of-the-art. If your agent scores 30% on SWE-bench but Claude scores 49%, you know where to improve.</p>
+          </div>
+
+          <div class="concepts">
+            <span class="concept-tag">SWE-bench</span>
+            <span class="concept-tag">GAIA</span>
+            <span class="concept-tag">tau-bench</span>
+            <span class="concept-tag">HumanEval</span>
+          </div>
+
+          <div class="code-example">
+<pre>// Evaluation Harness Structure
+interface BenchmarkTask {
+  id: string;
+  prompt: string;
+  expectedOutput: string | ((output: string) => boolean);
+  category: 'code' | 'reasoning' | 'tool_use';
+  difficulty: 'easy' | 'medium' | 'hard';
+}
+
+interface BenchmarkResult {
+  taskId: string;
+  passed: boolean;
+  executionTime: number;
+  tokenUsage: { input: number; output: number };
+  toolCalls: number;
+}
+
+class EvaluationHarness {
+  private tasks: BenchmarkTask[];
+  private results: BenchmarkResult[] = [];
+  
+  async runBenchmark(agent: Agent): Promise&lt;BenchmarkScore&gt; {
+    for (const task of this.tasks) {
+      const start = Date.now();
+      
+      const result = await agent.run(task.prompt);
+      
+      const passed = typeof task.expectedOutput === 'function'
+        ? task.expectedOutput(result.output)
+        : result.output.includes(task.expectedOutput);
+      
+      this.results.push({
+        taskId: task.id,
+        passed,
+        executionTime: Date.now() - start,
+        tokenUsage: result.usage,
+        toolCalls: result.toolCalls.length,
+      });
+    }
+    
+    return this.calculateScore();
+  }
+  
+  private calculateScore(): BenchmarkScore {
+    const passed = this.results.filter(r => r.passed).length;
+    return {
+      passRate: passed / this.results.length,
+      avgLatency: avg(this.results.map(r => r.executionTime)),
+      byDifficulty: this.groupByDifficulty(),
+    };
+  }
+}</pre>
+          </div>
+
+          <div class="toy-problem">
+            <h5>🧪 Toy Problem: Custom Benchmark Suite</h5>
+            <ul class="requirements">
+              <li>Create 50+ test cases for your agent domain</li>
+              <li>Include easy/medium/hard difficulty distribution</li>
+              <li>Define pass/fail criteria (exact match or custom validator)</li>
+              <li>Track metrics: pass rate, latency, token usage, tool calls</li>
+              <li>Build regression detection (alert on score drops)</li>
+              <li>Generate comparison report against baseline</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="lesson">
+          <h4><span class="lesson-type type-theory">Theory</span> Self-Improving Retrieval (SELF-RAG)</h4>
+          <p>Agents that critique and improve their own retrieval.</p>
+          
+          <div class="code-example">
+<pre>// SELF-RAG pattern
+async function selfCorrectingRetrieve(query: string): Promise&lt;Chunk[]&gt; {
+  // 1. Initial retrieval
+  let chunks = await retrieve(query);
+  
+  // 2. Self-assess relevance
+  const assessment = await llm.assess(`
+    Query: ${query}
+    Retrieved chunks: ${chunks.map(c => c.content).join('\n---\n')}
+    
+    Rate relevance 1-5. If < 3, suggest improved query.
+  `);
+  
+  // 3. Re-retrieve if needed
+  if (assessment.score < 3 && assessment.suggestedQuery) {
+    chunks = await retrieve(assessment.suggestedQuery);
+  }
+  
+  return chunks;
+}</pre>
+          </div>
+        </div>
+
+        <div class="project-box">
+          <h4>🚀 Module Project: Production-Ready Agent Service</h4>
+          <p>Add full observability to your agent from Module 5.</p>
+          <ul class="requirements">
+            <li>OpenTelemetry tracing on all operations</li>
+            <li>Prometheus metrics (latency, token usage, error rates)</li>
+            <li>Grafana dashboard for monitoring</li>
+            <li>Automated evaluation pipeline</li>
+            <li>Alerting on quality degradation</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODULE 8 -->
+    <div class="module">
+      <div class="module-header" onclick="toggleModule(this)">
+        <div>
+          <span class="module-title">Module 8: Multi-Agent Systems & Advanced Patterns</span>
+          <span class="difficulty diff-advanced">Advanced</span>
+        </div>
+        <div class="module-meta">
+          <span>🕐 2 weeks</span>
+          <span class="expand-icon">▼</span>
+        </div>
+      </div>
+      <div class="module-content">
+        <div class="lesson">
+          <h4><span class="lesson-type type-theory">Theory</span> When Single Agents Aren't Enough</h4>
+          <p>Complex tasks benefit from specialized agents working together.</p>
+          
+          <div class="insight">
+            <h5>💡 Key Insight</h5>
+            <p>Single agent: Jack of all trades, master of none<br>
+            Multi-agent: Researcher finds info → Analyst processes → Writer produces output<br>
+            Specialization improves quality on complex tasks.</p>
+          </div>
+
+          <div class="concepts">
+            <span class="concept-tag">Agent Swarms</span>
+            <span class="concept-tag">Orchestration Patterns</span>
+            <span class="concept-tag">Handoffs</span>
+            <span class="concept-tag">Shared Memory</span>
+          </div>
+        </div>
+
+        <div class="lesson">
+          <h4><span class="lesson-type type-hands-on">Hands-On</span> Building Agent Roles</h4>
+          <p>Create specialized agents with different system prompts and tool sets.</p>
+          
+          <div class="code-example">
+<pre>const roles = {
+  researcher: {
+    systemPrompt: `You are a research specialist. Your job is to:
+      1. Search for relevant information
+      2. Verify facts across multiple sources
+      3. Compile findings into structured notes
+      
+      Always cite sources. Never fabricate information.`,
+    tools: ['web_search', 'fetch_page', 'memory_store'],
+    model: 'gpt-4o',
+  },
+  
+  analyst: {
+    systemPrompt: `You are a data analyst. Your job is to:
+      1. Process and analyze information
+      2. Identify patterns and insights
+      3. Create visualizations when helpful
+      
+      Be quantitative. Support claims with data.`,
+    tools: ['code_execute', 'memory_search', 'chart_create'],
+    model: 'claude-sonnet-4',
+  },
+  
+  writer: {
+    systemPrompt: `You are a technical writer. Your job is to:
+      1. Synthesize research and analysis into clear prose
+      2. Structure content for the target audience
+      3. Edit for clarity and concision`,
+    tools: ['write_file', 'memory_search'],
+    model: 'gpt-4o',
+  },
+};</pre>
+          </div>
+        </div>
+
+        <div class="lesson">
+          <h4><span class="lesson-type type-deep-dive">Deep Dive</span> Orchestration Patterns</h4>
+          <p>Different ways to coordinate multiple agents.</p>
+          
+          <div class="code-example">
+<pre>// Pattern 1: Sequential Pipeline
+async function sequentialPipeline(task: string) {
+  const research = await researcher.run(task);
+  const analysis = await analyst.run(research);
+  const report = await writer.run(analysis);
+  return report;
+}
+
+// Pattern 2: Parallel with Aggregation
+async function parallelResearch(topics: string[]) {
+  const results = await Promise.all(
+    topics.map(topic => researcher.run(topic))
+  );
+  return aggregator.synthesize(results);
+}
+
+// Pattern 3: Dynamic Routing
+async function routedExecution(task: string) {
+  const router = await coordinator.classify(task);
+  
+  switch (router.type) {
+    case 'research': return researcher.run(task);
+    case 'code': return coder.run(task);
+    case 'analysis': return analyst.run(task);
+    default: return generalAgent.run(task);
+  }
+}
+
+// Pattern 4: Supervisor with Workers
+async function supervisedExecution(goal: string) {
+  let plan = await supervisor.createPlan(goal);
+  
+  for (const step of plan.steps) {
+    const worker = selectWorker(step.type);
+    const result = await worker.execute(step);
+    plan = await supervisor.updatePlan(plan, result);
+    
+    if (plan.needsRevision) {
+      // Supervisor can reassign or retry
+    }
+  }
+  
+  return supervisor.finalize(plan);
+}</pre>
+          </div>
+        </div>
+
+        <div class="lesson">
+          <h4><span class="lesson-type type-hands-on">Hands-On</span> Shared Memory & Context</h4>
+          <p>How agents share information without repeating entire conversations.</p>
+          
+          <div class="code-example">
+<pre>// Shared workspace for multi-agent collaboration
+class SharedWorkspace {
+  private artifacts: Map&lt;string, Artifact&gt; = new Map();
+  private facts: Fact[] = [];
+  
+  // Agents can publish artifacts
+  publish(agentId: string, artifact: Artifact) {
+    this.artifacts.set(artifact.id, {
+      ...artifact,
+      publishedBy: agentId,
+      timestamp: Date.now(),
+    });
+  }
+  
+  // Agents can query workspace
+  query(query: string): Artifact[] {
+    // Semantic search over artifacts
+    return this.semanticSearch(query);
+  }
+  
+  // Agents can add facts
+  addFact(fact: Fact) {
+    this.facts.push(fact);
+  }
+  
+  // Context summary for new agents
+  getContext(): string {
+    return `
+      Current artifacts: ${this.artifacts.size}
+      Key findings: ${this.facts.slice(-10).map(f => f.content).join('; ')}
+    `;
+  }
+}</pre>
+          </div>
+
+          <div class="toy-problem">
+            <h5>🧪 Toy Problem: Research Team Simulation</h5>
+            <p>Build a 3-agent system that collaborates on research:</p>
+            <ul class="requirements">
+              <li>Coordinator: Breaks down task, assigns to specialists</li>
+              <li>Researcher: Searches web, extracts key facts</li>
+              <li>Writer: Synthesizes findings into report</li>
+              <li>Shared workspace for artifacts</li>
+              <li>Max 3 rounds of refinement</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="lesson">
+          <h4><span class="lesson-type type-deep-dive">Deep Dive</span> Agent Spawning & Background Tasks</h4>
+          <p>Spawn autonomous sub-agents for long-running or parallel work. Critical for complex workflows.</p>
+          
+          <div class="insight">
+            <h5>💡 Key Insight</h5>
+            <p>A spawned agent runs independently—it can continue working even if the parent agent's conversation ends. But spawned agents need guardrails: they shouldn't spawn their own agents (infinite recursion), and they need a way to signal completion.</p>
+          </div>
+
+          <div class="code-example">
+<pre>// Agent spawning with limitations
+const roles = {
+  spawned_agent: {
+    systemPrompt: `${basePrompt}
+# Context: Spawned Background Agent
+
+You are running as an autonomous background agent spawned 
+by a parent agent to handle a delegated task independently.
+
+**Important limitations:**
+- The start_agent_task tool is DISABLED (prevents recursion)
+- You can still use start_background_task for shell commands
+- Work autonomously until complete
+- Call task_complete when done`,
+    disabledTools: ['start_agent_task'],
+  },
+};
+
+// Persistent task management (survives restarts)
+class PersistentTaskManager {
+  private db: Database;  // SQLite for persistence
+  private activeProcesses = new Map&lt;string, ChildProcess&gt;();
+  
+  startTask(command: string, cwd?: string): string {
+    const taskId = generateId();
+    
+    // Spawn detached process that survives parent
+    const child = spawn('sh', ['-c', command], {
+      cwd,
+      detached: true,
+      stdio: ['ignore', logFd, logFd],
+    });
+    
+    // Store in DB for recovery after restart
+    this.db.run(`INSERT INTO tasks (id, command, pid, status) 
+                 VALUES (?, ?, ?, 'running')`,
+      [taskId, command, child.pid]);
+    
+    child.unref();  // Allow parent to exit
+    return taskId;
+  }
+  
+  getTask(taskId: string): TaskInfo | undefined {
+    return this.db.get('SELECT * FROM tasks WHERE id = ?', taskId);
+  }
+}</pre>
+          </div>
+
+          <div class="concepts">
+            <span class="concept-tag">Background Agents</span>
+            <span class="concept-tag">Recursion Prevention</span>
+            <span class="concept-tag">Persistent Tasks</span>
+            <span class="concept-tag">Process Detachment</span>
+          </div>
+
+          <div class="toy-problem">
+            <h5>🧪 Toy Problem: Agent Delegation System</h5>
+            <ul class="requirements">
+              <li>Parent agent can spawn background agents via tool</li>
+              <li>Spawned agents have restricted tool set (no re-spawning)</li>
+              <li>Task state persisted to SQLite (survives restarts)</li>
+              <li>Parent can check status and cancel running tasks</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="lesson">
+          <h4><span class="lesson-type type-theory">Theory</span> Fine-Tuning Retrieval Models</h4>
+          <p>When off-the-shelf embeddings aren't enough for your domain.</p>
+          
+          <div class="concepts">
+            <span class="concept-tag">Contrastive Learning</span>
+            <span class="concept-tag">Hard Negatives</span>
+            <span class="concept-tag">Domain Adaptation</span>
+            <span class="concept-tag">Synthetic Data</span>
+          </div>
+
+          <div class="insight">
+            <h5>💡 Key Insight</h5>
+            <p>General embeddings know "python" relates to "programming". But do they know "useEffect" relates to "React lifecycle"? Domain-specific fine-tuning teaches these relationships.</p>
+          </div>
+        </div>
+
+        <div class="capstone">
+          <h3>🏆 Final Capstone Project</h3>
+          <p>Build a production-grade AI Agent Platform with all concepts from the course.</p>
+          
+          <h4 style="color: #00d4ff; margin-top: 1.5rem;">Requirements</h4>
+          <ul class="requirements">
+            <li><strong>RAG System:</strong> AST chunking, contextual embeddings, hybrid search, reranking, caching</li>
+            <li><strong>Knowledge Graph:</strong> Entity extraction, temporal facts, contradiction detection</li>
+            <li><strong>Agent Core:</strong> Multi-step reasoning, dynamic tool management, safety checks, extended thinking</li>
+            <li><strong>Streaming:</strong> SSE for responses, structured events, thinking UI</li>
+            <li><strong>Multi-Agent:</strong> At least 2 specialized agents with orchestration + background task spawning</li>
+            <li><strong>MCP Integration:</strong> Connect to 1+ MCP server OR build custom MCP server for your domain</li>
+            <li><strong>Observability:</strong> Tool instrumentation, tracing, metrics, evaluation pipeline</li>
+            <li><strong>API:</strong> REST + streaming endpoints, session management</li>
+          </ul>
+          
+          <h4 style="color: #00d4ff; margin-top: 1.5rem;">Deliverables</h4>
+          <ul class="requirements">
+            <li>GitHub repository with documentation</li>
+            <li>Architecture diagram</li>
+            <li>Benchmark results on custom evaluation set (50+ test cases)</li>
+            <li>10-minute demo video</li>
+            <li>Written reflection on design decisions</li>
+          </ul>
+          
+          <div class="timeline" style="margin-top: 1rem;">
+            <span class="timeline-item">Week 1-2: Core RAG + Memory</span>
+            <span class="timeline-item">Week 3: Agent + Tools + MCP</span>
+            <span class="timeline-item">Week 4: Multi-Agent + Polish</span>
+          </div>
+        </div>
+
+        <div class="resources">
+          <h5>📖 Resources</h5>
+          <ul>
+            <li>Paper: "Agents: An Open-source Framework for Autonomous Language Agents"</li>
+            <li>Project: OpenAI Swarm</li>
+            <li>Project: Microsoft AutoGen</li>
+            <li>Paper: "Training Language Models to Self-Correct via Reinforcement Learning"</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <!-- MODULE 9 -->
+    <div class="module">
+      <div class="module-header" onclick="toggleModule(this)">
+        <div>
+          <span class="module-title">Module 9: Model Context Protocol (MCP)</span>
+          <span class="difficulty diff-advanced">Advanced</span>
+        </div>
+        <div class="module-meta">
+          <span>🕐 1.5 weeks</span>
+          <span class="expand-icon">▼</span>
+        </div>
+      </div>
+      <div class="module-content">
+        <div class="prereqs">
+          <h5>Prerequisites</h5>
+          <p>Complete Modules 5-6. Understanding of tool calling, streaming, and client-server architecture.</p>
+        </div>
+
+        <div class="lesson">
+          <h4><span class="lesson-type type-theory">Theory</span> What is MCP?</h4>
+          <p>Model Context Protocol (MCP) is an emerging standard that connects AI systems with external tools and data sources. Think of it as a universal adapter for AI-tool communication.</p>
+          
+          <div class="insight">
+            <h5>💡 Key Insight</h5>
+            <p>Without MCP: You hardcode every tool into your agent, maintaining separate integrations for each capability.<br>
+            With MCP: Your agent discovers and uses tools from any MCP server dynamically. Add a new server = instant new capabilities.</p>
+          </div>
+
+          <div class="concepts">
+            <span class="concept-tag">MCP Servers</span>
+            <span class="concept-tag">MCP Clients</span>
+            <span class="concept-tag">Resources</span>
+            <span class="concept-tag">Tool Discovery</span>
+            <span class="concept-tag">stdio Transport</span>
+          </div>
+        </div>
+
+        <div class="lesson">
+          <h4><span class="lesson-type type-theory">Theory</span> MCP Architecture</h4>
+          <p>Understand the core components: servers, clients, resources, and tools.</p>
+          
+          <div class="code-example">
+<pre>// MCP Architecture Overview
+
+┌─────────────────┐     ┌─────────────────┐     ┌─────────────────┐
+│   AI Agent      │ ←→  │   MCP Client    │ ←→  │   MCP Server    │
+│ (Your App)      │     │ (SDK)           │     │ (Tool Provider) │
+└─────────────────┘     └─────────────────┘     └─────────────────┘
+                                                       │
+                              ┌────────────────────────┼────────────────────────┐
+                              │                        │                        │
+                        ┌─────▼─────┐           ┌─────▼─────┐           ┌─────▼─────┐
+                        │ Resources │           │   Tools   │           │  Prompts  │
+                        │ (Data)    │           │ (Actions) │           │ (Templates)│
+                        └───────────┘           └───────────┘           └───────────┘
+
+// Transport options:
+// - stdio: Local process communication (most common)
+// - SSE: HTTP-based for remote servers
+// - Custom: WebSocket, gRPC, etc.</pre>
+          </div>
+
+          <div class="insight">
+            <h5>💡 Key Insight</h5>
+            <p>MCP separates concerns: Servers provide capabilities (tools, data). Clients consume them. Your agent just talks to the client, which handles all server communication. One interface, infinite capabilities.</p>
+          </div>
+        </div>
+
+        <div class="lesson">
+          <h4><span class="lesson-type type-hands-on">Hands-On</span> Using MCP Servers with AI SDK</h4>
+          <p>Connect to existing MCP servers and use their tools in your agent.</p>
+          
+          <div class="code-example">
+<pre>import { experimental_createMCPClient, streamText } from 'ai';
+import { Experimental_StdioMCPTransport } from 'ai/mcp-stdio';
+
+// Connect to an MCP server (e.g., filesystem access)
+const mcpClient = await experimental_createMCPClient({
+  transport: new Experimental_StdioMCPTransport({
+    command: 'npx',
+    args: ['@anthropic/mcp-server-filesystem', '/path/to/allowed/dir'],
+  }),
+});
+
+// Get tools from the MCP server
+const mcpTools = await mcpClient.tools();
+
+// Use MCP tools alongside your own
+const result = await streamText({
+  model: openai('gpt-4o'),
+  tools: {
+    ...mcpTools,          // Tools from MCP server
+    ...myCustomTools,      // Your own tools
+  },
+  messages: [{ role: 'user', content: 'List files in the project' }],
+});
+
+// Clean up when done
+await mcpClient.close();</pre>
+          </div>
+
+          <div class="toy-problem">
+            <h5>🧪 Toy Problem: Multi-Server Agent</h5>
+            <p>Build an agent that connects to multiple MCP servers:</p>
+            <ul class="requirements">
+              <li>Filesystem server for file operations</li>
+              <li>GitHub server for repository access</li>
+              <li>Custom server for your domain-specific tools</li>
+              <li>Dynamic tool discovery on startup</li>
+              <li>Graceful handling when servers are unavailable</li>
+            </ul>
+          </div>
+        </div>
+
+        <div class="lesson">
+          <h4><span class="lesson-type type-deep-dive">Deep Dive</span> Building Custom MCP Servers</h4>
+          <p>Create your own MCP server to expose domain-specific tools and resources.</p>
+          
+          <div class="code-example">
+<pre>import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import { z } from 'zod';
+
+// Create an MCP server
+const server = new McpServer({
+  name: 'my-domain-tools',
+  version: '1.0.0',
+});
+
+// Define a tool
+server.tool(
+  'search_database',
+  'Search the internal database for records',
+  {
+    query: z.string().describe('Search query'),
+    limit: z.number().optional().describe('Max results'),
+  },
+  async ({ query, limit = 10 }) => {
+    const results = await database.search(query, limit);
+    return {
+      content: [
+        { type: 'text', text: JSON.stringify(results, null, 2) }
+      ],
+    };
+  }
+);
+
+// Define a resource (data that can be read)
+server.resource(
+  'config://app/settings',
+  'Application configuration settings',
+  async () => ({
+    contents: [{ 
+      uri: 'config://app/settings',
+      mimeType: 'application/json',
+      text: JSON.stringify(appConfig),
+    }],
+  })
+);
+
+// Start the server
+const transport = new StdioServerTransport();
+await server.connect(transport);</pre>
+          </div>
+
+          <div class="concepts">
+            <span class="concept-tag">Tool Definition</span>
+            <span class="concept-tag">Resource Providers</span>
+            <span class="concept-tag">Server Lifecycle</span>
+            <span class="concept-tag">Error Handling</span>
+          </div>
+        </div>
+
+        <div class="lesson">
+          <h4><span class="lesson-type type-hands-on">Hands-On</span> MCP Resources & Dynamic Context</h4>
+          <p>Use MCP resources to provide dynamic context to your agent.</p>
+          
+          <div class="code-example">
+<pre>// List available resources from an MCP server
+const resources = await mcpClient.resources();
+
+// Example resources:
+// - file://project/package.json
+// - db://users/schema
+// - config://app/settings
+
+// Read a specific resource
+const packageJson = await mcpClient.readResource({
+  uri: 'file://project/package.json'
+});
+
+// Use resources to build dynamic system prompts
+const systemPrompt = `
+You are an assistant for this project.
+
+Project configuration:
+${packageJson.contents[0].text}
+
+Available commands: ${availableScripts.join(', ')}
+`;
+
+// Resources can also be:
+// - Templates: Reusable prompt fragments
+// - Schemas: Database structure documentation
+// - Live data: Real-time metrics, logs</pre>
+          </div>
+
+          <div class="insight">
+            <h5>💡 Key Insight</h5>
+            <p>Resources let MCP servers provide context, not just actions. Your agent can discover what data is available and request it dynamically. This is powerful for agents that need to understand unfamiliar systems.</p>
+          </div>
+        </div>
+
+        <div class="lesson">
+          <h4><span class="lesson-type type-theory">Theory</span> MCP Best Practices</h4>
+          <p>Production patterns for reliable MCP integration.</p>
+          
+          <div class="code-example">
+<pre>// 1. Connection pooling for multiple servers
+class MCPManager {
+  private clients = new Map&lt;string, MCPClient&gt;();
+  
+  async getClient(serverName: string): Promise&lt;MCPClient&gt; {
+    if (!this.clients.has(serverName)) {
+      const client = await this.connect(serverName);
+      this.clients.set(serverName, client);
+    }
+    return this.clients.get(serverName)!;
+  }
+  
+  async closeAll(): Promise&lt;void&gt; {
+    await Promise.all(
+      [...this.clients.values()].map(c => c.close())
+    );
+  }
+}
+
+// 2. Graceful degradation
+async function getToolsWithFallback(): Promise&lt;Tools&gt; {
+  try {
+    const mcpTools = await mcpClient.tools();
+    return { ...mcpTools, ...fallbackTools };
+  } catch (error) {
+    logger.warn('MCP server unavailable, using fallbacks');
+    return fallbackTools;
+  }
+}
+
+// 3. Tool namespacing to avoid conflicts
+const mcpTools = await mcpClient.tools();
+const namespacedTools = Object.fromEntries(
+  Object.entries(mcpTools).map(([name, tool]) => 
+    [`mcp_${serverName}_${name}`, tool]
+  )
+);</pre>
+          </div>
+
+          <div class="concepts">
+            <span class="concept-tag">Connection Pooling</span>
+            <span class="concept-tag">Graceful Degradation</span>
+            <span class="concept-tag">Tool Namespacing</span>
+            <span class="concept-tag">Health Checks</span>
+          </div>
+        </div>
+
+        <div class="project-box">
+          <h4>🚀 Module Project: MCP-Powered Development Assistant</h4>
+          <p>Build a development assistant that uses MCP for all external integrations.</p>
+          <ul class="requirements">
+            <li>Connect to 3+ MCP servers (filesystem, git, custom)</li>
+            <li>Build a custom MCP server for your domain</li>
+            <li>Dynamic tool discovery with caching</li>
+            <li>Resource-based context enrichment</li>
+            <li>Connection health monitoring</li>
+            <li>Graceful fallbacks when servers fail</li>
+          </ul>
+          <div class="timeline">
+            <span class="timeline-item">Day 1-2: MCP Client Setup</span>
+            <span class="timeline-item">Day 3-4: Custom Server</span>
+            <span class="timeline-item">Day 5-7: Integration + Polish</span>
+          </div>
+        </div>
+
+        <div class="resources">
+          <h5>📖 Resources</h5>
+          <ul>
+            <li>Docs: Model Context Protocol Specification</li>
+            <li>GitHub: @modelcontextprotocol/sdk</li>
+            <li>Community: MCP Server Directory (community-built servers)</li>
+            <li>Docs: Vercel AI SDK MCP Integration</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <div class="section-divider">— Course Complete —</div>
+
+    <section class="overview">
+      <h2>Learning Outcomes</h2>
+      <p>By completing this course, you will be able to:</p>
+      <ul style="margin-top: 1rem; margin-left: 1.5rem;">
+        <li>Design and implement production RAG systems with hybrid retrieval and caching</li>
+        <li>Build knowledge graphs for agent memory with temporal modeling</li>
+        <li>Create multi-step agents with dynamic tool management and extended thinking</li>
+        <li>Implement streaming responses and real-time communication</li>
+        <li>Add observability and evaluation to AI systems</li>
+        <li>Orchestrate multi-agent systems for complex tasks</li>
+        <li>Integrate MCP servers for extensible tool ecosystems</li>
+        <li>Make informed architectural decisions for AI applications</li>
+      </ul>
+    </section>
+
+    <footer>
+      <p>AI Agent Engineering Mastery Course</p>
+      <p style="margin-top: 0.5rem; font-size: 0.85rem;">Built from real-world experience building production AI systems</p>
+    </footer>
+  </div>
+
+  <script>
+    function toggleModule(header) {
+      const module = header.parentElement;
+      module.classList.toggle('collapsed');
+    }
+    
+    // Collapse all modules except first by default
+    document.querySelectorAll('.module').forEach((module, index) => {
+      if (index > 0) {
+        module.classList.add('collapsed');
+      }
+    });
+  </script>
+</body>
+</html>
