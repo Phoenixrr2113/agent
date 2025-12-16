@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@agent/core": "workspace:*",
+    "@agent/device-use": "workspace:*",
     "@agent/shared": "workspace:*",
     "@hono/node-server": "^1.19.6",
     "@types/ws": "^8.18.1",

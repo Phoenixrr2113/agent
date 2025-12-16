@@ -2,6 +2,7 @@ import { type Server } from 'node:http'
 import { join } from 'node:path'
 
 import { createAgentRuntime, type AgentSession, type AgentRuntime, type TaskResult } from '@agent/core'
+import { DesktopDriver } from '@agent/device-use'
 import { logger } from '@agent/shared'
 import type { DeviceAction, DeviceCapabilities, ActionResult } from '@agent/shared'
 import { serve } from '@hono/node-server'
@@ -11,7 +12,7 @@ import { cors } from 'hono/cors'
 import { streamSSE } from 'hono/streaming'
 import { WebSocketServer, type WebSocket } from 'ws'
 
-import { DeviceRegistry } from './devices/index.js'
+import { DeviceRegistry, createLocalDesktopDevice } from './devices/index.js'
 
 // Load environment variables from root .env
 config({ path: join(process.cwd(), '../../.env') });
@@ -20,6 +21,7 @@ export interface ServerConfig {
   port?: number;
   workspaceRoot?: string;
   corsOrigin?: string | string[];
+  enableLocalDesktop?: boolean;
 }
 
 const sessions = new Map<string, AgentSession>()
@@ -239,6 +241,17 @@ export async function startServer(config: ServerConfig = {}): Promise<StartServe
     logger.info(`🚀 Agent server running on http://localhost:${info.port}`);
   }) as unknown as Server;
 
+  if (config.enableLocalDesktop) {
+    try {
+      const driver = new DesktopDriver()
+      const localDevice = await createLocalDesktopDevice(driver)
+      deviceRegistry.registerLocal(localDevice)
+      logger.info('Local desktop device registered', { deviceId: localDevice.id })
+    } catch (error) {
+      logger.warn('Failed to register local desktop device', { error: String(error) })
+    }
+  }
+
   const wss = new WebSocketServer({ server });
 
   wss.on('connection', (ws) => {
@@ -304,6 +317,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     try {
       await startServer({
         workspaceRoot: process.env['WORKSPACE_ROOT'] ?? process.cwd(),
+        enableLocalDesktop: process.env['ENABLE_LOCAL_DESKTOP'] === 'true',
       });
     } catch (error: unknown) {
       console.error('Failed to start server:', error);
