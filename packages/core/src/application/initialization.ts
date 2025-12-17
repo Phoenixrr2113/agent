@@ -83,7 +83,9 @@ export async function initializeAgent(config: InitializationConfig = {}): Promis
 
   let codebaseRAG: any = null;
   if (workspaceRoot) {
-    codebaseRAG = createCodebaseRAG(workspaceRoot);
+    codebaseRAG = createCodebaseRAG(workspaceRoot, {
+      enableContextGeneration: false,
+    });
     logger.info('Initializing RAG...', { path: workspaceRoot });
     if (enableCodebaseIndexing) {
       logger.info('Indexing codebase...', { path: workspaceRoot });
@@ -129,6 +131,22 @@ export async function initializeAgent(config: InitializationConfig = {}): Promis
 
   registry.registerMany(activeTools, { deferLoading: false });
   registry.registerMany(deferredTools, { deferLoading: true });
+
+  const toolExamples: Record<string, Array<Record<string, unknown>>> = {
+    read_text_file: [{ path: 'src/index.ts' }, { path: 'package.json', head: 20 }],
+    write_file: [{ path: 'src/new-file.ts', content: 'export const x = 1;' }],
+    edit_file: [{ path: 'src/file.ts', edits: [{ oldText: 'foo', newText: 'bar' }] }],
+    list_directory: [{ path: '.' }, { path: 'src' }],
+    search_files: [{ path: '.', pattern: '**/*.ts' }],
+    search_codebase: [{ query: 'authentication middleware' }],
+    web_search: [{ query: 'how to implement rate limiting' }],
+  };
+  for (const [name, examples] of Object.entries(toolExamples)) {
+    const metadata = registry.getMetadata(name);
+    if (metadata) {
+      metadata.examples = examples;
+    }
+  }
 
   if (enableSemanticSearch) {
     logger.info('Generating tool embeddings for semantic search...');

@@ -42,6 +42,7 @@ export function createToolSearchTool(registry: ToolRegistry, activationManager?:
           name: m.name,
           description: m.description,
           tags: m.tags,
+          examples: m.examples,
           requiresActivation: m.deferLoading,
           isActivated: activationManager ? activationManager.isActive(m.name) : false,
         })),

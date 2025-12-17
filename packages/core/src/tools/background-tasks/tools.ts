@@ -9,6 +9,7 @@ import { getPersistentTaskManager } from './task-manager.js';
 import { success, error } from '../utils/tool-result.js';
 
 import type { TaskStatus } from './types.js';
+import { AGENT_ROLES } from '../../core/agents/roles.js';
 
 const MAX_CONCURRENT_AGENT_TASKS = 5;
 const AGENT_TASK_PREFIX = 'agent-task-';
@@ -223,21 +224,33 @@ export const cleanupOldTasksTool = tool({
 });
 
 export const spawnAgentTool = tool({
-  description: `Spawn an autonomous sub-agent to work on a task independently. The agent uses all available tools and runs until completion or max steps. Perfect for: complex research, multi-step builds, code generation, testing workflows. LIMIT: Maximum ${MAX_CONCURRENT_AGENT_TASKS} concurrent agents allowed. Check running agents with list_tasks before spawning new ones.`,
+  description: `Spawn an autonomous sub-agent to work on a task.
+  - Default (streaming: false): Runs in background (detached). Persists across restarts. Returns taskId. Use for long builds/tests.
+  - Streaming (streaming: true): Runs in-process (attached). Streams thoughts/events. Returns final result. Use for interactive sub-tasks.
+  LIMIT: Maximum ${MAX_CONCURRENT_AGENT_TASKS} concurrent background agents.`,
   inputSchema: z.object({
     task: z.string().max(5000).describe('The task for the agent to complete autonomously'),
     workspaceRoot: z.string().max(1000).optional().describe('Workspace root directory (default: current)'),
     maxSteps: z.number().int().min(1).max(200).optional().describe('Maximum number of steps (default: 50)'),
+    streaming: z.boolean().optional().default(false).describe('If true, runs in-process and streams events (default: false)'),
+    role: z.enum(AGENT_ROLES).optional().default('generic').describe('Role specialization of the agent'),
   }),
   execute: async ({
     task,
     workspaceRoot,
     maxSteps = 50,
+    streaming = false,
   }: {
     task: string;
     workspaceRoot?: string;
     maxSteps?: number;
+    streaming?: boolean;
+    role?: string;
   }) => {
+    if (streaming) {
+      throw new Error('Streaming mode requires runtime injection. This error should not be seen if AgentRuntime is configured correctly.');
+    }
+
     try {
       const taskManager = getPersistentTaskManager();
 

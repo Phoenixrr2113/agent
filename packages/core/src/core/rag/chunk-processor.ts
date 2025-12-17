@@ -21,8 +21,8 @@ export async function processChunks(
   if (enableContextGeneration) {
     log('Generating contextual descriptions...');
     contextualChunks = await generateContextBatch(chunks, {
-      concurrency: 5,
-      delayMs: 200,
+      concurrency: 2,
+      delayMs: 300,
       onProgress: (completed, total) => {
         log(`Context generation: ${completed}/${total}`);
       },

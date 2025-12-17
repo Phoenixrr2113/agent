@@ -1,7 +1,7 @@
 import { ToolLoopAgent, smoothStream } from 'ai';
 
 import { models } from './models.js';
-import { systemPrompts, type AgentRole } from './roles.js';
+import { systemPrompts, buildSpawnedAgentPrompt, type AgentRole } from './roles.js';
 import {
   buildSystemContext,
   buildDynamicSystemPrompt,
@@ -15,6 +15,7 @@ export interface CreateAgentOptions {
   onStepFinish?: any;
   workspaceRoot?: string;
   systemContext?: SystemContext;
+  isSpawnedAgent?: boolean;
 }
 
 export function createAgentWithRole(
@@ -23,9 +24,14 @@ export function createAgentWithRole(
   options?: CreateAgentOptions
 ) {
   const modelType = options?.modelType || 'standard';
+
+  const includeWorkspaceMap = role === 'coder';
+  const context = options?.systemContext || buildSystemContext(options?.workspaceRoot, includeWorkspaceMap);
   
-  const context = options?.systemContext || buildSystemContext(options?.workspaceRoot);
-  const dynamicPrompt = buildDynamicSystemPrompt(systemPrompts[role], context);
+  const basePrompt = options?.isSpawnedAgent 
+    ? buildSpawnedAgentPrompt(role) 
+    : systemPrompts[role];
+  const dynamicPrompt = buildDynamicSystemPrompt(basePrompt, context);
 
   return new ToolLoopAgent({
     model: models[modelType](),
@@ -41,3 +47,4 @@ export { smoothStream };
 export { models } from './models.js';
 export { systemPrompts, type AgentRole } from './roles.js';
 export { buildSystemContext, type SystemContext } from '../../infrastructure/prompts/system-context.js';
+

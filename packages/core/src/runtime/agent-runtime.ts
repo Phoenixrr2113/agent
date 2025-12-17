@@ -4,6 +4,7 @@ import { smoothStream } from 'ai';
 
 import { initializeAgent } from '../application/initialization.js';
 import { createAgent, createAgentWithStreaming } from '../application/orchestrator.js';
+import { type AgentRole } from '../core/agents/roles.js';
 import { createMemoryExtractor } from '../core/memory/extractor.js';
 import { getPersistentTaskManager } from '../tools/background-tasks-persistent.js';
 import { getMemoryProvider } from '../tools/memory.js';
@@ -16,7 +17,8 @@ export interface AgentConfig {
   askUserHandler?: AskUserHandler;
   maxSteps?: number;
   disableAgentSpawning?: boolean;
-  role?: 'generic' | 'researcher' | 'coder' | 'analyst' | 'spawned_agent';
+  role?: AgentRole;
+  isSpawnedAgent?: boolean;
 }
 
 export interface TaskInput {
@@ -58,9 +60,12 @@ export interface AgentRuntime {
 export async function createAgentRuntime(config: AgentConfig = {}): Promise<AgentRuntime> {
   logger.info('🚀 Creating agent runtime');
 
+  const shouldIndexCodebase = config.role === 'coder';
+
   const initResult = await initializeAgent({
     workspaceRoot: config.workspaceRoot,
     enableReadline: false,
+    enableCodebaseIndexing: shouldIndexCodebase,
   });
   const { tools, codebaseRAG, activationManager } = initResult;
 
@@ -156,6 +161,7 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
     maxSteps: config.maxSteps || 50,
     role: config.role || 'generic',
     workspaceRoot: config.workspaceRoot,
+    isSpawnedAgent: config.isSpawnedAgent,
   });
 
   let shutdownInProgress = false;
@@ -314,12 +320,65 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
           messageCount: conversationHistory.length,
         });
 
-        const streamingAgent = createAgentWithStreaming(tools, {
+        performanceTimer.start('agent.stream', 'agent-runtime', {
+          messageCount: conversationHistory.length,
+        });
+
+        const scopedTools = { ...tools };
+        if (!config.disableAgentSpawning) {
+          scopedTools['spawn_agent'] = {
+            ...tools['spawn_agent'],
+            execute: async (args: {
+              task: string;
+              workspaceRoot?: string;
+              maxSteps?: number;
+              streaming?: boolean;
+              role?: AgentRole;
+            }) => {
+              if (args.streaming) {
+                logger.info('⤵️ Spawning in-process sub-agent (streaming)...', {
+                  role: args.role,
+                  task: args.task.slice(0, 50),
+                });
+
+                const effectiveRoot = args.workspaceRoot || config.workspaceRoot;
+
+                const subRuntime = await createAgentRuntime({
+                  workspaceRoot: effectiveRoot,
+                  role: args.role,
+                  disableAgentSpawning: true,
+                  maxSteps: config.maxSteps || 50,
+                  isSpawnedAgent: true,
+                });
+
+                const subSession = subRuntime.createSession();
+
+                try {
+                  const result = await subSession.sendWithEvents(args.task, async (event) => {
+                    if (event.type === 'session:start') return;
+                    await onEvent(event);
+                  });
+
+                  await subRuntime.shutdown();
+                  return result.text;
+                } catch (error) {
+                  await subRuntime.shutdown();
+                  throw error;
+                }
+              }
+
+              return tools['spawn_agent'].execute(args);
+            },
+          };
+        }
+
+        const streamingAgent = createAgentWithStreaming(scopedTools, {
           activationManager,
           maxSteps: config.maxSteps || 50,
           role: config.role || 'generic',
           onEvent,
           workspaceRoot: config.workspaceRoot,
+          isSpawnedAgent: config.isSpawnedAgent,
         });
 
         const result = await streamingAgent.stream({

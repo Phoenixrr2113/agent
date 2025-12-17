@@ -1,23 +1,76 @@
 import { logger } from '@agent/shared';
-import { stepCountIs, type StepResult, type PrepareStepFunction } from 'ai';
+import { stepCountIs, type StepResult, type PrepareStepFunction, generateText } from 'ai';
+import type { ModelMessage } from 'ai';
 
 import { CORE_TOOL_NAMES } from './initialization.js';
-import { createAgentWithRole, type AgentRole } from '../core/agents/factory.js';
+import { createAgentWithRole, type AgentRole, models } from '../core/agents/factory.js';
+
+const MAX_CONTEXT_MESSAGES = 60;
+const SUMMARIZE_THRESHOLD = 40;
+const PRESERVE_HEAD = 2;
+const PRESERVE_TAIL = 15;
+
+async function summarizeContext(messages: ModelMessage[]): Promise<ModelMessage[]> {
+  if (messages.length <= SUMMARIZE_THRESHOLD) {
+    return messages;
+  }
+
+  const headMessages = messages.slice(0, PRESERVE_HEAD);
+  const tailMessages = messages.slice(-PRESERVE_TAIL);
+  const middleMessages = messages.slice(PRESERVE_HEAD, -PRESERVE_TAIL);
+
+  if (middleMessages.length < 5) {
+    return messages;
+  }
+
+  logger.info('📝 Summarizing context', {
+    total: messages.length,
+    middle: middleMessages.length,
+    preserved: PRESERVE_HEAD + PRESERVE_TAIL,
+  });
+
+  const middleText = middleMessages.map((msg, i) => {
+    const content = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content);
+    return `[${msg.role}]: ${content.slice(0, 500)}`;
+  }).join('\n');
+
+  try {
+    const { text: summary } = await generateText({
+      model: models.fast(),
+      prompt: `Summarize the following conversation history into a concise bullet-point list. Focus on key decisions, tool outputs, and progress made. Keep it under 300 words.\n\n${middleText}`,
+    });
+
+    const summaryMessage: ModelMessage = {
+      role: 'assistant',
+      content: `[CONTEXT SUMMARY - ${middleMessages.length} messages condensed]\n${summary}`,
+    };
+
+    logger.info('✅ Context summarized', { originalMessages: middleMessages.length });
+    return [...headMessages, summaryMessage, ...tailMessages];
+  } catch (error) {
+    logger.warn('⚠️ Context summarization failed, keeping original messages', { error: String(error) });
+    return messages;
+  }
+}
+
+let summarizationPending = false;
 
 export function createPrepareStep(activationManager?: any): PrepareStepFunction<any> {
   return ({ messages }) => {
-    // Context trimming disabled by user request for complex planning tasks
-    // const MAX_CONTEXT_MESSAGES = 50;
-    const finalMessages = messages;
-    // if (messages.length > MAX_CONTEXT_MESSAGES) {
-    //   logger.info('🔄 Trimming context', { from: messages.length, to: MAX_CONTEXT_MESSAGES });
-    //   finalMessages = [
-    //     messages[0]!,
-    //     ...messages.slice(-(MAX_CONTEXT_MESSAGES - 1)),
-    //   ];
-    // }
+    let finalMessages = messages;
 
-    // Filter inactive tool schemas from context window
+    if (!summarizationPending && messages.length > MAX_CONTEXT_MESSAGES) {
+      summarizationPending = true;
+      summarizeContext(messages)
+        .then((summarized) => {
+          finalMessages = summarized;
+          summarizationPending = false;
+        })
+        .catch(() => {
+          summarizationPending = false;
+        });
+    }
+
     if (activationManager) {
       const coreTools = [...CORE_TOOL_NAMES];
       const activeToolNames = activationManager.getActiveToolNames();
@@ -37,6 +90,7 @@ export function createPrepareStep(activationManager?: any): PrepareStepFunction<
     return { messages: finalMessages };
   };
 }
+
 
 function cleanAIText(text: string): string {
   const xmlTagPattern = /<\/?[a-zA-Z_][a-zA-Z0-9_-]*(?:\s+[^>]*)?\/?>/g;
@@ -121,13 +175,11 @@ export function createStepFinishHandler(onEvent?: StreamEventCallback) {
 
 export function createAgent(
   tools: Record<string, any>,
-  options: { maxSteps?: number; activationManager?: any; role?: AgentRole; workspaceRoot?: string } = {}
+  options: { maxSteps?: number; activationManager?: any; role?: AgentRole; workspaceRoot?: string; isSpawnedAgent?: boolean } = {}
 ) {
-  const { maxSteps = 50, activationManager, role = 'generic', workspaceRoot } = options;
+  const { maxSteps = 50, activationManager, role = 'generic', workspaceRoot, isSpawnedAgent } = options;
 
-  // Create custom stop condition that checks for task_complete
   const stopWhen = ({ steps }: { steps: Array<StepResult<any>> }) => {
-    // Check if task_complete was called in any step
     const taskCompleted = steps.some((step) =>
       step.toolCalls?.some((tc) => tc.toolName === 'task_complete')
     );
@@ -137,7 +189,6 @@ export function createAgent(
       return true;
     }
 
-    // Otherwise check step count
     return stepCountIs(maxSteps)({ steps });
   };
 
@@ -147,6 +198,7 @@ export function createAgent(
     prepareStep: createPrepareStep(activationManager),
     onStepFinish: createStepFinishHandler(),
     workspaceRoot,
+    isSpawnedAgent,
   });
 }
 
@@ -158,9 +210,10 @@ export function createAgentWithStreaming(
     role?: AgentRole;
     onEvent?: StreamEventCallback;
     workspaceRoot?: string;
+    isSpawnedAgent?: boolean;
   } = {}
 ) {
-  const { maxSteps = 50, activationManager, role = 'generic', onEvent, workspaceRoot } = options;
+  const { maxSteps = 50, activationManager, role = 'generic', onEvent, workspaceRoot, isSpawnedAgent } = options;
 
   const stopWhen = ({ steps }: { steps: Array<StepResult<any>> }) => {
     const taskCompleted = steps.some((step) =>
@@ -181,5 +234,6 @@ export function createAgentWithStreaming(
     prepareStep: createPrepareStep(activationManager),
     onStepFinish: createStepFinishHandler(onEvent),
     workspaceRoot,
+    isSpawnedAgent,
   });
 }

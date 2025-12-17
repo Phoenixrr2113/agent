@@ -35,7 +35,7 @@ export async function executeShell(
 }
 
 export const shellTool = tool({
-  description: `Execute bash commands. Use for: file operations (ls, cat, find, mkdir, cp, mv), git commands, grep/search, running scripts, system commands. Commands run in project directory.`,
+  description: `Execute bash commands. IMPORTANT: Only use this tool when specialized tools cannot accomplish the task. For file operations, prefer: read_file, write_file, list_directory, search_files. For code search, prefer: search_codebase. For git, prefer: git_status, git_diff, etc. Use shell for: running scripts, build commands, installing packages, or commands with no specialized alternative.`,
   inputSchema: z.object({
     command: z.string().describe('Bash command to execute'),
     cwd: z.string().optional().describe('Working directory (default: project root)'),

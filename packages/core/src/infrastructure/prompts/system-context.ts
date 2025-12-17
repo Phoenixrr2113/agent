@@ -1,4 +1,6 @@
 import { platform, hostname, userInfo } from 'node:os';
+import { readdirSync, statSync, existsSync } from 'node:fs';
+import { join } from 'node:path';
 
 export interface SystemContext {
   currentTime: string;
@@ -8,12 +10,36 @@ export interface SystemContext {
   hostname: string;
   username: string;
   workspaceRoot?: string;
+  workspaceMap?: string;
 }
 
-export function buildSystemContext(workspaceRoot?: string): SystemContext {
-  const now = new Date();
+function generateWorkspaceMap(workspaceRoot: string): string {
+  if (!existsSync(workspaceRoot)) return '';
   
-  return {
+  try {
+    const entries = readdirSync(workspaceRoot);
+    const topLevel = entries
+      .filter(e => !e.startsWith('.'))
+      .slice(0, 20)
+      .map(e => {
+        const fullPath = join(workspaceRoot, e);
+        const isDir = statSync(fullPath).isDirectory();
+        if (isDir) {
+          const children = readdirSync(fullPath).filter(c => !c.startsWith('.')).slice(0, 5);
+          return `${e}/: ${children.join(', ')}${children.length >= 5 ? '...' : ''}`;
+        }
+        return e;
+      });
+    return topLevel.join('\n');
+  } catch {
+    return '';
+  }
+}
+
+export function buildSystemContext(workspaceRoot?: string, includeWorkspaceMap = false): SystemContext {
+  const now = new Date();
+
+  const context: SystemContext = {
     currentTime: now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true }),
     currentDate: now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }),
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
@@ -22,6 +48,12 @@ export function buildSystemContext(workspaceRoot?: string): SystemContext {
     username: userInfo().username,
     workspaceRoot,
   };
+
+  if (includeWorkspaceMap && workspaceRoot) {
+    context.workspaceMap = generateWorkspaceMap(workspaceRoot);
+  }
+
+  return context;
 }
 
 export function formatSystemContextBlock(context: SystemContext): string {
@@ -39,6 +71,14 @@ export function formatSystemContextBlock(context: SystemContext): string {
     lines.push(`- **Workspace**: ${context.workspaceRoot}`);
   }
 
+  if (context.workspaceMap) {
+    lines.push('');
+    lines.push('## Workspace Structure');
+    lines.push('```');
+    lines.push(context.workspaceMap);
+    lines.push('```');
+  }
+
   return lines.join('\n');
 }
 
@@ -49,3 +89,4 @@ export function buildDynamicSystemPrompt(
   const contextBlock = formatSystemContextBlock(context);
   return `${basePrompt}\n\n${contextBlock}`;
 }
+
