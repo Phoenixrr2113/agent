@@ -505,20 +505,43 @@ export class PersistentTaskManager {
     }
   }
 
-  shutdown(): void {
+  shutdown(killTasks = true): void {
     clearInterval(this.checkInterval);
 
     if (this.monitorInterval) {
       clearInterval(this.monitorInterval);
     }
 
-    for (const [taskId] of this.activeProcesses.entries()) {
-      logger.info('Detaching from task on shutdown', { taskId });
+    if (killTasks) {
+       for (const [taskId, proc] of this.activeProcesses.entries()) {
+         if (proc.pid) {
+           try {
+             // Kill the process group since we spawned detached
+             process.kill(-proc.pid, 'SIGTERM');
+             logger.info('Stopping background task on shutdown', { taskId, pid: proc.pid });
+             
+             // Update status immediately as we might not wait for exit handler
+             if (this.db.open) {
+                this.db
+                  .prepare('UPDATE tasks SET status = ?, end_time = ?, updated_at = ? WHERE id = ?')
+                  .run('cancelled', Date.now(), new Date().toISOString(), taskId);
+             }
+           } catch (error) {
+             logger.debug('Failed to kill task process on shutdown', { taskId, pid: proc.pid, error: String(error) });
+           }
+         }
+       }
+    } else {
+        for (const [taskId] of this.activeProcesses.entries()) {
+          logger.info('Detaching from task on shutdown', { taskId });
+        }
     }
 
     this.activeProcesses.clear();
 
-    this.db.close();
+    if (this.db.open) {
+       this.db.close();
+    }
   }
 }
 
