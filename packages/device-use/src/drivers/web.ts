@@ -72,7 +72,7 @@ export class WebDriver implements DeviceDriver {
       headless: options.headless,
       cdpPorts: options.cdpPorts ?? DEFAULT_CDP_PORTS,
       userDataDir: options.userDataDir,
-    }
+    } as WebDriverOptions
   }
 
   async connect(): Promise<void> {
@@ -362,7 +362,7 @@ export class WebDriver implements DeviceDriver {
         success: true,
         data: {
           type: 'ui_tree',
-          root: tree,
+          root: tree as any,
         },
       }
     } catch (error) {

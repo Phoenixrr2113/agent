@@ -51,6 +51,7 @@ export interface InitializationConfig {
   enableReadline?: boolean;
   registry?: ToolRegistry;
   enableSemanticSearch?: boolean;
+  enableCodebaseIndexing?: boolean;
 }
 
 export interface InitializationResult {
@@ -67,6 +68,7 @@ export async function initializeAgent(config: InitializationConfig = {}): Promis
     enableReadline = false,
     registry: providedRegistry,
     enableSemanticSearch = true,
+    enableCodebaseIndexing = false,
   } = config;
 
   let rl: readline.Interface | null = null;
@@ -82,10 +84,15 @@ export async function initializeAgent(config: InitializationConfig = {}): Promis
   let codebaseRAG: any = null;
   if (workspaceRoot) {
     codebaseRAG = createCodebaseRAG(workspaceRoot);
-    logger.info('Indexing codebase...', { path: workspaceRoot });
-    await codebaseRAG.indexCodebase();
-    const ragStats = codebaseRAG.getStats();
-    logger.info('RAG indexed', { chunks: ragStats.totalChunks, files: ragStats.files });
+    logger.info('Initializing RAG...', { path: workspaceRoot });
+    if (enableCodebaseIndexing) {
+      logger.info('Indexing codebase...', { path: workspaceRoot });
+      await codebaseRAG.indexCodebase();
+      const ragStats = codebaseRAG.getStats();
+      logger.info('RAG indexed', { chunks: ragStats.totalChunks, files: ragStats.files });
+    } else {
+      logger.info('Codebase indexing disabled (lazy loading valid)');
+    }
   } else {
     logger.info('No workspace provided - codebase tools disabled');
   }

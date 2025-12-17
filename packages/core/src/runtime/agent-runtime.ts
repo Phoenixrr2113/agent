@@ -1,5 +1,7 @@
 import { logger, createPerformanceTimer, type PerformanceTimer, type StreamEventCallback } from '@agent/shared';
 
+import { smoothStream } from 'ai';
+
 import { initializeAgent } from '../application/initialization.js';
 import { createAgent, createAgentWithStreaming } from '../application/orchestrator.js';
 import { createMemoryExtractor } from '../core/memory/extractor.js';
@@ -153,6 +155,7 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
     activationManager,
     maxSteps: config.maxSteps || 50,
     role: config.role || 'generic',
+    workspaceRoot: config.workspaceRoot,
   });
 
   let shutdownInProgress = false;
@@ -197,33 +200,38 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
       logger.info('🧠 Sending request to AI model...');
       logger.debug('📤 Messages being sent', { count: conversationHistory.length });
 
-      performanceTimer.start('agent.generate', 'agent-runtime', {
+      performanceTimer.start('agent.stream', 'agent-runtime', {
         messageCount: conversationHistory.length,
       });
 
-      const result = await agent.generate({
+      const result = await agent.stream({
         messages: conversationHistory,
+        experimental_transform: smoothStream({ chunking: 'word' }),
       });
 
-      const agentExecutionMs = performanceTimer.end('agent.generate', 'agent-runtime', {
-        steps: result.steps.length,
+      const steps = await result.steps;
+      const text = await result.text;
+      const response = await result.response;
+
+      const agentExecutionMs = performanceTimer.end('agent.stream', 'agent-runtime', {
+        steps: steps.length,
       });
 
       logger.info('✅ AI model responded', {
         elapsedMs: agentExecutionMs?.toFixed(2),
         elapsedSec: agentExecutionMs ? (agentExecutionMs / 1000).toFixed(2) : 'unknown',
-        steps: result.steps.length,
+        steps: steps.length,
       });
-      logger.debug('📥 Raw response text', { text: result.text?.slice(0, 500) });
+      logger.debug('📥 Raw response text', { text: text?.slice(0, 500) });
 
-      const allToolCalls = result.steps.flatMap((step: any) => step.toolCalls || []);
+      const allToolCalls = steps.flatMap((step: any) => step.toolCalls || []);
       if (allToolCalls.length > 0) {
         logger.info('🔧 Total tool calls made', { count: allToolCalls.length });
       } else {
         logger.warn('⚠️ No tool calls made - model may not be using tools correctly');
       }
 
-      conversationHistory.push(...result.response.messages);
+      conversationHistory.push(...response.messages);
 
       Promise.resolve()
         .then(() => memoryExtractor.extractFromConversation(conversationHistory))
@@ -233,7 +241,7 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
 
       let codebaseIndexingMs: number | undefined;
       if (codebaseRAG) {
-        const modifiedFiles = result.steps.some((step: any) =>
+        const modifiedFiles = steps.some((step: any) =>
           step.toolCalls?.some((tc: any) =>
             ['write_file', 'edit_file', 'create_directory'].includes(tc.toolName)
           )
@@ -245,17 +253,17 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
         }
       }
 
-      const completed = result.steps.some((step: any) =>
+      const completed = steps.some((step: any) =>
         step.toolCalls?.some((tc: any) => tc.toolName === 'task_complete')
       );
 
       const toolsUsed: string[] = [...new Set(
-        result.steps.flatMap((step: any) =>
+        steps.flatMap((step: any) =>
           step.toolCalls?.map((tc: any) => tc.toolName) || []
         )
-      )];
+      )] as string[];
 
-      const askUserCall = result.steps
+      const askUserCall = steps
         .flatMap((step: any) => step.toolCalls || [])
         .find((tc: any) => tc.toolName === 'ask_user');
 
@@ -267,12 +275,12 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
       performanceTimer.logSummary();
 
       return {
-        text: result.text,
-        messages: result.response.messages,
+        text,
+        messages: response.messages,
         completed,
         needsInput,
         pendingQuestion,
-        stepsUsed: result.steps.length,
+        stepsUsed: steps.length,
         toolsUsed,
         performanceMetrics: {
           totalDurationMs: totalDurationMs ?? 0,
@@ -302,7 +310,7 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
         logger.info('🧠 Sending request to AI model (streaming)...');
         logger.debug('📤 Messages being sent', { count: conversationHistory.length });
 
-        performanceTimer.start('agent.generate', 'agent-runtime', {
+        performanceTimer.start('agent.stream', 'agent-runtime', {
           messageCount: conversationHistory.length,
         });
 
@@ -311,23 +319,95 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
           maxSteps: config.maxSteps || 50,
           role: config.role || 'generic',
           onEvent,
+          workspaceRoot: config.workspaceRoot,
         });
 
-        const result = await streamingAgent.generate({
+        const result = await streamingAgent.stream({
           messages: conversationHistory,
+          experimental_transform: smoothStream({ chunking: 'word' }),
         });
 
-        const agentExecutionMs = performanceTimer.end('agent.generate', 'agent-runtime', {
-          steps: result.steps.length,
+        let stepIndex = 0;
+
+        for await (const part of result.fullStream) {
+          switch (part.type) {
+            case 'text-delta':
+              await onEvent({
+                type: 'text:delta',
+                data: { delta: part.text, stepIndex },
+                timestamp: Date.now(),
+              });
+              break;
+
+            case 'reasoning-delta':
+              await onEvent({
+                type: 'reasoning:delta',
+                data: { delta: part.text, stepIndex },
+                timestamp: Date.now(),
+              });
+              break;
+
+            case 'tool-call':
+              await onEvent({
+                type: 'tool:call',
+                data: {
+                  toolCallId: part.toolCallId,
+                  toolName: part.toolName,
+                  args: (part as any).input as Record<string, unknown>,
+                  stepIndex,
+                },
+                timestamp: Date.now(),
+              });
+              break;
+
+            case 'tool-result':
+              await onEvent({
+                type: 'tool:result',
+                data: {
+                  toolCallId: part.toolCallId,
+                  toolName: part.toolName,
+                  result: (part as any).output,
+                  durationMs: 0,
+                  stepIndex,
+                },
+                timestamp: Date.now(),
+              });
+              break;
+
+            case 'start-step':
+              stepIndex++;
+              await onEvent({
+                type: 'step:start',
+                data: { stepIndex },
+                timestamp: Date.now(),
+              });
+              break;
+
+            case 'finish-step':
+              await onEvent({
+                type: 'step:finish',
+                data: { stepIndex, durationMs: 0 },
+                timestamp: Date.now(),
+              });
+              break;
+          }
+        }
+
+        const steps = await result.steps;
+        const text = await result.text;
+        const response = await result.response;
+
+        const agentExecutionMs = performanceTimer.end('agent.stream', 'agent-runtime', {
+          steps: steps.length,
         });
 
         logger.info('✅ AI model responded (streaming)', {
           elapsedMs: agentExecutionMs?.toFixed(2),
           elapsedSec: agentExecutionMs ? (agentExecutionMs / 1000).toFixed(2) : 'unknown',
-          steps: result.steps.length,
+          steps: steps.length,
         });
 
-        conversationHistory.push(...result.response.messages);
+        conversationHistory.push(...response.messages);
 
         Promise.resolve()
           .then(() => memoryExtractor.extractFromConversation(conversationHistory))
@@ -337,7 +417,7 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
 
         let codebaseIndexingMs: number | undefined;
         if (codebaseRAG) {
-          const modifiedFiles = result.steps.some((step: any) =>
+          const modifiedFiles = steps.some((step: any) =>
             step.toolCalls?.some((tc: any) =>
               ['write_file', 'edit_file', 'create_directory'].includes(tc.toolName)
             )
@@ -349,17 +429,17 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
           }
         }
 
-        const completed = result.steps.some((step: any) =>
+        const completed = steps.some((step: any) =>
           step.toolCalls?.some((tc: any) => tc.toolName === 'task_complete')
         );
 
         const toolsUsed: string[] = [...new Set(
-          result.steps.flatMap((step: any) =>
+          steps.flatMap((step: any) =>
             step.toolCalls?.map((tc: any) => tc.toolName) || []
           )
-        )];
+        )] as string[];
 
-        const askUserCall = result.steps
+        const askUserCall = steps
           .flatMap((step: any) => step.toolCalls || [])
           .find((tc: any) => tc.toolName === 'ask_user');
 
@@ -371,12 +451,12 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
         performanceTimer.logSummary();
 
         const taskResult: TaskResult = {
-          text: result.text,
-          messages: result.response.messages,
+          text,
+          messages: response.messages,
           completed,
           needsInput,
           pendingQuestion,
-          stepsUsed: result.steps.length,
+          stepsUsed: steps.length,
           toolsUsed,
           performanceMetrics: {
             totalDurationMs: totalDurationMs ?? 0,

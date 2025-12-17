@@ -6,16 +6,16 @@ import { createAgentWithRole, type AgentRole } from '../core/agents/factory.js';
 
 export function createPrepareStep(activationManager?: any): PrepareStepFunction<any> {
   return ({ messages }) => {
-    const MAX_CONTEXT_MESSAGES = 50;
-
-    let finalMessages = messages;
-    if (messages.length > MAX_CONTEXT_MESSAGES) {
-      logger.info('🔄 Trimming context', { from: messages.length, to: MAX_CONTEXT_MESSAGES });
-      finalMessages = [
-        messages[0]!,
-        ...messages.slice(-(MAX_CONTEXT_MESSAGES - 1)),
-      ];
-    }
+    // Context trimming disabled by user request for complex planning tasks
+    // const MAX_CONTEXT_MESSAGES = 50;
+    const finalMessages = messages;
+    // if (messages.length > MAX_CONTEXT_MESSAGES) {
+    //   logger.info('🔄 Trimming context', { from: messages.length, to: MAX_CONTEXT_MESSAGES });
+    //   finalMessages = [
+    //     messages[0]!,
+    //     ...messages.slice(-(MAX_CONTEXT_MESSAGES - 1)),
+    //   ];
+    // }
 
     // Filter inactive tool schemas from context window
     if (activationManager) {
@@ -56,32 +56,19 @@ export function createStepFinishHandler(onEvent?: StreamEventCallback) {
     const stepDuration = stepStartTime > 0 ? stepEndTime - stepStartTime : 0;
     const timestamp = Date.now();
 
-    if (onEvent) {
-      await onEvent({
-        type: 'step:start',
-        data: { stepIndex: stepCount },
-        timestamp,
-      });
-    }
+    // Note: SSE events now come from fullStream in agent-runtime
+    // onStepFinish only handles console logging for debugging
 
-    console.log('\n' + '═'.repeat(80));
-    console.log(`📈 STEP ${stepCount} ${stepDuration > 0 ? `(${stepDuration.toFixed(2)}ms)` : ''}`);
-    console.log('═'.repeat(80));
+    logger.debug('\n' + '═'.repeat(80));
+    logger.debug(`📈 STEP ${stepCount} ${stepDuration > 0 ? `(${stepDuration.toFixed(2)}ms)` : ''}`);
+    logger.debug('═'.repeat(80));
 
     if (stepResult.text && stepResult.text.trim()) {
       const cleanedText = cleanAIText(stepResult.text);
       if (cleanedText) {
-        console.log('\n💭 AI THINKING:');
-        console.log('─'.repeat(40));
-        console.log(cleanedText);
-
-        if (onEvent) {
-          await onEvent({
-            type: 'text:delta',
-            data: { delta: cleanedText, stepIndex: stepCount },
-            timestamp: Date.now(),
-          });
-        }
+        logger.debug('\n💭 AI THINKING:');
+        logger.debug('─'.repeat(40));
+        logger.debug(cleanedText);
       }
     }
 
@@ -91,87 +78,52 @@ export function createStepFinishHandler(onEvent?: StreamEventCallback) {
         if (!tc) continue;
         const tr = stepResult.toolResults?.find(r => r.toolCallId === tc.toolCallId);
 
-        if (onEvent) {
-          await onEvent({
-            type: 'tool:call',
-            data: {
-              toolCallId: tc.toolCallId,
-              toolName: tc.toolName,
-              args: tc.input as Record<string, unknown>,
-              stepIndex: stepCount,
-            },
-            timestamp: Date.now(),
-          });
-        }
-
         const timing = (tr as any)?.timing;
         const timingString = timing ? ` (${timing.toFixed(2)}ms)` : '';
-        console.log(`\n🔧 TOOL CALL: ${tc.toolName}${timingString}`);
-        console.log('─'.repeat(40));
+        logger.debug(`\n🔧 TOOL CALL: ${tc.toolName}${timingString}`);
+        logger.debug('─'.repeat(40));
 
         const input = tc.input;
         if (input && typeof input === 'object' && Object.keys(input).length > 0) {
-          console.log('📥 INPUT:');
+          logger.debug('📥 INPUT:');
           const inputString = JSON.stringify(input, null, 2);
-          console.log(inputString.length > 500 ? inputString.slice(0, 500) + '...' : inputString);
+          logger.debug(inputString.length > 500 ? inputString.slice(0, 500) + '...' : inputString);
         } else {
-          console.log('📥 INPUT: (none)');
+          logger.debug('📥 INPUT: (none)');
         }
 
         if (tr) {
-          console.log('\n📤 OUTPUT:');
+          logger.debug('\n📤 OUTPUT:');
           if (tr.output !== undefined && tr.output !== null) {
             const outputString = typeof tr.output === 'string'
               ? tr.output
               : JSON.stringify(tr.output, null, 2);
             if (outputString) {
-              console.log(outputString.length > 1000 ? outputString.slice(0, 1000) + '...' : outputString);
+              logger.debug(outputString.length > 1000 ? outputString.slice(0, 1000) + '...' : outputString);
             } else {
-              console.log('(empty result)');
+              logger.debug('(empty result)');
             }
           } else {
-            console.log('(no output)');
-          }
-
-          if (onEvent) {
-            await onEvent({
-              type: 'tool:result',
-              data: {
-                toolCallId: tc.toolCallId,
-                toolName: tc.toolName,
-                result: tr.output,
-                durationMs: timing ?? 0,
-                stepIndex: stepCount,
-              },
-              timestamp: Date.now(),
-            });
+            logger.debug('(no output)');
           }
         } else {
-          console.log('\n📤 OUTPUT: (tool execution pending)');
+          logger.debug('\n📤 OUTPUT: (tool execution pending)');
         }
       }
     } else {
-      console.log('\n💬 No tool calls this step');
+      logger.debug('\n💬 No tool calls this step');
     }
 
-    if (onEvent) {
-      await onEvent({
-        type: 'step:finish',
-        data: { stepIndex: stepCount, durationMs: stepDuration },
-        timestamp: Date.now(),
-      });
-    }
-
-    console.log('\n');
+    logger.debug('\n');
     stepStartTime = performance.now();
   };
 }
 
 export function createAgent(
   tools: Record<string, any>,
-  options: { maxSteps?: number; activationManager?: any; role?: AgentRole } = {}
+  options: { maxSteps?: number; activationManager?: any; role?: AgentRole; workspaceRoot?: string } = {}
 ) {
-  const { maxSteps = 50, activationManager, role = 'generic' } = options;
+  const { maxSteps = 50, activationManager, role = 'generic', workspaceRoot } = options;
 
   // Create custom stop condition that checks for task_complete
   const stopWhen = ({ steps }: { steps: Array<StepResult<any>> }) => {
@@ -194,6 +146,7 @@ export function createAgent(
     stopWhen,
     prepareStep: createPrepareStep(activationManager),
     onStepFinish: createStepFinishHandler(),
+    workspaceRoot,
   });
 }
 
@@ -204,9 +157,10 @@ export function createAgentWithStreaming(
     activationManager?: any;
     role?: AgentRole;
     onEvent?: StreamEventCallback;
+    workspaceRoot?: string;
   } = {}
 ) {
-  const { maxSteps = 50, activationManager, role = 'generic', onEvent } = options;
+  const { maxSteps = 50, activationManager, role = 'generic', onEvent, workspaceRoot } = options;
 
   const stopWhen = ({ steps }: { steps: Array<StepResult<any>> }) => {
     const taskCompleted = steps.some((step) =>
@@ -226,5 +180,6 @@ export function createAgentWithStreaming(
     stopWhen,
     prepareStep: createPrepareStep(activationManager),
     onStepFinish: createStepFinishHandler(onEvent),
+    workspaceRoot,
   });
 }

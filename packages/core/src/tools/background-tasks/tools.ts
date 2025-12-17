@@ -260,6 +260,7 @@ export const spawnAgentTool = tool({
 
       const agentScript = `
 const { createAgentRuntime } = require('@agent/core');
+const { logger } = require('@agent/shared');
 
 async function runAgentTask() {
   const TASK = ${taskJson};
@@ -273,27 +274,27 @@ async function runAgentTask() {
   try {
     const session = runtime.createSession();
 
-    console.log('🤖 Agent starting autonomous task...');
-    console.log('Task:', TASK);
-    console.log('Max steps: ${maxSteps}');
-    console.log('');
+    logger.info('🤖 Agent starting autonomous task...');
+    logger.info('Task: ' + TASK);
+    logger.info('Max steps: ${maxSteps}');
+    logger.info('');
 
     const result = await session.runTask({
       prompt: TASK,
     });
 
-    console.log('');
-    console.log('✅ Agent completed task');
-    console.log('Steps used:', result.stepsUsed, '/ ${maxSteps}');
-    console.log('Tools used:', result.toolsUsed.join(', '));
-    console.log('Completed:', result.completed);
-    console.log('');
-    console.log('Result:');
-    console.log(result.text);
+    logger.info('');
+    logger.info('✅ Agent completed task');
+    logger.info('Steps used: ' + result.stepsUsed + ' / ${maxSteps}');
+    logger.info('Tools used: ' + result.toolsUsed.join(', '));
+    logger.info('Completed: ' + result.completed);
+    logger.info('');
+    logger.info('Result:');
+    logger.info(result.text);
 
     process.exit(result.completed ? 0 : 1);
   } catch (error) {
-    console.error('❌ Agent task failed:', error.message);
+    logger.error('❌ Agent task failed:', { error: error.message });
     process.exit(1);
   } finally {
     await runtime.shutdown();

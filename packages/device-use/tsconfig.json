@@ -10,7 +10,8 @@
     "paths": {
       "@agent/shared": ["../shared/dist"],
       "@agent/shared/*": ["../shared/dist/*"]
-    }
+    },
+    "lib": ["dom", "esnext"]
   },
   "include": ["src/**/*", "tests/**/*"],
   "exclude": ["node_modules", "dist"]

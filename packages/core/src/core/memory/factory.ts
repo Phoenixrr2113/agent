@@ -1,5 +1,6 @@
 import { createMemoryLite } from "./memory-lite.js";
 import { createGraphitiProvider } from './provider-graphiti.js';
+import { logger } from '@agent/shared';
 
 
 import type { MemoryProvider, MemoryConfig, MemoryConfigInput, LiteMemoryConfig } from './types.js';
@@ -43,7 +44,7 @@ export async function createAutoMemoryProvider(
   config: MemoryConfigInput
 ): Promise<MemoryProvider> {
   const provider = await detectAvailableProvider(config.graphitiUrl);
-  console.log(`Memory provider: ${provider}`);
+  logger.info(`Memory provider: ${provider}`);
 
   if (provider === 'graphiti') {
     return createMemoryProvider({

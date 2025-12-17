@@ -49,6 +49,15 @@ export const shellTool = tool({
       });
     }
 
+    const INTERACTIVE_COMMANDS = ['vi', 'vim', 'nano', 'htop', 'less', 'more', 'man', 'top', 'screen', 'tmux'];
+    const cmdPart = command.split(' ')[0];
+    if (cmdPart && INTERACTIVE_COMMANDS.includes(cmdPart)) {
+      return error('Interactive command not allowed', {
+        command,
+        suggestion: `The command '${cmdPart}' requires interactive input which is not supported. Please use 'read_file' to view files or 'write_file' to edit them.`,
+      });
+    }
+
     const result = await executeCommand(command, { cwd, timeout });
 
     if (result.error) {

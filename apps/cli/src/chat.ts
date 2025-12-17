@@ -11,9 +11,15 @@ const __dirname = dirname(__filename);
 config({ path: resolve(__dirname, '../../../.env') });
 
 import { createAgentRuntime } from '@agent/core';
-import { logger } from '@agent/shared';
+import { logger, type StreamEvent } from '@agent/shared';
+
+// logger.reconfigure({
+//   level: 'info', // Silence info/debug logs to keep CLI output clean
+//   logToConsole: true
+// });
 
 logger.reconfigure();
+  
 
 logger.info('\n💬 Interactive Chat Mode\n');
 logger.info('Type your requests or "exit" to quit\n');
@@ -42,6 +48,63 @@ process.on('SIGINT', () => {
   })();
 });
 
+// State for display formatting
+let currentContext: 'thought' | 'tool' | 'response' | 'start' = 'start';
+let hasEmittedTool = false;
+
+function handleStreamEvent(event: StreamEvent) {
+  switch (event.type) {
+    case 'text:delta': {
+      if (currentContext === 'tool' || currentContext === 'start') {
+        process.stdout.write('\n');
+        
+        // If we are just starting a step and haven't used a tool, it's thoughts.
+        // If we have used a tool, it's a response (or further reasoning).
+        const label = hasEmittedTool ? '🤖 Response:' : '🧠 Thought:';
+        
+        process.stdout.write(`\n\x1b[1m${label}\x1b[0m `);
+        currentContext = hasEmittedTool ? 'response' : 'thought';
+      }
+      process.stdout.write((event.data as any).delta);
+      break;
+    }
+    case 'reasoning:delta':
+      if (currentContext !== 'thought') {
+         process.stdout.write('\n\n\x1b[1m🧠 Reasoning:\x1b[0m ');
+         currentContext = 'thought';
+      }
+      process.stdout.write(`\x1b[90m${(event.data as any).delta}\x1b[0m`);
+      break;
+    case 'tool:call': {
+      hasEmittedTool = true;
+      currentContext = 'tool';
+      const data = event.data as any;
+      process.stdout.write(`\n\x1b[36m🔧 ${data.toolName}\x1b[0m`);
+      if (data.args) {
+        const argsStr = JSON.stringify(data.args);
+        const displayArgs = argsStr.length > 200 ? argsStr.slice(0, 200) + '...' : argsStr;
+        process.stdout.write(` \x1b[90m${displayArgs}\x1b[0m`);
+      }
+      break;
+    }
+    case 'tool:result':
+      process.stdout.write(` \x1b[32m✓\x1b[0m`);
+      break;
+    case 'step:start': {
+      const data = event.data as any;
+      process.stdout.write(`\n\x1b[90m--- Step ${data.stepIndex} ---\x1b[0m`);
+      currentContext = 'start';
+      hasEmittedTool = false; 
+      break;
+    }
+    case 'step:finish':
+      break;
+    case 'complete':
+      process.stdout.write('\n');
+      break;
+  }
+}
+
 while (true) {
   const userInput = await rl.question('👤 You: ');
 
@@ -55,14 +118,15 @@ while (true) {
   }
 
   try {
-    const result = await session.send(userInput);
-
-    if (result.text) {
-      logger.info(`\n🤖 Agent: ${result.text}\n`);
-    }
+    currentContext = 'start'; // Reset state for new turn
+    hasEmittedTool = false;
+    
+    // Initial label logic is handled by the first event (usually step:start -> text:delta)
+    
+    const result = await session.sendWithEvents(userInput, handleStreamEvent);
 
     if (result.completed) {
-      logger.info('✅ Task completed\n');
+      logger.info('\n✅ Task completed\n');
     }
 
     if (result.toolsUsed.length > 0) {
