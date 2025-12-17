@@ -4,33 +4,33 @@ import * as readline from 'node:readline/promises';
 
 import { logger } from '@agent/shared'
 
-import { createCodebaseRAG } from '../core/rag'
-import { instrumentTools } from '../core/tool-instrumentation'
-import { createAgentTools } from '../tools/agent'
+import { createCodebaseRAG } from '../core/rag/index.js'
+import { instrumentTools } from '../core/tool-instrumentation.js'
+import { createAgentTools } from '../tools/agent.js'
 import {
   persistentBackgroundTaskTools,
   getPersistentTaskManager,
-} from '../tools/background-tasks-persistent'
-import { createCodebaseTools } from '../tools/codebase'
-import { createDeviceTools } from '../tools/device/index'
-import { fetchPageTool } from '../tools/fetch-page'
-import { createFilesystemTools } from '../tools/filesystem'
-import { memoryTools, closeMemory } from '../tools/memory'
+} from '../tools/background-tasks-persistent.js'
+import { createCodebaseTools } from '../tools/codebase.js'
+import { createDeviceTools } from '../tools/device/index.js'
+import { fetchPageTool } from '../tools/fetch-page.js'
+import { createFilesystemTools } from '../tools/filesystem/index.js'
+import { memoryTools, closeMemory } from '../tools/memory.js'
 import {
   type ToolRegistry,
   createToolRegistry,
   createToolSearchTool,
   createActivateToolTool,
   createDeactivateToolTool,
-} from '../tools/registry'
+} from '../tools/registry/index.js'
 import {
   sequentialThinkingTool,
   resetSequentialThinkingEngine,
-} from '../tools/sequential-thinking'
-import { shellTool } from '../tools/shell'
-import { createToolActivationManager } from '../tools/tool-wrapper'
-import { webSearchTool } from '../tools/web-search'
-import { planTool, validationTool } from '../tools/workflow'
+} from '../tools/sequential-thinking.js'
+import { shellTool } from '../tools/shell.js'
+import { createToolActivationManager } from '../tools/tool-wrapper.js'
+import { webSearchTool } from '../tools/web-search.js'
+import { planTool, validationTool, createPlanTool } from '../tools/workflow.js'
 
 /**
  * Core tools that are always available without requiring activation.
@@ -52,6 +52,7 @@ export interface InitializationConfig {
   registry?: ToolRegistry;
   enableSemanticSearch?: boolean;
   enableCodebaseIndexing?: boolean;
+  disableAgentSpawning?: boolean;
 }
 
 export interface InitializationResult {
@@ -108,7 +109,7 @@ export async function initializeAgent(config: InitializationConfig = {}): Promis
   const agentTools = createAgentTools(rl);
 
   const activeTools = {
-    plan: planTool,
+    plan: config.disableAgentSpawning ? createPlanTool({ disableDelegation: true }) : planTool,
     sequential_thinking: sequentialThinkingTool,
     ...agentTools,
   };

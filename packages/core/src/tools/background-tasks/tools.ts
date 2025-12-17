@@ -225,8 +225,18 @@ export const cleanupOldTasksTool = tool({
 
 export const spawnAgentTool = tool({
   description: `Spawn an autonomous sub-agent to work on a task.
-  - Default (streaming: false): Runs in background (detached). Persists across restarts. Returns taskId. Use for long builds/tests.
-  - Streaming (streaming: true): Runs in-process (attached). Streams thoughts/events. Returns final result. Use for interactive sub-tasks.
+  
+  **Required**: task (what the agent should do)
+  **Optional**: role (coder|researcher|analyst|generic), streaming, maxSteps
+  
+  Roles:
+  - coder: Production-quality code, reading codebases, testing, debugging
+  - researcher: Web search, documentation, fact verification, synthesis
+  - analyst: Data analysis, pattern recognition, statistical reasoning
+  - generic: General purpose (default)
+  
+  Example: spawn_agent({ task: "Create a REST API with user authentication", role: "coder" })
+  
   LIMIT: Maximum ${MAX_CONCURRENT_AGENT_TASKS} concurrent background agents.`,
   inputSchema: z.object({
     task: z.string().max(5000).describe('The task for the agent to complete autonomously'),
@@ -272,8 +282,8 @@ export const spawnAgentTool = tool({
       const workspaceRootJson = workspaceRoot ? JSON.stringify(workspaceRoot) : 'process.cwd()';
 
       const agentScript = `
-const { createAgentRuntime } = require('@agent/core');
-const { logger } = require('@agent/shared');
+import { createAgentRuntime } from '@agent/core';
+import { logger } from '@agent/shared';
 
 async function runAgentTask() {
   const TASK = ${taskJson};
@@ -281,6 +291,7 @@ async function runAgentTask() {
     workspaceRoot: ${workspaceRootJson},
     maxSteps: ${maxSteps},
     disableAgentSpawning: true,
+    disableAskUser: true,
     role: 'spawned_agent',
   });
 

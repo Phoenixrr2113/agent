@@ -17,6 +17,7 @@ export interface AgentConfig {
   askUserHandler?: AskUserHandler;
   maxSteps?: number;
   disableAgentSpawning?: boolean;
+  disableAskUser?: boolean;
   role?: AgentRole;
   isSpawnedAgent?: boolean;
 }
@@ -66,6 +67,7 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
     workspaceRoot: config.workspaceRoot,
     enableReadline: false,
     enableCodebaseIndexing: shouldIndexCodebase,
+    disableAgentSpawning: config.disableAgentSpawning,
   });
   const { tools, codebaseRAG, activationManager } = initResult;
 
@@ -105,32 +107,8 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
     }
   }
 
-  taskManager.startMonitoring((event: Parameters<TaskMonitorCallback>[0], task: PersistentTaskInfo) => {
-    const durationMs = task.endTime ? task.endTime - task.startTime : 0;
-    const durationString = durationMs > 3600000
-      ? `${(durationMs / (1000 * 60 * 60)).toFixed(1)}h`
-      : `${(durationMs / (1000 * 60)).toFixed(1)}m`;
 
-    if (event === 'task_completed') {
-      logger.info('🎉 Background task completed', {
-        taskId: task.id,
-        command: task.command.substring(0, 60),
-        duration: durationString,
-        exitCode: task.exitCode,
-      });
-    } else if (event === 'task_failed') {
-      logger.warn('⚠️  Background task failed', {
-        taskId: task.id,
-        command: task.command.substring(0, 60),
-        duration: durationString,
-        exitCode: task.exitCode,
-      });
-      logger.warn('👻 Background task orphaned (process died)', {
-        taskId: task.id,
-        command: task.command.substring(0, 60),
-      });
-    }
-  });
+
 
   if (config.askUserHandler) {
     const askUserHandler = config.askUserHandler;
@@ -153,7 +131,39 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
 
   if (config.disableAgentSpawning) {
     delete tools['start_agent_task'];
+    delete tools['spawn_agent'];
     logger.info('🚫 Agent spawning disabled (prevents recursion)');
+  }
+
+  // Only start monitoring if not a sub-agent (to save resources)
+  if (!config.disableAgentSpawning) {
+    taskManager.startMonitoring((event: Parameters<TaskMonitorCallback>[0], task: PersistentTaskInfo) => {
+      const durationMs = task.endTime ? task.endTime - task.startTime : 0;
+      const durationString = durationMs > 3600000
+        ? `${(durationMs / (1000 * 60 * 60)).toFixed(1)}h`
+        : `${(durationMs / (1000 * 60)).toFixed(1)}m`;
+
+      if (event === 'task_completed') {
+        const lines = [
+          `✅ Background task completed: ${task.command.substring(0, 60)}...`,
+          `   Duration: ${durationString}`,
+          `   Exit Code: ${task.exitCode}`,
+        ];
+        logger.info(lines.join('\n'));
+      } else if (event === 'task_failed') {
+        const lines = [
+          `❌ Background task failed: ${task.command.substring(0, 60)}...`,
+          `   Duration: ${durationString}`,
+          `   Exit Code: ${task.exitCode}`,
+        ];
+        logger.error(lines.join('\n'));
+      }
+    });
+  }
+
+  if (config.disableAskUser) {
+    delete tools['ask_user'];
+    logger.info('🚫 ask_user disabled for sub-agent');
   }
 
   const agent = createAgent(tools, {
