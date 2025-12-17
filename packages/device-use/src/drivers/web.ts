@@ -26,9 +26,33 @@ async function loadPlaywright() {
 }
 
 export interface WebDriverOptions {
-  cdpUrl?: string
   headless?: boolean
-  launchIfNotConnected?: boolean
+  cdpPorts?: number[]
+  userDataDir?: string
+}
+
+const DEFAULT_CDP_PORTS = [9222, 9223, 9224, 9225, 9226, 9227, 9228, 9229, 9230]
+
+async function discoverChromeSession(ports: number[]): Promise<string | null> {
+  for (const port of ports) {
+    try {
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 500)
+      const response = await fetch(`http://localhost:${port}/json/version`, {
+        signal: controller.signal,
+      })
+      clearTimeout(timeout)
+      if (response.ok) {
+        const data = await response.json()
+        if (data.webSocketDebuggerUrl) {
+          return `http://localhost:${port}`
+        }
+      }
+    } catch {
+      continue
+    }
+  }
+  return null
 }
 
 type Browser = Awaited<ReturnType<typeof import('playwright').chromium.launch>>
@@ -41,44 +65,52 @@ export class WebDriver implements DeviceDriver {
   private page: Page | null = null
   private options: WebDriverOptions
   private isConnectedSession = false
+  private connectionMode: 'existing' | 'launched' | 'headless' = 'launched'
 
   constructor(options: WebDriverOptions = {}) {
     this.options = {
-      cdpUrl: options.cdpUrl ?? 'http://localhost:9222',
-      headless: options.headless ?? false,
-      launchIfNotConnected: options.launchIfNotConnected ?? true,
+      headless: options.headless,
+      cdpPorts: options.cdpPorts ?? DEFAULT_CDP_PORTS,
+      userDataDir: options.userDataDir,
     }
   }
 
   async connect(): Promise<void> {
     const pw = await loadPlaywright()
 
-    try {
-      this.browser = await pw.chromium.connectOverCDP(this.options.cdpUrl!)
-      this.isConnectedSession = true
+    const cdpUrl = await discoverChromeSession(this.options.cdpPorts!)
+    if (cdpUrl) {
+      try {
+        this.browser = await pw.chromium.connectOverCDP(cdpUrl)
+        this.isConnectedSession = true
+        this.connectionMode = 'existing'
 
-      const contexts = this.browser.contexts()
-      if (contexts.length > 0) {
-        this.context = contexts[0]!
-        const pages = this.context.pages()
-        this.page = pages.length > 0 ? pages[0]! : await this.context.newPage()
-      } else {
-        this.context = await this.browser.newContext()
-        this.page = await this.context.newPage()
+        const contexts = this.browser.contexts()
+        if (contexts.length > 0) {
+          this.context = contexts[0]!
+          const pages = this.context.pages()
+          this.page = pages.length > 0 ? pages[0]! : await this.context.newPage()
+        } else {
+          this.context = await this.browser.newContext()
+          this.page = await this.context.newPage()
+        }
+        return
+      } catch {
+        // CDP discovery found a port but connection failed, continue to launch
       }
-    } catch (cdpError) {
-      if (!this.options.launchIfNotConnected) {
-        throw new Error(
-          `Cannot connect to browser at ${this.options.cdpUrl}. ` +
-            'Launch Chrome with: google-chrome --remote-debugging-port=9222'
-        )
-      }
-
-      this.browser = await pw.chromium.launch({ headless: this.options.headless })
-      this.context = await this.browser.newContext()
-      this.page = await this.context.newPage()
-      this.isConnectedSession = false
     }
+
+    const headless = this.options.headless ?? false
+    this.browser = await pw.chromium.launch({
+      headless,
+      args: headless ? [] : ['--start-maximized'],
+    })
+    this.context = await this.browser.newContext(
+      headless ? {} : { viewport: null }
+    )
+    this.page = await this.context.newPage()
+    this.isConnectedSession = false
+    this.connectionMode = headless ? 'headless' : 'launched'
   }
 
   async disconnect(): Promise<void> {
@@ -95,10 +127,16 @@ export class WebDriver implements DeviceDriver {
   async getCapabilities(): Promise<DeviceCapabilities> {
     const viewport = this.page?.viewportSize() ?? { width: 1920, height: 1080 }
 
+    const modeNames = {
+      existing: 'Chrome (User Session)',
+      launched: 'Chrome (Launched)',
+      headless: 'Chrome (Headless)',
+    }
+
     return {
       platform: 'web',
       deviceId: 'web-browser',
-      deviceName: this.isConnectedSession ? 'Chrome (Connected Session)' : 'Chrome (Launched)',
+      deviceName: modeNames[this.connectionMode],
       screenSize: { width: viewport.width, height: viewport.height },
       supportedActions: [
         'tap',
@@ -411,4 +449,10 @@ export class WebDriver implements DeviceDriver {
   isUsingExistingSession(): boolean {
     return this.isConnectedSession
   }
+
+  getConnectionMode(): 'existing' | 'launched' | 'headless' {
+    return this.connectionMode
+  }
 }
+
+export { discoverChromeSession }

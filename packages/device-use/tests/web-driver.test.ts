@@ -45,14 +45,18 @@ vi.mock('playwright', () => ({
   },
 }))
 
-import { WebDriver } from '../src/drivers/web.js'
+const mockFetch = vi.fn()
+vi.stubGlobal('fetch', mockFetch)
+
+import { WebDriver, discoverChromeSession } from '../src/drivers/web.js'
 
 describe('WebDriver', () => {
   let driver: WebDriver
 
   beforeEach(() => {
     vi.clearAllMocks()
-    driver = new WebDriver({ cdpUrl: 'http://localhost:9222' })
+    mockFetch.mockReset()
+    driver = new WebDriver()
   })
 
   afterEach(async () => {
@@ -61,52 +65,145 @@ describe('WebDriver', () => {
     }
   })
 
+  describe('discoverChromeSession', () => {
+    it('returns CDP URL when Chrome is found', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ webSocketDebuggerUrl: 'ws://localhost:9222/devtools' }),
+      })
+
+      const result = await discoverChromeSession([9222])
+      expect(result).toBe('http://localhost:9222')
+    })
+
+    it('returns null when no Chrome is found', async () => {
+      mockFetch.mockRejectedValue(new Error('ECONNREFUSED'))
+
+      const result = await discoverChromeSession([9222])
+      expect(result).toBeNull()
+    })
+
+    it('tries multiple ports until finding one', async () => {
+      mockFetch
+        .mockRejectedValueOnce(new Error('ECONNREFUSED'))
+        .mockRejectedValueOnce(new Error('ECONNREFUSED'))
+        .mockResolvedValueOnce({
+          ok: true,
+          json: () => Promise.resolve({ webSocketDebuggerUrl: 'ws://localhost:9224/devtools' }),
+        })
+
+      const result = await discoverChromeSession([9222, 9223, 9224])
+      expect(result).toBe('http://localhost:9224')
+    })
+  })
+
   describe('connect', () => {
-    it('connects to existing browser via CDP', async () => {
+    it('connects to existing browser when discovered', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ webSocketDebuggerUrl: 'ws://localhost:9222/devtools' }),
+      })
+
       await driver.connect()
 
       expect(driver.isConnected()).toBe(true)
       expect(driver.isUsingExistingSession()).toBe(true)
+      expect(driver.getConnectionMode()).toBe('existing')
     })
 
-    it('launches new browser if CDP connection fails and launchIfNotConnected is true', async () => {
+    it('launches visible browser when no existing session found', async () => {
+      mockFetch.mockRejectedValue(new Error('ECONNREFUSED'))
       const pw = await import('playwright')
-      vi.mocked(pw.chromium.connectOverCDP).mockRejectedValueOnce(new Error('Connection refused'))
 
-      const launchDriver = new WebDriver({ launchIfNotConnected: true })
-      await launchDriver.connect()
+      await driver.connect()
 
-      expect(launchDriver.isConnected()).toBe(true)
-      expect(launchDriver.isUsingExistingSession()).toBe(false)
+      expect(driver.isConnected()).toBe(true)
+      expect(driver.isUsingExistingSession()).toBe(false)
+      expect(driver.getConnectionMode()).toBe('launched')
+      expect(pw.chromium.launch).toHaveBeenCalledWith({
+        headless: false,
+        args: ['--start-maximized'],
+      })
     })
 
-    it('throws error if CDP fails and launchIfNotConnected is false', async () => {
+    it('launches headless browser when headless option is true', async () => {
+      mockFetch.mockRejectedValue(new Error('ECONNREFUSED'))
       const pw = await import('playwright')
-      vi.mocked(pw.chromium.connectOverCDP).mockRejectedValueOnce(new Error('Connection refused'))
 
-      const strictDriver = new WebDriver({ launchIfNotConnected: false })
+      const headlessDriver = new WebDriver({ headless: true })
+      await headlessDriver.connect()
 
-      await expect(strictDriver.connect()).rejects.toThrow('Cannot connect to browser')
+      expect(headlessDriver.isConnected()).toBe(true)
+      expect(headlessDriver.getConnectionMode()).toBe('headless')
+      expect(pw.chromium.launch).toHaveBeenCalledWith({
+        headless: true,
+        args: [],
+      })
+
+      await headlessDriver.disconnect()
+    })
+
+    it('falls back to launch if CDP connection fails after discovery', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ webSocketDebuggerUrl: 'ws://localhost:9222/devtools' }),
+      })
+
+      const pw = await import('playwright')
+      vi.mocked(pw.chromium.connectOverCDP).mockRejectedValueOnce(new Error('Connection failed'))
+
+      await driver.connect()
+
+      expect(driver.isConnected()).toBe(true)
+      expect(driver.getConnectionMode()).toBe('launched')
     })
   })
 
   describe('getCapabilities', () => {
-    it('returns web capabilities', async () => {
+    it('returns web capabilities with User Session name when connected to existing', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ webSocketDebuggerUrl: 'ws://localhost:9222/devtools' }),
+      })
+
       await driver.connect()
       const capabilities = await driver.getCapabilities()
 
       expect(capabilities.platform).toBe('web')
       expect(capabilities.deviceId).toBe('web-browser')
+      expect(capabilities.deviceName).toBe('Chrome (User Session)')
       expect(capabilities.screenSize).toEqual({ width: 1920, height: 1080 })
       expect(capabilities.hasKeyboard).toBe(true)
       expect(capabilities.hasUITree).toBe(true)
       expect(capabilities.supportedActions).toContain('tap')
       expect(capabilities.supportedActions).toContain('screenshot')
     })
+
+    it('returns Launched name when browser was launched', async () => {
+      mockFetch.mockRejectedValue(new Error('ECONNREFUSED'))
+
+      await driver.connect()
+      const capabilities = await driver.getCapabilities()
+
+      expect(capabilities.deviceName).toBe('Chrome (Launched)')
+    })
+
+    it('returns Headless name when headless', async () => {
+      mockFetch.mockRejectedValue(new Error('ECONNREFUSED'))
+
+      const headlessDriver = new WebDriver({ headless: true })
+      await headlessDriver.connect()
+      const capabilities = await headlessDriver.getCapabilities()
+
+      expect(capabilities.deviceName).toBe('Chrome (Headless)')
+
+      await headlessDriver.disconnect()
+    })
   })
 
   describe('execute - tap', () => {
     beforeEach(async () => {
+      mockFetch.mockRejectedValue(new Error('ECONNREFUSED'))
       await driver.connect()
     })
 
@@ -133,6 +230,7 @@ describe('WebDriver', () => {
 
   describe('execute - double_tap', () => {
     beforeEach(async () => {
+      mockFetch.mockRejectedValue(new Error('ECONNREFUSED'))
       await driver.connect()
     })
 
@@ -149,6 +247,7 @@ describe('WebDriver', () => {
 
   describe('execute - type', () => {
     beforeEach(async () => {
+      mockFetch.mockRejectedValue(new Error('ECONNREFUSED'))
       await driver.connect()
     })
 
@@ -175,6 +274,7 @@ describe('WebDriver', () => {
 
   describe('execute - key', () => {
     beforeEach(async () => {
+      mockFetch.mockRejectedValue(new Error('ECONNREFUSED'))
       await driver.connect()
     })
 
@@ -203,6 +303,7 @@ describe('WebDriver', () => {
 
   describe('execute - scroll', () => {
     beforeEach(async () => {
+      mockFetch.mockRejectedValue(new Error('ECONNREFUSED'))
       await driver.connect()
     })
 
@@ -230,6 +331,7 @@ describe('WebDriver', () => {
 
   describe('execute - screenshot', () => {
     beforeEach(async () => {
+      mockFetch.mockRejectedValue(new Error('ECONNREFUSED'))
       await driver.connect()
     })
 
@@ -252,6 +354,7 @@ describe('WebDriver', () => {
 
   describe('execute - get_ui_tree', () => {
     beforeEach(async () => {
+      mockFetch.mockRejectedValue(new Error('ECONNREFUSED'))
       await driver.connect()
     })
 
@@ -268,6 +371,7 @@ describe('WebDriver', () => {
 
   describe('navigate', () => {
     beforeEach(async () => {
+      mockFetch.mockRejectedValue(new Error('ECONNREFUSED'))
       await driver.connect()
     })
 
@@ -281,6 +385,7 @@ describe('WebDriver', () => {
 
   describe('helper methods', () => {
     beforeEach(async () => {
+      mockFetch.mockRejectedValue(new Error('ECONNREFUSED'))
       await driver.connect()
     })
 
@@ -304,17 +409,20 @@ describe('WebDriver', () => {
 
   describe('disconnect', () => {
     it('closes launched browser', async () => {
-      const pw = await import('playwright')
-      vi.mocked(pw.chromium.connectOverCDP).mockRejectedValueOnce(new Error('Connection refused'))
+      mockFetch.mockRejectedValue(new Error('ECONNREFUSED'))
 
-      const launchDriver = new WebDriver({ launchIfNotConnected: true })
-      await launchDriver.connect()
-      await launchDriver.disconnect()
+      await driver.connect()
+      await driver.disconnect()
 
       expect(mockBrowser.close).toHaveBeenCalled()
     })
 
     it('does not close connected session browser', async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ webSocketDebuggerUrl: 'ws://localhost:9222/devtools' }),
+      })
+
       await driver.connect()
       await driver.disconnect()
 
@@ -334,7 +442,9 @@ describe('WebDriver', () => {
     })
 
     it('returns not supported for drag action', async () => {
+      mockFetch.mockRejectedValue(new Error('ECONNREFUSED'))
       await driver.connect()
+
       const result = await driver.execute({
         type: 'drag',
         payload: { fromX: 0, fromY: 0, toX: 100, toY: 100 },
