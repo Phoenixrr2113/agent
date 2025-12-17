@@ -96,7 +96,6 @@ export class WebDriver implements DeviceDriver {
         }
         return
       } catch {
-        // CDP discovery found a port but connection failed, continue to launch
       }
     }
 
