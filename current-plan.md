@@ -13,8 +13,8 @@ Unified device control system enabling an AI agent to control desktop, mobile (A
 │                 │     │                    │     │                     │
 │  - device_use   │     │  - DeviceRegistry  │     │  - DesktopDriver    │
 │  - device_list  │     │  - WebSocket Hub   │     │  - AndroidDriver    │
-│  - device_sel   │     │  - Action Router   │     │  - IOSDriver        │
-└─────────────────┘     └────────────────────┘     │  - WebDriver        │
+│  - device_sel   │     │  - Action Router   │     │  - WebDriver        │
+└─────────────────┘     └────────────────────┘     │  - IOSDriver        │
                                                    └─────────────────────┘
 ```
 
@@ -63,6 +63,7 @@ Unified device control system enabling an AI agent to control desktop, mobile (A
 | LocalDevice support | `packages/server/src/devices/local-desktop.ts` | ✅ |
 | REST endpoints | `packages/server/src/index.ts` | ✅ |
 | WebSocket handler | `packages/server/src/index.ts` | ✅ |
+| Auto-register local desktop | `packages/server/src/index.ts` | ✅ |
 
 **API Endpoints:**
 - `GET /devices` - List connected devices
@@ -71,6 +72,7 @@ Unified device control system enabling an AI agent to control desktop, mobile (A
 **Features:**
 - Remote device support via WebSocket
 - Local device support for same-process execution
+- Auto-register local desktop on server start (`ENABLE_LOCAL_DESKTOP=true`)
 - Pending action tracking with 30s timeout
 - Device disconnect cleanup
 
@@ -109,16 +111,48 @@ Unified device control system enabling an AI agent to control desktop, mobile (A
 
 ---
 
-### Phase 6: Web Driver 🔮 FUTURE
+### Phase 6: Web Driver ✅ COMPLETE
 
-Playwright/Puppeteer integration for browser automation.
+| Component | File | Status |
+|-----------|------|--------|
+| WebDriver | `packages/device-use/src/drivers/web.ts` | ✅ |
+| Playwright (optional) | `packages/device-use/package.json` | ✅ |
+| CDP connection | `WebDriver.connect()` | ✅ |
+| Fallback launch | `launchIfNotConnected` option | ✅ |
 
-**Tasks:**
-- [ ] Add playwright as optional dependency
-- [ ] Create WebDriver implementation
-- [ ] Add URL navigation actions
-- [ ] Add element selector support (CSS, XPath, text)
-- [ ] Integrate with DeviceRegistry
+**Features:**
+- **Connect to existing browser session** via Chrome DevTools Protocol (CDP)
+- Falls back to launching new browser if not connected
+- Supports all standard actions: tap, type, scroll, screenshot, get_ui_tree
+- Element selector support (CSS selectors)
+- Navigation helpers: `navigate()`, `getCurrentUrl()`, `getTitle()`, `waitForSelector()`
+
+**Usage:**
+```typescript
+import { WebDriver } from '@agent/device-use'
+
+// Connect to user's Chrome (must be launched with --remote-debugging-port=9222)
+const driver = new WebDriver({ cdpUrl: 'http://localhost:9222' })
+await driver.connect()
+
+// Or launch new browser if not connected
+const driver = new WebDriver({ launchIfNotConnected: true, headless: false })
+await driver.connect()
+
+// Navigate and interact
+await driver.navigate('https://example.com')
+await driver.execute({ type: 'tap', payload: { elementId: '#login-button' } })
+await driver.execute({ type: 'type', payload: { text: 'hello', elementId: '#input' } })
+```
+
+**To use existing browser session:**
+```bash
+# Launch Chrome with debugging port
+google-chrome --remote-debugging-port=9222
+
+# Or on macOS
+/Applications/Google\ Chrome.app/Contents/MacOS/Google\ Chrome --remote-debugging-port=9222
+```
 
 ---
 
@@ -130,18 +164,22 @@ Playwright/Puppeteer integration for browser automation.
 |-------|-------|----------|
 | Device tools | 17 | `packages/core/src/tools/device/device-tools.test.ts` |
 | Device registry | 15 | `packages/server/src/devices/registry.test.ts` |
+| Integration | 10 | `packages/server/src/devices/integration.test.ts` |
 | Desktop driver | 17 | `packages/device-use/tests/desktop-driver.test.ts` |
 | Android driver | 24 | `packages/device-use/tests/android-driver.test.ts` |
+| Web driver | 23 | `packages/device-use/tests/web-driver.test.ts` |
 | Safety validator | 11 | `packages/device-use/tests/safety.test.ts` |
 
-**Total: 84 tests**
+**Total: 117 tests**
 
-### Integration Tests
+### Integration Tests ✅
 
-- [ ] Device registration flow (server ↔ mobile)
-- [ ] Action execution flow (end-to-end)
-- [ ] Multi-device selection
-- [ ] Local desktop mode
+| Test | Status |
+|------|--------|
+| Multi-device selection | ✅ |
+| Local desktop mode | ✅ |
+| Device lifecycle | ✅ |
+| Action flow | ✅ |
 
 ### E2E Tests
 
@@ -165,7 +203,8 @@ packages/
 │   ├── driver.ts         # DeviceDriver interface
 │   └── drivers/
 │       ├── desktop.ts    # DesktopDriver (NutJS)
-│       └── android.ts    # AndroidDriver
+│       ├── android.ts    # AndroidDriver
+│       └── web.ts        # WebDriver (Playwright)
 ├── mobile-accessibility/
 │   ├── index.ts          # TypeScript wrapper
 │   └── android/src/main/java/agent/accessibility/
@@ -177,8 +216,11 @@ packages/
 │   └── index.ts          # Exports
 ├── core/src/tools/device/
 │   └── index.ts          # Device tools
-└── apps/mobile/components/
-    └── agent-bridge.tsx  # WebSocket command bridge
+└── apps/
+    ├── mobile/components/
+    │   └── agent-bridge.tsx  # WebSocket command bridge
+    ├── desktop/              # Tauri desktop app
+    └── cli/                  # CLI interface
 ```
 
 ---
@@ -191,6 +233,7 @@ packages/
 |----------|---------|-------------|
 | `AGENT_SERVER_URL` | `http://localhost:3000` | Server URL for device tools |
 | `EXPO_PUBLIC_AGENT_WS_URL` | `ws://localhost:3000` | WebSocket URL for mobile bridge |
+| `ENABLE_LOCAL_DESKTOP` | `false` | Auto-register local desktop device |
 
 ### Server Options
 
@@ -199,6 +242,16 @@ interface ServerConfig {
   port?: number;                    // Default: 3000
   workspaceRoot?: string;           // Workspace for RAG indexing
   corsOrigin?: string | string[];   // CORS configuration
-  enableLocalDesktop?: boolean;     // Auto-register local desktop (future)
+  enableLocalDesktop?: boolean;     // Auto-register local desktop
+}
+```
+
+### WebDriver Options
+
+```typescript
+interface WebDriverOptions {
+  cdpUrl?: string;              // CDP endpoint (default: http://localhost:9222)
+  headless?: boolean;           // Launch headless if spawning new browser
+  launchIfNotConnected?: boolean; // Launch browser if CDP connection fails
 }
 ```

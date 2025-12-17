@@ -25,7 +25,8 @@
     "zod": "^3.25.76"
   },
   "optionalDependencies": {
-    "@agent/mobile-accessibility": "workspace:*"
+    "@agent/mobile-accessibility": "workspace:*",
+    "playwright": "^1.49.0"
   },
   "devDependencies": {
     "@types/node": "^20.0.0",
