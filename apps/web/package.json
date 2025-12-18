@@ -1,0 +1,28 @@
+{
+  "name": "@agent/web",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack -p 5173",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "@agent/api-client": "workspace:*",
+    "@agent/ui": "workspace:*",
+    "next": "16.0.10",
+    "react": "19.2.1",
+    "react-dom": "19.2.1",
+    "react-native": "0.81.5",
+    "react-native-web": "~0.21.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "babel-plugin-react-compiler": "1.0.0",
+    "tailwindcss": "^4",
+    "typescript": "^5"
+  }
+}

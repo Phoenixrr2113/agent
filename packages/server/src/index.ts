@@ -2,7 +2,7 @@ import { type Server } from 'node:http'
 import { join } from 'node:path'
 
 import { createAgentRuntime, type AgentSession, type AgentRuntime, type TaskResult } from '@agent/core'
-import { logger, getLogCollector, type DashboardEvent, type AgentIdentifier } from '@agent/shared'
+import { logger, getLogCollector, type DashboardEvent, type AgentIdentifier, type LogEntry } from '@agent/shared'
 import type { DeviceAction, DeviceCapabilities, ActionResult } from '@agent/shared'
 import { serve } from '@hono/node-server'
 import { config } from 'dotenv'
@@ -28,8 +28,25 @@ function broadcastDashboardEvent(event: DashboardEvent): void {
   }
 }
 
+function broadcastLog(entry: { timestamp: number; level: string; message: string; meta: Record<string, unknown> | undefined; formattedMessage: string }): void {
+  const message = JSON.stringify({
+    type: 'log',
+    timestamp: entry.timestamp,
+    data: entry,
+  });
+  for (const client of dashboardClients) {
+    if (client.readyState === 1) {
+      client.send(message);
+    }
+  }
+}
+
 logCollector.subscribe((event) => {
   broadcastDashboardEvent(event);
+});
+
+logger.subscribe((entry) => {
+  broadcastLog(entry);
 });
 
 export interface ServerConfig {
@@ -191,7 +208,17 @@ export async function createServer(config: ServerConfig = {}): Promise<CreateSer
       sessions.set(sessionId, session);
     }
 
-    const result = await session.send(body.message);
+    const agentIdentifier: AgentIdentifier = {
+      agentId: crypto.randomUUID(),
+      sessionId: sessionId!,
+      agentType: 'main',
+    };
+
+    const dashboardEventHandler = logCollector.createEventHandler(agentIdentifier, body.message);
+
+    const result = await session.sendWithEvents(body.message, (event) => {
+      dashboardEventHandler(event);
+    });
     const requestDuration = performance.now() - requestStartTime;
 
     logger.info('HTTP request completed', {
@@ -202,6 +229,7 @@ export async function createServer(config: ServerConfig = {}): Promise<CreateSer
     });
 
     return c.json({
+      sessionId,
       ...formatResult(result),
       _httpTiming: { totalRequestDurationMs: requestDuration.toFixed(2) },
     });

@@ -1,0 +1,44 @@
+{
+  "name": "@agent/tailwind-config",
+  "version": "0.1.0",
+  "description": "Shared Tailwind CSS configuration for Agent Platform",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "require": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./base": {
+      "import": "./dist/base.js",
+      "require": "./dist/base.js",
+      "types": "./dist/base.d.ts"
+    },
+    "./web-preset": {
+      "import": "./dist/web-preset.js",
+      "require": "./dist/web-preset.js",
+      "types": "./dist/web-preset.d.ts"
+    },
+    "./native-preset": {
+      "import": "./dist/native-preset.js",
+      "require": "./dist/native-preset.js",
+      "types": "./dist/native-preset.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "clean": "rm -rf dist"
+  },
+  "files": [
+    "dist"
+  ],
+  "peerDependencies": {
+    "tailwindcss": "^3.4.0"
+  },
+  "devDependencies": {
+    "tailwindcss": "^3.4.17",
+    "typescript": "^5.9.0"
+  }
+}

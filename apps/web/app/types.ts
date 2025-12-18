@@ -1,17 +1,4 @@
-export type AgentType = 'main' | 'spawned';
-
-export interface RoundInput {
-  message: string;
-  timestamp: number;
-}
-
-export interface RoundOutput {
-  text: string;
-  timestamp: number;
-  completed: boolean;
-  needsInput: boolean;
-  pendingQuestion?: string;
-}
+export type AgentType = "main" | "spawned";
 
 export interface ToolExecution {
   toolCallId: string;
@@ -22,7 +9,7 @@ export interface ToolExecution {
   startTime: number;
   endTime?: number;
   durationMs?: number;
-  status: 'pending' | 'running' | 'success' | 'error';
+  status: "pending" | "running" | "success" | "error";
 }
 
 export interface RoundReasoning {
@@ -43,7 +30,23 @@ export interface RoundPerformance {
   agentExecutionMs: number;
   codebaseIndexingMs?: number;
   stepDurations: Array<{ stepIndex: number; durationMs: number }>;
-  toolMetrics: Record<string, { count: number; totalMs: number; avgMs: number }>;
+  toolMetrics: Record<
+    string,
+    { count: number; totalMs: number; avgMs: number }
+  >;
+}
+
+export interface RoundInput {
+  message: string;
+  timestamp: number;
+}
+
+export interface RoundOutput {
+  text: string;
+  timestamp: number;
+  completed: boolean;
+  needsInput: boolean;
+  pendingQuestion?: string;
 }
 
 export interface MessageRound {
@@ -58,7 +61,7 @@ export interface MessageRound {
   errors: RoundError[];
   performance?: RoundPerformance;
   stepsUsed: number;
-  status: 'pending' | 'processing' | 'completed' | 'error';
+  status: "pending" | "processing" | "completed" | "error";
   startTime: number;
   endTime?: number;
 }
@@ -72,7 +75,7 @@ export interface AgentSession {
   rounds: MessageRound[];
   createdAt: number;
   updatedAt: number;
-  status: 'active' | 'completed' | 'error';
+  status: "active" | "completed" | "error";
 }
 
 export interface SerializableDashboardState {
@@ -81,33 +84,4 @@ export interface SerializableDashboardState {
   totalRounds: number;
   totalToolCalls: number;
   totalErrors: number;
-}
-
-export type DashboardEventType =
-  | 'session:created'
-  | 'session:updated'
-  | 'session:ended'
-  | 'round:started'
-  | 'round:updated'
-  | 'round:completed'
-  | 'tool:started'
-  | 'tool:completed'
-  | 'error:occurred'
-  | 'state:snapshot';
-
-export interface DashboardEvent {
-  type: DashboardEventType;
-  timestamp: number;
-  data: {
-    state?: SerializableDashboardState;
-    session?: AgentSession;
-    sessionId?: string;
-    status?: 'completed' | 'error';
-    updates?: Partial<AgentSession> | Partial<MessageRound>;
-    round?: MessageRound;
-    roundId?: string;
-    tool?: ToolExecution;
-    toolCallId?: string;
-    error?: RoundError;
-  };
 }

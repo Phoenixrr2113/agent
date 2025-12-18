@@ -34,6 +34,7 @@
     "test": "turbo run test",
     "chat": "pnpm --filter @agent/cli chat",
     "server": "pnpm --filter @agent/server dev",
+    "web": "pnpm --filter @agent/web dev",
     "mobile": "pnpm --filter @agent/mobile start",
     "mobile:ios": "pnpm --filter @agent/mobile ios",
     "mobile:android": "pnpm --filter @agent/mobile android",

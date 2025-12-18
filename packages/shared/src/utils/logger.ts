@@ -47,6 +47,16 @@ export interface AgentContext {
   taskId?: string;
 }
 
+export interface LogEntry {
+  timestamp: number;
+  level: LogLevel;
+  message: string;
+  meta: Record<string, unknown> | undefined;
+  formattedMessage: string;
+}
+
+export type LogSubscriber = (entry: LogEntry) => void;
+
 export interface Logger {
   debug(message: string, meta?: Record<string, unknown>): void;
   info(message: string, meta?: Record<string, unknown>): void;
@@ -55,6 +65,7 @@ export interface Logger {
   setLevel(level: LogLevel): void;
   setAgentContext(context: AgentContext): void;
   reconfigure(options?: LoggerOptions): void;
+  subscribe(callback: LogSubscriber): () => void;
   close(): void;
 }
 
@@ -93,6 +104,7 @@ export function createLogger(options: LoggerOptions = {}): Logger {
 
   let fileStream: fs.WriteStream | null = null;
   let agentContext: AgentContext | undefined = options.agentContext;
+  const subscribers = new Set<LogSubscriber>();
 
   if (logFile) {
     const resolvedLogFile = resolveLogFilePath(logFile);
@@ -172,6 +184,23 @@ export function createLogger(options: LoggerOptions = {}): Logger {
       const formatted = formatMessage(level, message, meta, false);
       fileStream.write(formatted + '\n');
     }
+
+    if (subscribers.size > 0) {
+      const entry: LogEntry = {
+        timestamp: Date.now(),
+        level,
+        message,
+        meta,
+        formattedMessage: formatMessage(level, message, meta, false),
+      };
+      for (const callback of subscribers) {
+        try {
+          callback(entry);
+        } catch {
+          // Ignore subscriber errors
+        }
+      }
+    }
   }
 
   return {
@@ -219,11 +248,19 @@ export function createLogger(options: LoggerOptions = {}): Logger {
       }
     },
 
+    subscribe(callback: LogSubscriber): () => void {
+      subscribers.add(callback);
+      return () => {
+        subscribers.delete(callback);
+      };
+    },
+
     close(): void {
       if (fileStream) {
         fileStream.end();
         fileStream = null;
       }
+      subscribers.clear();
     },
   };
 }
