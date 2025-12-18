@@ -1,4 +1,4 @@
-import type { ToolExecution } from '@agent/shared';
+import type { ToolExecution } from '../types';
 import { StatusBadge } from './status-badge';
 import { JsonViewer } from './json-viewer';
 

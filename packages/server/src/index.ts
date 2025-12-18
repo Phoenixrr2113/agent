@@ -2,7 +2,6 @@ import { type Server } from 'node:http'
 import { join } from 'node:path'
 
 import { createAgentRuntime, type AgentSession, type AgentRuntime, type TaskResult } from '@agent/core'
-import { DesktopDriver } from '@agent/device-use'
 import { logger, getLogCollector, type DashboardEvent, type AgentIdentifier } from '@agent/shared'
 import type { DeviceAction, DeviceCapabilities, ActionResult } from '@agent/shared'
 import { serve } from '@hono/node-server'
@@ -289,6 +288,7 @@ export async function startServer(config: ServerConfig = {}): Promise<StartServe
 
   if (config.enableLocalDesktop) {
     try {
+      const { DesktopDriver } = await import('@agent/device-use/drivers/desktop.js')
       const driver = new DesktopDriver()
       const localDevice = await createLocalDesktopDevice(driver)
       deviceRegistry.registerLocal(localDevice)

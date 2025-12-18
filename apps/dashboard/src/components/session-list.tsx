@@ -1,4 +1,4 @@
-import type { AgentSession } from '@agent/shared';
+import type { AgentSession } from '../types';
 import { StatusBadge } from './status-badge';
 
 interface SessionListProps {
