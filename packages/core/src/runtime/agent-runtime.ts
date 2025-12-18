@@ -5,9 +5,11 @@ import { smoothStream } from 'ai';
 import { initializeAgent } from '../application/initialization.js';
 import { createAgent, createAgentWithStreaming } from '../application/orchestrator.js';
 import { type AgentRole } from '../core/agents/roles.js';
-import { createMemoryExtractor } from '../core/memory/extractor.js';
+// Old complex memory extractor - commented out in favor of simplified Graphiti-only version
+// import { createMemoryExtractor } from '../core/memory/extractor.js';
+// import { getMemoryProvider } from '../tools/memory.js';
+import { createSimpleMemoryExtractor } from '../core/memory/extractor-simple.js';
 import { getPersistentTaskManager } from '../tools/background-tasks-persistent.js';
-import { getMemoryProvider } from '../tools/memory.js';
 
 import type { TaskMonitorCallback, PersistentTaskInfo } from '../tools/background-tasks/types.js';
 import type { ModelMessage } from 'ai';
@@ -71,8 +73,8 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
   });
   const { tools, codebaseRAG, activationManager } = initResult;
 
-  const memoryProvider = await getMemoryProvider();
-  const memoryExtractor = createMemoryExtractor({ memoryProvider });
+  // Simplified Graphiti-only memory extractor
+  const memoryExtractor = createSimpleMemoryExtractor();
 
   const taskManager = getPersistentTaskManager(config.workspaceRoot);
 

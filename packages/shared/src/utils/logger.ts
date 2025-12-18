@@ -39,6 +39,12 @@ export interface LoggerOptions {
   enableTimestamps?: boolean;
   logFile?: string;
   logToConsole?: boolean;
+  agentContext?: AgentContext;
+}
+
+export interface AgentContext {
+  type: 'main' | 'spawned';
+  taskId?: string;
 }
 
 export interface Logger {
@@ -47,6 +53,7 @@ export interface Logger {
   warn(message: string, meta?: Record<string, unknown>): void;
   error(message: string, meta?: Record<string, unknown>): void;
   setLevel(level: LogLevel): void;
+  setAgentContext(context: AgentContext): void;
   reconfigure(options?: LoggerOptions): void;
   close(): void;
 }
@@ -85,6 +92,7 @@ export function createLogger(options: LoggerOptions = {}): Logger {
   const logFile = options.logFile ?? process.env['LOG_FILE'];
 
   let fileStream: fs.WriteStream | null = null;
+  let agentContext: AgentContext | undefined = options.agentContext;
 
   if (logFile) {
     const resolvedLogFile = resolveLogFilePath(logFile);
@@ -114,6 +122,18 @@ export function createLogger(options: LoggerOptions = {}): Logger {
       parts.push(`${LOG_COLORS[level]}${levelString}${RESET_COLOR}`);
     } else {
       parts.push(levelString);
+    }
+
+    // Add agent context prefix
+    if (agentContext) {
+      if (agentContext.type === 'main') {
+        const prefix = useColors ? '\x1b[1m[MAIN]\x1b[0m' : '[MAIN]';
+        parts.push(prefix);
+      } else if (agentContext.type === 'spawned') {
+        const taskLabel = agentContext.taskId ? agentContext.taskId.slice(-8) : 'sub';
+        const prefix = useColors ? `\x1b[90m[SUB:${taskLabel}]\x1b[0m` : `[SUB:${taskLabel}]`;
+        parts.push(prefix);
+      }
     }
 
     parts.push(message);
@@ -173,6 +193,10 @@ export function createLogger(options: LoggerOptions = {}): Logger {
 
     setLevel(level: LogLevel): void {
       currentLevel = level;
+    },
+
+    setAgentContext(context: AgentContext): void {
+      agentContext = context;
     },
 
     reconfigure(newOptions: LoggerOptions = {}): void {

@@ -43,11 +43,17 @@ export const startBackgroundTaskTool = tool({
 });
 
 export const checkTaskStatusTool = tool({
-  description: 'Check status of a persistent background task. Returns: running, completed, failed, cancelled, or orphaned. Works across agent restarts.',
+  description: 'Check status of a persistent background task. Returns: running, completed, failed, cancelled, or orphaned. Use waitSeconds to avoid rapid polling (recommended: 10-30s for long tasks).',
   inputSchema: z.object({
     taskId: z.string().describe('Task ID from start_background_task'),
+    waitSeconds: z.number().optional().describe('Wait this many seconds before checking (default: 0, recommended: 10-60s for polling)'),
   }),
-  execute: async ({ taskId }: { taskId: string }) => {
+  execute: async ({ taskId, waitSeconds = 0 }: { taskId: string; waitSeconds?: number }) => {
+    if (waitSeconds > 0) {
+      const clampedWait = Math.min(waitSeconds, 60); // Cap at 60s
+      await new Promise(resolve => setTimeout(resolve, clampedWait * 1000));
+    }
+
     const taskManager = getPersistentTaskManager();
     const task = taskManager.getTask(taskId);
 
@@ -68,6 +74,7 @@ export const checkTaskStatusTool = tool({
       durationDays: durationDays.toFixed(2),
       exitCode: task.exitCode,
       persistent: true,
+      hint: task.status === 'running' ? 'Task still running. Use waitSeconds=15 to poll less frequently.' : undefined,
     });
   },
 });
@@ -284,6 +291,8 @@ export const spawnAgentTool = tool({
       const agentScript = `
 import { createAgentRuntime } from '@agent/core';
 import { logger } from '@agent/shared';
+
+logger.setAgentContext({ type: 'spawned', taskId: String(process.pid) });
 
 async function runAgentTask() {
   const TASK = ${taskJson};

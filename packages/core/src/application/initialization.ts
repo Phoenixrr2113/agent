@@ -83,19 +83,17 @@ export async function initializeAgent(config: InitializationConfig = {}): Promis
   const activationManager = createToolActivationManager();
 
   let codebaseRAG: any = null;
-  if (workspaceRoot) {
+  if (workspaceRoot && enableCodebaseIndexing) {
     codebaseRAG = createCodebaseRAG(workspaceRoot, {
       enableContextGeneration: false,
     });
     logger.info('Initializing RAG...', { path: workspaceRoot });
-    if (enableCodebaseIndexing) {
-      logger.info('Indexing codebase...', { path: workspaceRoot });
-      await codebaseRAG.indexCodebase();
-      const ragStats = codebaseRAG.getStats();
-      logger.info('RAG indexed', { chunks: ragStats.totalChunks, files: ragStats.files });
-    } else {
-      logger.info('Codebase indexing disabled (lazy loading valid)');
-    }
+    logger.info('Indexing codebase...', { path: workspaceRoot });
+    await codebaseRAG.indexCodebase();
+    const ragStats = codebaseRAG.getStats();
+    logger.info('RAG indexed', { chunks: ragStats.totalChunks, files: ragStats.files });
+  } else if (workspaceRoot) {
+    logger.info('Codebase indexing disabled');
   } else {
     logger.info('No workspace provided - codebase tools disabled');
   }

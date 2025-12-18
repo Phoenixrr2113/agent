@@ -19,6 +19,7 @@ import { logger, type StreamEvent } from '@agent/shared';
 // });
 
 logger.reconfigure();
+logger.setAgentContext({ type: 'main' });
   
 
 logger.info('\n💬 Interactive Chat Mode\n');
