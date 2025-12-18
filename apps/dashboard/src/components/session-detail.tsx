@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import type { AgentSession } from '@agent/shared';
+import type { AgentSession } from '../types';
 import { StatusBadge } from './status-badge';
 import { RoundCard } from './round-card';
 

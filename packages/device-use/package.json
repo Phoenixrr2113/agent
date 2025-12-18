@@ -9,6 +9,10 @@
     ".": {
       "import": "./dist/index.js",
       "types": "./dist/index.d.ts"
+    },
+    "./drivers/desktop.js": {
+      "import": "./dist/drivers/desktop.js",
+      "types": "./dist/drivers/desktop.d.ts"
     }
   },
   "scripts": {

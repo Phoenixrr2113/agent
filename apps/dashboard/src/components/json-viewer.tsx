@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 
 interface JsonViewerProps {
   data: unknown;
@@ -9,7 +9,7 @@ interface JsonViewerProps {
 export function JsonViewer({ data, collapsed = true, maxHeight = '200px' }: JsonViewerProps) {
   const [isExpanded, setIsExpanded] = useState(!collapsed);
 
-  const renderValue = (value: unknown, depth: number = 0): JSX.Element => {
+  const renderValue = (value: unknown, depth: number = 0): ReactNode => {
     if (value === null) {
       return <span className="json-null">null</span>;
     }

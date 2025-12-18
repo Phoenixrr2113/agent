@@ -6,7 +6,7 @@ import type {
   SerializableDashboardState,
   ToolExecution,
   RoundError,
-} from '@agent/shared';
+} from '../types';
 
 interface DashboardState {
   sessions: Map<string, AgentSession>;
@@ -201,12 +201,15 @@ const initialState: DashboardState = {
 export function useDashboard(serverUrl?: string) {
   const [state, dispatch] = useReducer(dashboardReducer, initialState);
   const wsRef = useRef<WebSocket | null>(null);
-  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const connect = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
 
-    const wsUrl = serverUrl ?? `ws://${window.location.host}/dashboard/ws`;
+    const defaultUrl = window.location.port === '5173'
+      ? 'ws://localhost:3000/dashboard/ws'
+      : `ws://${window.location.host}/dashboard/ws`;
+    const wsUrl = serverUrl ?? defaultUrl;
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
 
@@ -217,37 +220,58 @@ export function useDashboard(serverUrl?: string) {
 
     ws.onmessage = (event) => {
       const dashboardEvent = JSON.parse(event.data as string) as DashboardEvent;
+      const { data } = dashboardEvent;
 
       switch (dashboardEvent.type) {
         case 'state:snapshot':
-          dispatch({ type: 'SET_SNAPSHOT', payload: dashboardEvent.data.state });
+          if (data.state) {
+            dispatch({ type: 'SET_SNAPSHOT', payload: data.state });
+          }
           break;
         case 'session:created':
-          dispatch({ type: 'SESSION_CREATED', payload: dashboardEvent.data.session });
+          if (data.session) {
+            dispatch({ type: 'SESSION_CREATED', payload: data.session });
+          }
           break;
         case 'session:updated':
-          dispatch({ type: 'SESSION_UPDATED', payload: dashboardEvent.data });
+          if (data.sessionId && data.updates) {
+            dispatch({ type: 'SESSION_UPDATED', payload: { sessionId: data.sessionId, updates: data.updates as Partial<AgentSession> } });
+          }
           break;
         case 'session:ended':
-          dispatch({ type: 'SESSION_ENDED', payload: dashboardEvent.data });
+          if (data.sessionId && data.status) {
+            dispatch({ type: 'SESSION_ENDED', payload: { sessionId: data.sessionId, status: data.status } });
+          }
           break;
         case 'round:started':
-          dispatch({ type: 'ROUND_STARTED', payload: dashboardEvent.data });
+          if (data.sessionId && data.round) {
+            dispatch({ type: 'ROUND_STARTED', payload: { sessionId: data.sessionId, round: data.round } });
+          }
           break;
         case 'round:updated':
-          dispatch({ type: 'ROUND_UPDATED', payload: dashboardEvent.data });
+          if (data.sessionId && data.roundId && data.updates) {
+            dispatch({ type: 'ROUND_UPDATED', payload: { sessionId: data.sessionId, roundId: data.roundId, updates: data.updates as Partial<MessageRound> } });
+          }
           break;
         case 'round:completed':
-          dispatch({ type: 'ROUND_COMPLETED', payload: dashboardEvent.data });
+          if (data.sessionId && data.roundId && data.round) {
+            dispatch({ type: 'ROUND_COMPLETED', payload: { sessionId: data.sessionId, roundId: data.roundId, round: data.round } });
+          }
           break;
         case 'tool:started':
-          dispatch({ type: 'TOOL_STARTED', payload: dashboardEvent.data });
+          if (data.sessionId && data.roundId && data.tool) {
+            dispatch({ type: 'TOOL_STARTED', payload: { sessionId: data.sessionId, roundId: data.roundId, tool: data.tool } });
+          }
           break;
         case 'tool:completed':
-          dispatch({ type: 'TOOL_COMPLETED', payload: dashboardEvent.data });
+          if (data.sessionId && data.roundId && data.toolCallId && data.tool) {
+            dispatch({ type: 'TOOL_COMPLETED', payload: { sessionId: data.sessionId, roundId: data.roundId, toolCallId: data.toolCallId, tool: data.tool } });
+          }
           break;
         case 'error:occurred':
-          dispatch({ type: 'ERROR_OCCURRED', payload: dashboardEvent.data });
+          if (data.sessionId && data.error) {
+            dispatch({ type: 'ERROR_OCCURRED', payload: { sessionId: data.sessionId, roundId: data.roundId, error: data.error } });
+          }
           break;
       }
     };

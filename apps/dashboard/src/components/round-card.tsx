@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { MessageRound } from '@agent/shared';
+import type { MessageRound } from '../types';
 import { StatusBadge } from './status-badge';
 import { ToolCallCard } from './tool-call-card';
 import { JsonViewer } from './json-viewer';
