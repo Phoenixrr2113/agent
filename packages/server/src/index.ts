@@ -3,7 +3,7 @@ import { join } from 'node:path'
 
 import { createAgentRuntime, type AgentSession, type AgentRuntime, type TaskResult } from '@agent/core'
 import { DesktopDriver } from '@agent/device-use'
-import { logger } from '@agent/shared'
+import { logger, getLogCollector, type DashboardEvent, type AgentIdentifier } from '@agent/shared'
 import type { DeviceAction, DeviceCapabilities, ActionResult } from '@agent/shared'
 import { serve } from '@hono/node-server'
 import { config } from 'dotenv'
@@ -16,6 +16,22 @@ import { DeviceRegistry, createLocalDesktopDevice } from './devices/index.js'
 
 // Load environment variables from root .env
 config({ path: join(process.cwd(), '../../.env') });
+
+const logCollector = getLogCollector();
+const dashboardClients = new Set<WebSocket>();
+
+function broadcastDashboardEvent(event: DashboardEvent): void {
+  const message = JSON.stringify(event);
+  for (const client of dashboardClients) {
+    if (client.readyState === 1) {
+      client.send(message);
+    }
+  }
+}
+
+logCollector.subscribe((event) => {
+  broadcastDashboardEvent(event);
+});
 
 export interface ServerConfig {
   port?: number;
@@ -111,9 +127,18 @@ export async function createServer(config: ServerConfig = {}): Promise<CreateSer
       return c.json({ error: 'message query param is required' }, 400);
     }
 
+    const agentIdentifier: AgentIdentifier = {
+      agentId: crypto.randomUUID(),
+      sessionId,
+      agentType: 'main',
+    };
+
+    const dashboardEventHandler = logCollector.createEventHandler(agentIdentifier, message);
+
     return streamSSE(c, async (stream) => {
       try {
         await session.sendWithEvents(message, async (event) => {
+          dashboardEventHandler(event);
           await stream.writeSSE({
             event: event.type,
             data: JSON.stringify(event.data),
@@ -211,6 +236,27 @@ export async function createServer(config: ServerConfig = {}): Promise<CreateSer
     }
   })
 
+  app.get('/dashboard/state', (c: Context) => {
+    return c.json(logCollector.getSnapshot());
+  })
+
+  app.get('/dashboard/sessions', (c: Context) => {
+    return c.json({ sessions: logCollector.getAllSessions() });
+  })
+
+  app.get('/dashboard/sessions/active', (c: Context) => {
+    return c.json({ sessions: logCollector.getActiveSessions() });
+  })
+
+  app.get('/dashboard/sessions/:sessionId', (c: Context) => {
+    const sessionId = c.req.param('sessionId');
+    const session = logCollector.getSession(sessionId);
+    if (!session) {
+      return c.json({ error: 'Session not found' }, 404);
+    }
+    return c.json({ session });
+  })
+
   return { app, runtime, port };
 }
 
@@ -254,7 +300,26 @@ export async function startServer(config: ServerConfig = {}): Promise<StartServe
 
   const wss = new WebSocketServer({ server });
 
-  wss.on('connection', (ws) => {
+  wss.on('connection', (ws, req) => {
+    const url = new URL(req.url ?? '/', `http://${req.headers.host}`);
+
+    if (url.pathname === '/dashboard/ws') {
+      logger.info('Dashboard client connected');
+      dashboardClients.add(ws);
+
+      ws.send(JSON.stringify({
+        type: 'state:snapshot',
+        timestamp: Date.now(),
+        data: { state: logCollector.getSnapshot() },
+      }));
+
+      ws.on('close', () => {
+        dashboardClients.delete(ws);
+        logger.info('Dashboard client disconnected');
+      });
+      return;
+    }
+
     let deviceId: string | null = null
 
     ws.on('message', (message) => {
