@@ -1,44 +1,27 @@
 import React from 'react';
-import { View, StyleSheet, type ViewStyle } from 'react-native';
-import { useTheme } from '../../hooks/use-theme';
-import { Text } from '../text';
-import { borderRadius, spacing, fontSize } from '../../themes/spacing';
+import { View, Text } from 'react-native';
 import type { Message } from './types';
 
 export interface ChatBubbleProps {
   message: Message;
-  style?: ViewStyle;
+  className?: string;
 }
 
-export function ChatBubble({ message, style }: ChatBubbleProps) {
-  const { colors } = useTheme();
-
+export function ChatBubble({ message, className = '' }: ChatBubbleProps) {
   const isUser = message.role === 'user';
   const isSystem = message.role === 'system';
 
-  const bubbleStyle: ViewStyle = isUser
-    ? {
-        backgroundColor: colors.userBubble,
-        alignSelf: 'flex-end',
-        borderBottomRightRadius: borderRadius.sm,
-      }
+  const containerClass = isUser ? 'self-end' : 'self-start';
+  const bubbleClass = isUser
+    ? 'bg-blue-600 self-end rounded-br-sm'
     : isSystem
-    ? {
-        backgroundColor: colors.backgroundSecondary,
-        alignSelf: 'center',
-        borderRadius: borderRadius.md,
-      }
-    : {
-        backgroundColor: colors.assistantBubble,
-        alignSelf: 'flex-start',
-        borderBottomLeftRadius: borderRadius.sm,
-      };
-
-  const textColor = isUser
-    ? colors.userBubbleText
+    ? 'bg-gray-200 dark:bg-gray-700 self-center'
+    : 'bg-gray-100 dark:bg-gray-800 self-start rounded-bl-sm';
+  const textClass = isUser
+    ? 'text-white'
     : isSystem
-    ? colors.textSecondary
-    : colors.assistantBubbleText;
+    ? 'text-gray-600 dark:text-gray-300'
+    : 'text-gray-900 dark:text-white';
 
   const formatTime = (timestamp: number): string => {
     const date = new Date(timestamp);
@@ -46,23 +29,21 @@ export function ChatBubble({ message, style }: ChatBubbleProps) {
   };
 
   return (
-    <View style={[styles.container, isUser && styles.containerUser, style]}>
-      <View style={[styles.bubble, bubbleStyle]}>
-        <Text style={[styles.content, { color: textColor }]}>
+    <View className={`my-1 max-w-[85%] ${containerClass} ${className}`.trim()}>
+      <View className={`px-4 py-2 rounded-2xl ${bubbleClass}`.trim()}>
+        <Text className={`text-base leading-6 ${textClass}`.trim()}>
           {message.content}
         </Text>
         {message.toolsUsed && message.toolsUsed.length > 0 && (
-          <View style={styles.toolsContainer}>
-            <Text variant="caption" color={colors.textMuted}>
+          <View className="mt-1 pt-1 border-t border-white/20">
+            <Text className="text-xs text-gray-400">
               Tools: {message.toolsUsed.join(', ')}
             </Text>
           </View>
         )}
       </View>
       <Text
-        variant="caption"
-        color={colors.textMuted}
-        style={[styles.timestamp, isUser && styles.timestampUser]}
+        className={`text-xs text-gray-400 mt-1 ${isUser ? 'text-right mr-1' : 'ml-1'}`.trim()}
       >
         {formatTime(message.timestamp)}
         {message.status === 'sending' && ' • Sending...'}
@@ -71,38 +52,3 @@ export function ChatBubble({ message, style }: ChatBubbleProps) {
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    marginVertical: spacing.xs,
-    maxWidth: '85%',
-    alignSelf: 'flex-start',
-  },
-  containerUser: {
-    alignSelf: 'flex-end',
-  },
-  bubble: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderRadius: borderRadius.lg,
-  },
-  content: {
-    fontSize: fontSize.md,
-    lineHeight: fontSize.md * 1.5,
-  },
-  toolsContainer: {
-    marginTop: spacing.xs,
-    paddingTop: spacing.xs,
-    borderTopWidth: StyleSheet.hairlineWidth,
-    borderTopColor: 'rgba(255,255,255,0.2)',
-  },
-  timestamp: {
-    marginTop: spacing.xs,
-    marginLeft: spacing.xs,
-  },
-  timestampUser: {
-    textAlign: 'right',
-    marginRight: spacing.xs,
-    marginLeft: 0,
-  },
-});

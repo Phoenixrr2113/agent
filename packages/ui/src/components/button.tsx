@@ -1,26 +1,45 @@
 import React from 'react';
-import {
-  Pressable,
-  StyleSheet,
-  ActivityIndicator,
-  type PressableProps,
-  type ViewStyle,
-} from 'react-native';
-import { useTheme } from '../hooks/use-theme';
+import { Pressable, ActivityIndicator, View } from 'react-native';
 import { Text } from './text';
-import { borderRadius, spacing } from '../themes/spacing';
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'destructive';
 export type ButtonSize = 'sm' | 'md' | 'lg';
 
-export interface ButtonProps extends Omit<PressableProps, 'style'> {
+export interface ButtonProps {
   variant?: ButtonVariant;
   size?: ButtonSize;
   loading?: boolean;
   fullWidth?: boolean;
-  style?: ViewStyle;
+  disabled?: boolean;
+  className?: string;
   children: React.ReactNode;
+  onPress?: () => void;
 }
+
+const variantClasses: Record<ButtonVariant, { base: string; text: string }> = {
+  primary: {
+    base: 'bg-blue-600 active:bg-blue-700',
+    text: 'text-white',
+  },
+  secondary: {
+    base: 'bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 active:bg-gray-200 dark:active:bg-gray-700',
+    text: 'text-gray-900 dark:text-white',
+  },
+  ghost: {
+    base: 'bg-transparent active:bg-gray-100 dark:active:bg-gray-800',
+    text: 'text-gray-900 dark:text-white',
+  },
+  destructive: {
+    base: 'bg-red-600 active:bg-red-700',
+    text: 'text-white',
+  },
+};
+
+const sizeClasses: Record<ButtonSize, { button: string; text: 'body' | 'bodySmall' }> = {
+  sm: { button: 'px-4 py-2 min-h-[32px]', text: 'bodySmall' },
+  md: { button: 'px-6 py-3 min-h-[44px]', text: 'body' },
+  lg: { button: 'px-8 py-4 min-h-[52px]', text: 'body' },
+};
 
 export function Button({
   variant = 'primary',
@@ -28,112 +47,41 @@ export function Button({
   loading = false,
   fullWidth = false,
   disabled,
-  style,
+  className = '',
   children,
-  ...props
+  onPress,
 }: ButtonProps) {
-  const { colors } = useTheme();
-
   const isDisabled = disabled || loading;
-
-  const getVariantStyles = (pressed: boolean): ViewStyle => {
-    const baseOpacity = isDisabled ? 0.5 : pressed ? 0.8 : 1;
-
-    switch (variant) {
-      case 'primary':
-        return {
-          backgroundColor: colors.primary,
-          opacity: baseOpacity,
-        };
-      case 'secondary':
-        return {
-          backgroundColor: colors.backgroundSecondary,
-          borderWidth: 1,
-          borderColor: colors.border,
-          opacity: baseOpacity,
-        };
-      case 'ghost':
-        return {
-          backgroundColor: pressed ? colors.backgroundSecondary : 'transparent',
-          opacity: baseOpacity,
-        };
-      case 'destructive':
-        return {
-          backgroundColor: colors.error,
-          opacity: baseOpacity,
-        };
-    }
-  };
-
-  const getTextColor = (): string => {
-    switch (variant) {
-      case 'primary':
-      case 'destructive':
-        return '#FFFFFF';
-      case 'secondary':
-      case 'ghost':
-        return colors.text;
-    }
-  };
-
-  const getSizeStyles = (): ViewStyle => {
-    switch (size) {
-      case 'sm':
-        return {
-          paddingVertical: spacing.xs,
-          paddingHorizontal: spacing.md,
-          minHeight: 32,
-        };
-      case 'lg':
-        return {
-          paddingVertical: spacing.md,
-          paddingHorizontal: spacing.xl,
-          minHeight: 52,
-        };
-      default:
-        return {
-          paddingVertical: spacing.sm,
-          paddingHorizontal: spacing.lg,
-          minHeight: 44,
-        };
-    }
-  };
+  const variantStyle = variantClasses[variant];
+  const sizeStyle = sizeClasses[size];
 
   return (
     <Pressable
       disabled={isDisabled}
-      style={({ pressed }) => [
-        styles.base,
-        getSizeStyles(),
-        getVariantStyles(pressed),
-        fullWidth && styles.fullWidth,
-        style,
-      ]}
-      {...props}
+      onPress={onPress}
+      className={[
+        'rounded-lg items-center justify-center flex-row',
+        sizeStyle.button,
+        variantStyle.base,
+        fullWidth ? 'w-full' : '',
+        isDisabled ? 'opacity-50' : '',
+        className,
+      ]
+        .filter(Boolean)
+        .join(' ')}
     >
       {loading ? (
-        <ActivityIndicator size="small" color={getTextColor()} />
+        <ActivityIndicator
+          size="small"
+          color={variant === 'primary' || variant === 'destructive' ? '#FFFFFF' : '#6B7280'}
+        />
       ) : (
-        <Text
-          variant={size === 'sm' ? 'bodySmall' : 'body'}
-          weight="600"
-          color={getTextColor()}
-        >
-          {children}
-        </Text>
+        <View>
+          <Text variant={sizeStyle.text} className={`font-semibold ${variantStyle.text}`}>
+            {children}
+          </Text>
+        </View>
       )}
     </Pressable>
   );
 }
-
-const styles = StyleSheet.create({
-  base: {
-    borderRadius: borderRadius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-  },
-  fullWidth: {
-    width: '100%',
-  },
-});

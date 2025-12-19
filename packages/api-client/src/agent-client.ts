@@ -1,5 +1,5 @@
-import { AgentHttpClient } from './http-client.js';
-import { AgentWebSocketClient } from './websocket-client.js';
+import { AgentHttpClient } from './http-client';
+import { AgentWebSocketClient } from './websocket-client';
 import type {
   AgentClientConfig,
   ChatMessage,
@@ -7,7 +7,7 @@ import type {
   ConnectionState,
   WebSocketMessage,
   StreamingChatCallbacks,
-} from './types.js';
+} from './types';
 
 export interface AgentClientOptions extends AgentClientConfig {
   enableWebSocket?: boolean;

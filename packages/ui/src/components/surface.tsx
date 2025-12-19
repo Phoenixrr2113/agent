@@ -1,73 +1,30 @@
 import React from 'react';
-import { View, StyleSheet, type ViewProps, type ViewStyle } from 'react-native';
-import { useTheme } from '../hooks/use-theme';
-import { borderRadius, spacing } from '../themes/spacing';
+import { View, type ViewProps } from 'react-native';
 
 export type SurfaceVariant = 'default' | 'elevated' | 'outlined';
 
 export interface SurfaceProps extends ViewProps {
   variant?: SurfaceVariant;
-  padding?: keyof typeof spacing | number;
-  radius?: keyof typeof borderRadius | number;
+  className?: string;
 }
+
+const variantClasses: Record<SurfaceVariant, string> = {
+  default: 'bg-white dark:bg-gray-900 rounded-lg overflow-hidden',
+  elevated: 'bg-white dark:bg-gray-800 rounded-lg overflow-hidden shadow-md',
+  outlined: 'bg-white dark:bg-gray-900 rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700',
+};
 
 export function Surface({
   variant = 'default',
-  padding,
-  radius,
-  style,
+  className = '',
   ...props
 }: SurfaceProps) {
-  const { colors } = useTheme();
-
-  const paddingValue = padding !== undefined
-    ? (typeof padding === 'number' ? padding : spacing[padding])
-    : undefined;
-
-  const radiusValue = radius !== undefined
-    ? (typeof radius === 'number' ? radius : borderRadius[radius])
-    : borderRadius.md;
-
-  const variantStyles: ViewStyle = (() => {
-    switch (variant) {
-      case 'elevated':
-        return {
-          backgroundColor: colors.surfaceElevated,
-          shadowColor: '#000',
-          shadowOffset: { width: 0, height: 2 },
-          shadowOpacity: 0.1,
-          shadowRadius: 4,
-          elevation: 3,
-        };
-      case 'outlined':
-        return {
-          backgroundColor: colors.surface,
-          borderWidth: 1,
-          borderColor: colors.border,
-        };
-      default:
-        return {
-          backgroundColor: colors.surface,
-        };
-    }
-  })();
+  const variantClass = variantClasses[variant];
 
   return (
     <View
-      style={[
-        styles.base,
-        variantStyles,
-        { borderRadius: radiusValue },
-        paddingValue !== undefined ? { padding: paddingValue } : undefined,
-        style,
-      ]}
+      className={`${variantClass} ${className}`.trim()}
       {...props}
     />
   );
 }
-
-const styles = StyleSheet.create({
-  base: {
-    overflow: 'hidden',
-  },
-});

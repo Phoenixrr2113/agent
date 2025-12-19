@@ -6,7 +6,7 @@ import type {
   HistoryResponse,
   HealthResponse,
   StreamingChatCallbacks,
-} from './types.js';
+} from './types';
 
 export class AgentHttpClient {
   private baseUrl: string;

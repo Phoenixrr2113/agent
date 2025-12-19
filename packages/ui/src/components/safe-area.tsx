@@ -1,15 +1,14 @@
 import React from 'react';
-import { View, StyleSheet, type ViewProps } from 'react-native';
+import { View, type ViewProps } from 'react-native';
 import { useSafeAreaInsets, type EdgeInsets } from 'react-native-safe-area-context';
-import { useTheme } from '../hooks/use-theme';
 
 export interface SafeAreaViewProps extends ViewProps {
   edges?: Array<keyof EdgeInsets>;
+  className?: string;
 }
 
-export function SafeAreaView({ edges = ['top', 'bottom', 'left', 'right'], style, ...props }: SafeAreaViewProps) {
+export function SafeAreaView({ edges = ['top', 'bottom', 'left', 'right'], className = '', style, ...props }: SafeAreaViewProps) {
   const insets = useSafeAreaInsets();
-  const { colors } = useTheme();
 
   const padding = {
     paddingTop: edges.includes('top') ? insets.top : 0,
@@ -20,19 +19,9 @@ export function SafeAreaView({ edges = ['top', 'bottom', 'left', 'right'], style
 
   return (
     <View
-      style={[
-        styles.container,
-        { backgroundColor: colors.background },
-        padding,
-        style,
-      ]}
+      className={`flex-1 bg-white dark:bg-gray-900 ${className}`.trim()}
+      style={[padding, style]}
       {...props}
     />
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-});

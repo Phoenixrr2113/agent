@@ -31,3 +31,28 @@ export {
   type Message,
   type ChatState,
 } from './chat';
+
+export {
+  StatBadge,
+  StatusBadge,
+  Section,
+  MetricCard,
+  ToolCard as DebugToolCard,
+  RoundCard,
+  LogViewer,
+  SessionList,
+  type AgentType,
+  type ToolExecution,
+  type RoundReasoning,
+  type RoundError,
+  type RoundPerformance,
+  type RoundInput,
+  type RoundOutput,
+  type MessageRound,
+  type AgentSession,
+  type LogEntry,
+  type DebugStats,
+  type RoundCardProps,
+  type LogViewerProps,
+  type SessionListProps,
+} from './debug';

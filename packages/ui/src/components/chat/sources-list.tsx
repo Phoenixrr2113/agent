@@ -1,38 +1,33 @@
 import React from 'react';
-import { View, StyleSheet, type ViewStyle } from 'react-native';
-import { Text } from '../text.js';
-import { useTheme } from '../../hooks/use-theme.js';
-import { spacing, borderRadius, fontSize } from '../../themes/spacing.js';
+import { View, Text } from 'react-native';
 import type { SourceInfo } from '@agent/api-client';
 
 export interface SourcesListProps {
   sources: SourceInfo[];
-  style?: ViewStyle;
+  className?: string;
 }
 
-export function SourcesList({ sources, style }: SourcesListProps): React.ReactElement | null {
-  const { colors } = useTheme();
-
+export function SourcesList({ sources, className = '' }: SourcesListProps): React.ReactElement | null {
   if (sources.length === 0) {
     return null;
   }
 
   return (
-    <View style={[styles.container, style]}>
-      <Text style={[styles.label, { color: colors.textMuted }]}>
+    <View className={`mt-2 ${className}`.trim()}>
+      <Text className="text-xs text-gray-500 dark:text-gray-400 mb-1">
         📚 Sources ({sources.length})
       </Text>
-      <View style={styles.list}>
+      <View className="gap-1">
         {sources.map((source, index) => (
           <View
             key={source.id || index}
-            style={[styles.sourceItem, { backgroundColor: colors.backgroundSecondary }]}
+            className="p-2 rounded bg-gray-100 dark:bg-gray-800"
           >
-            <Text style={[styles.sourceTitle, { color: colors.text }]} numberOfLines={1}>
+            <Text className="text-sm font-medium text-gray-900 dark:text-white" numberOfLines={1}>
               {source.title}
             </Text>
             {source.snippet && (
-              <Text style={[styles.snippet, { color: colors.textSecondary }]} numberOfLines={2}>
+              <Text className="text-xs text-gray-600 dark:text-gray-300 mt-0.5" numberOfLines={2}>
                 {source.snippet}
               </Text>
             )}
@@ -42,28 +37,3 @@ export function SourcesList({ sources, style }: SourcesListProps): React.ReactEl
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    marginTop: spacing.sm,
-  },
-  label: {
-    fontSize: fontSize.xs,
-    marginBottom: spacing.xs,
-  },
-  list: {
-    gap: spacing.xs,
-  },
-  sourceItem: {
-    padding: spacing.sm,
-    borderRadius: borderRadius.sm,
-  },
-  sourceTitle: {
-    fontSize: fontSize.sm,
-    fontWeight: '500',
-  },
-  snippet: {
-    fontSize: fontSize.xs,
-    marginTop: spacing.xs / 2,
-  },
-});

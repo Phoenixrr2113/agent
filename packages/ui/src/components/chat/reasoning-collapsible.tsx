@@ -1,23 +1,19 @@
 import React, { useState } from 'react';
-import { View, Pressable, StyleSheet, type ViewStyle } from 'react-native';
-import { Text } from '../text.js';
-import { useTheme } from '../../hooks/use-theme.js';
-import { spacing, borderRadius, fontSize } from '../../themes/spacing.js';
+import { View, Pressable, Text } from 'react-native';
 
 export interface ReasoningCollapsibleProps {
   content: string;
   durationMs?: number;
   defaultExpanded?: boolean;
-  style?: ViewStyle;
+  className?: string;
 }
 
 export function ReasoningCollapsible({
   content,
   durationMs,
   defaultExpanded = false,
-  style,
+  className = '',
 }: ReasoningCollapsibleProps): React.ReactElement {
-  const { colors } = useTheme();
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
   const formatDuration = (ms: number): string => {
@@ -27,31 +23,27 @@ export function ReasoningCollapsible({
 
   return (
     <View
-      style={[
-        styles.container,
-        { backgroundColor: colors.backgroundSecondary, borderColor: colors.border },
-        style,
-      ]}
+      className={`rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 my-1 overflow-hidden ${className}`.trim()}
     >
       <Pressable
-        style={styles.header}
+        className="flex-row justify-between items-center px-3 py-2"
         onPress={() => setIsExpanded(!isExpanded)}
       >
-        <View style={styles.headerLeft}>
-          <Text style={[styles.icon, { color: colors.textMuted }]}>💭</Text>
-          <Text style={[styles.label, { color: colors.textMuted }]}>
+        <View className="flex-row items-center gap-1">
+          <Text className="text-sm text-gray-500 dark:text-gray-400">💭</Text>
+          <Text className="text-sm italic text-gray-500 dark:text-gray-400">
             Thinking
             {durationMs !== undefined && ` (${formatDuration(durationMs)})`}
           </Text>
         </View>
-        <Text style={[styles.expandIcon, { color: colors.textMuted }]}>
+        <Text className="text-xs text-gray-500 dark:text-gray-400">
           {isExpanded ? '▼' : '▶'}
         </Text>
       </Pressable>
 
       {isExpanded && (
-        <View style={styles.content}>
-          <Text style={[styles.reasoningText, { color: colors.textSecondary }]}>
+        <View className="px-3 pb-3">
+          <Text className="text-sm italic text-gray-600 dark:text-gray-300 leading-5">
             {content}
           </Text>
         </View>
@@ -59,43 +51,3 @@ export function ReasoningCollapsible({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    marginVertical: spacing.xs,
-    overflow: 'hidden',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  icon: {
-    fontSize: fontSize.sm,
-  },
-  label: {
-    fontSize: fontSize.sm,
-    fontStyle: 'italic',
-  },
-  expandIcon: {
-    fontSize: fontSize.xs,
-  },
-  content: {
-    paddingHorizontal: spacing.sm,
-    paddingBottom: spacing.sm,
-  },
-  reasoningText: {
-    fontSize: fontSize.sm,
-    lineHeight: fontSize.sm * 1.4,
-    fontStyle: 'italic',
-  },
-});

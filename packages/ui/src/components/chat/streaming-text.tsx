@@ -1,21 +1,19 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Animated, StyleSheet } from 'react-native';
-import { Text } from '../text.js';
-import { useTheme } from '../../hooks/use-theme.js';
-import { fontSize } from '../../themes/spacing.js';
+import { View, Animated, Text } from 'react-native';
 
 export interface StreamingTextProps {
   text: string;
   isStreaming?: boolean;
   showCursor?: boolean;
+  className?: string;
 }
 
 export function StreamingText({
   text,
   isStreaming = false,
   showCursor = true,
+  className = '',
 }: StreamingTextProps): React.ReactElement {
-  const { colors } = useTheme();
   const cursorOpacity = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
@@ -42,15 +40,13 @@ export function StreamingText({
   }, [isStreaming, showCursor, cursorOpacity]);
 
   return (
-    <View style={styles.container}>
-      <Text style={[styles.text, { color: colors.text }]}>
+    <View className={`flex-row flex-wrap ${className}`.trim()}>
+      <Text className="text-base leading-6 text-gray-900 dark:text-white">
         {text}
         {isStreaming && showCursor && (
           <Animated.Text
-            style={[
-              styles.cursor,
-              { opacity: cursorOpacity, color: colors.primary },
-            ]}
+            style={{ opacity: cursorOpacity }}
+            className="text-base text-blue-600"
           >
             ▊
           </Animated.Text>
@@ -59,17 +55,3 @@ export function StreamingText({
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  text: {
-    fontSize: fontSize.md,
-    lineHeight: fontSize.md * 1.5,
-  },
-  cursor: {
-    fontSize: fontSize.md,
-  },
-});

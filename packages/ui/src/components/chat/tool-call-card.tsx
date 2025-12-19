@@ -1,13 +1,10 @@
 import React, { useState } from 'react';
-import { View, Pressable, StyleSheet, type ViewStyle } from 'react-native';
-import { Text } from '../text.js';
-import { useTheme } from '../../hooks/use-theme.js';
-import { spacing, borderRadius, fontSize } from '../../themes/spacing.js';
+import { View, Pressable, Text, ScrollView } from 'react-native';
 import type { ToolCallInfo } from '@agent/api-client';
 
 export interface ToolCallCardProps {
   toolCall: ToolCallInfo;
-  style?: ViewStyle;
+  className?: string;
 }
 
 const STATUS_ICONS: Record<ToolCallInfo['status'], string> = {
@@ -17,8 +14,7 @@ const STATUS_ICONS: Record<ToolCallInfo['status'], string> = {
   error: '❌',
 };
 
-export function ToolCallCard({ toolCall, style }: ToolCallCardProps): React.ReactElement {
-  const { colors } = useTheme();
+export function ToolCallCard({ toolCall, className = '' }: ToolCallCardProps): React.ReactElement {
   const [isExpanded, setIsExpanded] = useState(false);
 
   const statusIcon = STATUS_ICONS[toolCall.status];
@@ -38,67 +34,61 @@ export function ToolCallCard({ toolCall, style }: ToolCallCardProps): React.Reac
 
   return (
     <View
-      style={[
-        styles.container,
-        { backgroundColor: colors.backgroundSecondary, borderColor: colors.border },
-        style,
-      ]}
+      className={`rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-100 dark:bg-gray-800 my-1 overflow-hidden ${className}`.trim()}
     >
       <Pressable
-        style={styles.header}
+        className="flex-row justify-between items-center px-3 py-2"
         onPress={() => setIsExpanded(!isExpanded)}
       >
-        <View style={styles.headerLeft}>
-          <Text style={styles.statusIcon}>{statusIcon}</Text>
-          <Text style={[styles.toolName, { color: colors.text }]}>
+        <View className="flex-row items-center gap-1">
+          <Text className="text-sm">{statusIcon}</Text>
+          <Text className="text-sm font-semibold text-gray-900 dark:text-white">
             {toolCall.toolName}
           </Text>
         </View>
-        <View style={styles.headerRight}>
+        <View className="flex-row items-center gap-2">
           {toolCall.durationMs !== undefined && (
-            <Text style={[styles.duration, { color: colors.textMuted }]}>
+            <Text className="text-xs text-gray-500 dark:text-gray-400">
               {formatDuration(toolCall.durationMs)}
             </Text>
           )}
-          <Text style={[styles.expandIcon, { color: colors.textMuted }]}>
+          <Text className="text-xs text-gray-500 dark:text-gray-400">
             {isExpanded ? '▼' : '▶'}
           </Text>
         </View>
       </Pressable>
 
       {isExpanded && (
-        <View style={styles.details}>
+        <View className="px-3 pb-3">
           {hasArgs && (
-            <View style={styles.section}>
-              <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>
+            <View className="mt-1">
+              <Text className="text-xs text-gray-500 dark:text-gray-400 mb-1">
                 Input:
               </Text>
-              <Text
-                style={[
-                  styles.code,
-                  { backgroundColor: colors.background, color: colors.textSecondary },
-                ]}
-              >
-                {truncateJson(toolCall.args, 300)}
-              </Text>
+              <ScrollView horizontal className="mt-1">
+                <View className="bg-gray-200 dark:bg-gray-700 rounded p-2">
+                  <Text className="text-xs font-mono text-gray-800 dark:text-gray-200">
+                    {truncateJson(toolCall.args, 300)}
+                  </Text>
+                </View>
+              </ScrollView>
             </View>
           )}
 
           {hasResult && (
-            <View style={styles.section}>
-              <Text style={[styles.sectionLabel, { color: colors.textMuted }]}>
+            <View className="mt-2">
+              <Text className="text-xs text-gray-500 dark:text-gray-400 mb-1">
                 Output:
               </Text>
-              <Text
-                style={[
-                  styles.code,
-                  { backgroundColor: colors.background, color: colors.textSecondary },
-                ]}
-              >
-                {typeof toolCall.result === 'string'
-                  ? toolCall.result.slice(0, 300) + (toolCall.result.length > 300 ? '...' : '')
-                  : truncateJson(toolCall.result, 300)}
-              </Text>
+              <ScrollView horizontal className="mt-1 max-h-48">
+                <View className="bg-gray-200 dark:bg-gray-700 rounded p-2">
+                  <Text className="text-xs font-mono text-gray-800 dark:text-gray-200">
+                    {typeof toolCall.result === 'string'
+                      ? toolCall.result.slice(0, 300) + (toolCall.result.length > 300 ? '...' : '')
+                      : truncateJson(toolCall.result, 300)}
+                  </Text>
+                </View>
+              </ScrollView>
             </View>
           )}
         </View>
@@ -106,60 +96,3 @@ export function ToolCallCard({ toolCall, style }: ToolCallCardProps): React.Reac
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    borderRadius: borderRadius.md,
-    borderWidth: 1,
-    marginVertical: spacing.xs,
-    overflow: 'hidden',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: spacing.sm,
-    paddingVertical: spacing.xs,
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.xs,
-  },
-  headerRight: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: spacing.sm,
-  },
-  statusIcon: {
-    fontSize: fontSize.sm,
-  },
-  toolName: {
-    fontSize: fontSize.sm,
-    fontWeight: '600',
-  },
-  duration: {
-    fontSize: fontSize.xs,
-  },
-  expandIcon: {
-    fontSize: fontSize.xs,
-  },
-  details: {
-    paddingHorizontal: spacing.sm,
-    paddingBottom: spacing.sm,
-  },
-  section: {
-    marginTop: spacing.xs,
-  },
-  sectionLabel: {
-    fontSize: fontSize.xs,
-    marginBottom: spacing.xs / 2,
-  },
-  code: {
-    fontSize: fontSize.xs,
-    fontFamily: 'monospace',
-    padding: spacing.xs,
-    borderRadius: borderRadius.sm,
-    overflow: 'hidden',
-  },
-});

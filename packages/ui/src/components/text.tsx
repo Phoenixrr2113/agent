@@ -1,73 +1,34 @@
 import React from 'react';
-import { Text as RNText, StyleSheet, type TextProps as RNTextProps, type TextStyle } from 'react-native';
-import { useTheme } from '../hooks/use-theme';
-import { fontSize } from '../themes/spacing';
+import { Text as RNText, type TextProps as RNTextProps } from 'react-native';
 
 export type TextVariant = 'body' | 'bodySmall' | 'bodyLarge' | 'title' | 'subtitle' | 'caption' | 'label';
 
 export interface TextProps extends RNTextProps {
   variant?: TextVariant;
-  color?: string;
-  weight?: TextStyle['fontWeight'];
-  align?: TextStyle['textAlign'];
+  className?: string;
 }
+
+const variantClasses: Record<TextVariant, string> = {
+  body: 'text-base leading-6 text-gray-900 dark:text-white',
+  bodySmall: 'text-sm leading-5 text-gray-900 dark:text-white',
+  bodyLarge: 'text-lg leading-7 text-gray-900 dark:text-white',
+  title: 'text-3xl leading-9 font-bold text-gray-900 dark:text-white',
+  subtitle: 'text-xl leading-7 font-semibold text-gray-900 dark:text-white',
+  caption: 'text-xs leading-4 text-gray-500 dark:text-gray-400',
+  label: 'text-sm leading-5 font-medium text-gray-900 dark:text-white',
+};
 
 export function Text({
   variant = 'body',
-  color,
-  weight,
-  align,
-  style,
+  className = '',
   ...props
 }: TextProps) {
-  const { colors } = useTheme();
-
-  const variantStyle = styles[variant];
+  const variantClass = variantClasses[variant];
 
   return (
     <RNText
-      style={[
-        variantStyle,
-        { color: color ?? colors.text },
-        weight ? { fontWeight: weight } : undefined,
-        align ? { textAlign: align } : undefined,
-        style,
-      ]}
+      className={`${variantClass} ${className}`.trim()}
       {...props}
     />
   );
 }
-
-const styles = StyleSheet.create({
-  body: {
-    fontSize: fontSize.md,
-    lineHeight: fontSize.md * 1.5,
-  },
-  bodySmall: {
-    fontSize: fontSize.sm,
-    lineHeight: fontSize.sm * 1.5,
-  },
-  bodyLarge: {
-    fontSize: fontSize.lg,
-    lineHeight: fontSize.lg * 1.5,
-  },
-  title: {
-    fontSize: fontSize.xxxl,
-    lineHeight: fontSize.xxxl * 1.2,
-    fontWeight: '700',
-  },
-  subtitle: {
-    fontSize: fontSize.xl,
-    lineHeight: fontSize.xl * 1.3,
-    fontWeight: '600',
-  },
-  caption: {
-    fontSize: fontSize.xs,
-    lineHeight: fontSize.xs * 1.4,
-  },
-  label: {
-    fontSize: fontSize.sm,
-    lineHeight: fontSize.sm * 1.4,
-    fontWeight: '500',
-  },
-});

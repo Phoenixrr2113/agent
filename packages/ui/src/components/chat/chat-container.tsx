@@ -1,6 +1,5 @@
 import React from 'react';
-import { View, StyleSheet, KeyboardAvoidingView, Platform, type ViewStyle } from 'react-native';
-import { useTheme } from '../../hooks/use-theme';
+import { KeyboardAvoidingView, Platform } from 'react-native';
 import { ChatList } from './chat-list';
 import { ChatInput } from './chat-input';
 import type { Message } from './types';
@@ -11,7 +10,7 @@ export interface ChatContainerProps {
   onSend: (message: string) => void;
   disabled?: boolean;
   placeholder?: string;
-  style?: ViewStyle;
+  className?: string;
   sendIcon?: React.ReactNode;
   ListHeaderComponent?: React.ReactElement | null;
   ListEmptyComponent?: React.ReactElement | null;
@@ -23,16 +22,14 @@ export function ChatContainer({
   onSend,
   disabled = false,
   placeholder,
-  style,
+  className = '',
   sendIcon,
   ListHeaderComponent,
   ListEmptyComponent,
 }: ChatContainerProps) {
-  const { colors } = useTheme();
-
   return (
     <KeyboardAvoidingView
-      style={[styles.container, { backgroundColor: colors.background }, style]}
+      className={`flex-1 bg-white dark:bg-gray-900 ${className}`.trim()}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
     >
@@ -51,9 +48,3 @@ export function ChatContainer({
     </KeyboardAvoidingView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-  },
-});

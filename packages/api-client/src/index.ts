@@ -1,6 +1,6 @@
-export { AgentClient, type AgentClientOptions } from './agent-client.js';
-export { AgentHttpClient } from './http-client.js';
-export { AgentWebSocketClient, type WebSocketClientConfig } from './websocket-client.js';
+export { AgentClient, type AgentClientOptions } from './agent-client';
+export { AgentHttpClient } from './http-client';
+export { AgentWebSocketClient, type WebSocketClientConfig } from './websocket-client';
 export type {
   ChatMessage,
   ChatRequest,
@@ -22,4 +22,4 @@ export type {
   StreamingMessage,
   ToolCallInfo,
   SourceInfo,
-} from './types.js';
+} from './types';

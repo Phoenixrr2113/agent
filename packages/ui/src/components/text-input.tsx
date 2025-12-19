@@ -1,54 +1,31 @@
 import React, { forwardRef } from 'react';
 import {
   TextInput as RNTextInput,
-  StyleSheet,
   View,
   type TextInputProps as RNTextInputProps,
-  type ViewStyle,
 } from 'react-native';
-import { useTheme } from '../hooks/use-theme';
-import { borderRadius, spacing, fontSize } from '../themes/spacing';
 
 export interface TextInputProps extends RNTextInputProps {
-  containerStyle?: ViewStyle;
+  containerClassName?: string;
+  className?: string;
   error?: boolean;
 }
 
 export const TextInput = forwardRef<RNTextInput, TextInputProps>(
-  function TextInput({ containerStyle, error, style, ...props }, ref) {
-    const { colors } = useTheme();
+  function TextInput({ containerClassName = '', className = '', error, ...props }, ref) {
+    const borderClass = error
+      ? 'border-red-500 dark:border-red-500'
+      : 'border-gray-300 dark:border-gray-600';
 
     return (
-      <View style={[styles.container, containerStyle]}>
+      <View className={`w-full ${containerClassName}`.trim()}>
         <RNTextInput
           ref={ref}
-          placeholderTextColor={colors.inputPlaceholder}
-          style={[
-            styles.input,
-            {
-              backgroundColor: colors.inputBackground,
-              borderColor: error ? colors.error : colors.inputBorder,
-              color: colors.inputText,
-            },
-            style,
-          ]}
+          placeholderTextColor="#9CA3AF"
+          className={`border rounded-lg px-4 py-3 text-base min-h-[44px] bg-white dark:bg-gray-800 text-gray-900 dark:text-white ${borderClass} ${className}`.trim()}
           {...props}
         />
       </View>
     );
   }
 );
-
-const styles = StyleSheet.create({
-  container: {
-    width: '100%',
-  },
-  input: {
-    borderWidth: 1,
-    borderRadius: borderRadius.md,
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    fontSize: fontSize.md,
-    minHeight: 44,
-  },
-});

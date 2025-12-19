@@ -1,25 +1,20 @@
 import React, { useState, useRef, useCallback } from 'react';
 import {
   View,
-  StyleSheet,
   TextInput as RNTextInput,
   Keyboard,
   Platform,
-  type ViewStyle,
+  Pressable,
+  Text,
   type NativeSyntheticEvent,
   type TextInputKeyPressEventData,
 } from 'react-native';
-import { useTheme } from '../../hooks/use-theme';
-import { TextInput } from '../text-input';
-import { IconButton } from '../icon-button';
-import { Text } from '../text';
-import { borderRadius, spacing } from '../../themes/spacing';
 
 export interface ChatInputProps {
   onSend: (message: string) => void;
   disabled?: boolean;
   placeholder?: string;
-  style?: ViewStyle;
+  className?: string;
   sendIcon?: React.ReactNode;
 }
 
@@ -27,10 +22,9 @@ export function ChatInput({
   onSend,
   disabled = false,
   placeholder = 'Type a message...',
-  style,
+  className = '',
   sendIcon,
 }: ChatInputProps) {
-  const { colors } = useTheme();
   const [text, setText] = useState('');
   const inputRef = useRef<RNTextInput>(null);
 
@@ -69,31 +63,22 @@ export function ChatInput({
   const canSend = text.trim().length > 0 && !disabled;
 
   const defaultSendIcon = (
-    <Text weight="600" color={canSend ? '#FFFFFF' : colors.textMuted}>
+    <Text className={canSend ? 'text-white font-semibold' : 'text-gray-400 font-semibold'}>
       ↑
     </Text>
   );
 
   return (
     <View
-      style={[
-        styles.container,
-        { backgroundColor: colors.surface, borderTopColor: colors.border },
-        style,
-      ]}
+      className={`px-4 py-2 bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 ${className}`.trim()}
     >
-      <View
-        style={[
-          styles.inputContainer,
-          { backgroundColor: colors.inputBackground, borderColor: colors.inputBorder },
-        ]}
-      >
-        <TextInput
+      <View className="flex-row items-end rounded-3xl border border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800 pl-4 pr-1 py-1">
+        <RNTextInput
           ref={inputRef}
           value={text}
           onChangeText={setText}
           placeholder={placeholder}
-          placeholderTextColor={colors.inputPlaceholder}
+          placeholderTextColor="#9CA3AF"
           multiline
           maxLength={10000}
           editable={!disabled}
@@ -101,52 +86,18 @@ export function ChatInput({
           onSubmitEditing={handleSend}
           blurOnSubmit={false}
           returnKeyType="send"
-          style={[styles.input, { color: colors.inputText }]}
-          containerStyle={styles.inputWrapper}
+          className="flex-1 text-base text-gray-900 dark:text-white max-h-[120px] min-h-[36px] py-2 bg-transparent"
         />
-        <IconButton
-          variant={canSend ? 'primary' : 'default'}
-          size="sm"
-          disabled={!canSend}
+        <Pressable
           onPress={handleSend}
-          icon={sendIcon ?? defaultSendIcon}
-          style={styles.sendButton}
-        />
+          disabled={!canSend}
+          className={`ml-1 mb-1 w-8 h-8 rounded-full items-center justify-center ${
+            canSend ? 'bg-blue-600' : 'bg-gray-200 dark:bg-gray-700'
+          } ${!canSend ? 'opacity-50' : ''}`.trim()}
+        >
+          {sendIcon ?? defaultSendIcon}
+        </Pressable>
       </View>
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  container: {
-    paddingHorizontal: spacing.md,
-    paddingVertical: spacing.sm,
-    borderTopWidth: StyleSheet.hairlineWidth,
-  },
-  inputContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    borderRadius: borderRadius.xl,
-    borderWidth: 1,
-    paddingLeft: spacing.md,
-    paddingRight: spacing.xs,
-    paddingVertical: spacing.xs,
-  },
-  inputWrapper: {
-    flex: 1,
-    borderWidth: 0,
-    backgroundColor: 'transparent',
-  },
-  input: {
-    maxHeight: 120,
-    minHeight: 36,
-    paddingTop: Platform.OS === 'ios' ? spacing.sm : spacing.xs,
-    paddingBottom: Platform.OS === 'ios' ? spacing.sm : spacing.xs,
-    borderWidth: 0,
-    backgroundColor: 'transparent',
-  },
-  sendButton: {
-    marginLeft: spacing.xs,
-    marginBottom: spacing.xs,
-  },
-});

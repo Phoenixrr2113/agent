@@ -3,24 +3,25 @@ import {
   ScrollView as RNScrollView,
   type ScrollViewProps as RNScrollViewProps,
 } from 'react-native';
-import { useTheme } from '../hooks/use-theme';
 
 export interface ScrollViewProps extends RNScrollViewProps {
   inverted?: boolean;
+  className?: string;
+  contentClassName?: string;
 }
 
 export const ScrollView = forwardRef<RNScrollView, ScrollViewProps>(
-  function ScrollView({ inverted, style, contentContainerStyle, ...props }, ref) {
-    const { colors } = useTheme();
-
+  function ScrollView({ inverted, className = '', contentClassName = '', ...props }, ref) {
     return (
       <RNScrollView
         ref={ref}
-        style={[{ backgroundColor: colors.background }, style]}
-        contentContainerStyle={[
-          inverted && { flexDirection: 'column-reverse' },
-          contentContainerStyle,
-        ]}
+        className={`bg-white dark:bg-gray-900 ${className}`.trim()}
+        contentContainerClassName={[
+          inverted ? 'flex-col-reverse' : '',
+          contentClassName,
+        ]
+          .filter(Boolean)
+          .join(' ')}
         {...props}
       />
     );
