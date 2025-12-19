@@ -33,15 +33,13 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Device',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="hand.tap.fill" color={color} />,
+          href: null,
         }}
       />
       <Tabs.Screen
         name="explore"
         options={{
-          title: 'Settings',
-          tabBarIcon: ({ color }) => <IconSymbol size={28} name="gearshape.fill" color={color} />,
+          href: null,
         }}
       />
     </Tabs>

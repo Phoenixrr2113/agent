@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { View, Text, ScrollView } from 'react-native';
+import { View, Text, ScrollView, Pressable, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
   StatBadge,
@@ -24,6 +24,9 @@ interface SerializableDashboardState {
 
 export default function DebugScreen(): React.ReactElement {
   const { settings } = useSettings();
+  const { width } = useWindowDimensions();
+  const isMobile = width < 768;
+  
   const [sessions, setSessions] = useState<Map<string, AgentSession>>(new Map());
   const [selectedSessionId, setSelectedSessionId] = useState<string | null>(null);
   const [expandedRounds, setExpandedRounds] = useState<Set<string>>(new Set());
@@ -35,6 +38,8 @@ export default function DebugScreen(): React.ReactElement {
     errors: 0,
   });
   const [logs, setLogs] = useState<LogEntry[]>([]);
+  const [logsExpanded, setLogsExpanded] = useState(true);
+  const [mobileTab, setMobileTab] = useState<'sessions' | 'details' | 'logs'>('sessions');
   const wsRef = useRef<WebSocket | null>(null);
 
   const handleWebSocketMessage = useCallback(
@@ -120,7 +125,15 @@ export default function DebugScreen(): React.ReactElement {
           break;
         }
         case 'log': {
-          const logEntry = event.data as unknown as LogEntry;
+          const rawEntry = event.data as { timestamp?: number; level?: string; message?: string; meta?: Record<string, unknown>; formattedMessage?: string };
+          const msg = rawEntry.message ?? rawEntry.formattedMessage ?? '';
+          const logEntry: LogEntry = {
+            timestamp: rawEntry.timestamp ?? Date.now(),
+            level: rawEntry.level ?? 'info',
+            message: msg,
+            meta: rawEntry.meta,
+            formattedMessage: rawEntry.formattedMessage ?? msg,
+          };
           setLogs((prev) => {
             const newLogs = [...prev, logEntry];
             return newLogs.slice(-500);
@@ -176,6 +189,91 @@ export default function DebugScreen(): React.ReactElement {
       second: '2-digit',
     });
 
+  const renderSessionDetails = () => (
+    selectedSession ? (
+      <ScrollView className="flex-1 p-4">
+        <View className="flex-row items-center justify-between mb-4">
+          <Text className="text-lg font-semibold text-gray-900 dark:text-white">
+            Session: {selectedSession.sessionId.slice(0, 12)}...
+          </Text>
+          <Text className="text-sm text-gray-500 dark:text-gray-400">
+            {selectedSession.rounds.length} round
+            {selectedSession.rounds.length !== 1 ? 's' : ''}
+          </Text>
+        </View>
+
+        {selectedSession.rounds.map((round) => (
+          <RoundCard
+            key={round.roundId}
+            round={round}
+            expanded={expandedRounds.has(round.roundId)}
+            onToggle={() => toggleRound(round.roundId)}
+            formatDuration={formatDuration}
+            formatTime={formatTime}
+          />
+        ))}
+      </ScrollView>
+    ) : (
+      <View className="flex-1 items-center justify-center">
+        <Text className="text-lg font-medium text-gray-500 dark:text-gray-400">
+          No session selected
+        </Text>
+        <Text className="text-sm text-gray-400 dark:text-gray-500 mt-1">
+          Send a message or select a session
+        </Text>
+      </View>
+    )
+  );
+
+  if (isMobile) {
+    return (
+      <SafeAreaView className="flex-1 bg-white dark:bg-gray-900" edges={['top']}>
+        <View className="px-4 py-2 border-b border-gray-200 dark:border-gray-700">
+          <View className="flex-row items-center gap-2 mb-2">
+            <View className={`w-2 h-2 rounded-full ${connected ? 'bg-green-500' : 'bg-red-500'}`} />
+            <Text className="text-sm text-gray-500 dark:text-gray-400">
+              {connected ? 'Connected' : 'Disconnected'}
+            </Text>
+          </View>
+          <View className="flex-row gap-2">
+            <StatBadge label="Sessions" value={stats.sessions} />
+            <StatBadge label="Rounds" value={stats.rounds} />
+            <StatBadge label="Tools" value={stats.toolCalls} />
+          </View>
+        </View>
+        
+        <View className="flex-row border-b border-gray-200 dark:border-gray-700">
+          {(['sessions', 'details', 'logs'] as const).map((tab) => (
+            <Pressable
+              key={tab}
+              onPress={() => setMobileTab(tab)}
+              className={`flex-1 py-3 ${mobileTab === tab ? 'border-b-2 border-blue-500' : ''}`}
+            >
+              <Text className={`text-center text-sm font-medium ${mobileTab === tab ? 'text-blue-500' : 'text-gray-500'}`}>
+                {tab === 'logs' ? `Logs (${logs.length})` : tab.charAt(0).toUpperCase() + tab.slice(1)}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+        
+        <View className="flex-1">
+          {mobileTab === 'sessions' && (
+            <SessionList
+              sessions={sessionList}
+              selectedSessionId={selectedSessionId}
+              onSelectSession={(id) => {
+                setSelectedSessionId(id);
+                setMobileTab('details');
+              }}
+            />
+          )}
+          {mobileTab === 'details' && renderSessionDetails()}
+          {mobileTab === 'logs' && <LogViewer logs={logs} />}
+        </View>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView className="flex-1 bg-white dark:bg-gray-900" edges={['top']}>
       <View className="px-4 py-3 border-b border-gray-200 dark:border-gray-700">
@@ -199,63 +297,41 @@ export default function DebugScreen(): React.ReactElement {
         </View>
       </View>
 
-      <View className="flex-1 flex-row">
-        <View className="w-1/3 border-r border-gray-200 dark:border-gray-700">
-          <View className="px-3 py-2 border-b border-gray-200 dark:border-gray-700">
-            <Text className="text-sm font-semibold text-gray-600 dark:text-gray-300 uppercase">
-              Sessions
-            </Text>
-          </View>
-          <SessionList
-            sessions={sessionList}
-            selectedSessionId={selectedSessionId}
-            onSelectSession={setSelectedSessionId}
-          />
-        </View>
-
-        <View className="flex-1 flex-col">
-          {selectedSession ? (
-            <ScrollView className="flex-1 p-4">
-              <View className="flex-row items-center justify-between mb-4">
-                <Text className="text-lg font-semibold text-gray-900 dark:text-white">
-                  Session: {selectedSession.sessionId.slice(0, 12)}...
-                </Text>
-                <Text className="text-sm text-gray-500 dark:text-gray-400">
-                  {selectedSession.rounds.length} round
-                  {selectedSession.rounds.length !== 1 ? 's' : ''}
-                </Text>
-              </View>
-
-              {selectedSession.rounds.map((round) => (
-                <RoundCard
-                  key={round.roundId}
-                  round={round}
-                  expanded={expandedRounds.has(round.roundId)}
-                  onToggle={() => toggleRound(round.roundId)}
-                  formatDuration={formatDuration}
-                  formatTime={formatTime}
-                />
-              ))}
-            </ScrollView>
-          ) : (
-            <View className="flex-1 items-center justify-center">
-              <Text className="text-lg font-medium text-gray-500 dark:text-gray-400">
-                No session selected
-              </Text>
-              <Text className="text-sm text-gray-400 dark:text-gray-500 mt-1">
-                Send a message or select a session
+      <View className="flex-1 flex-col">
+        <View className="flex-1 flex-row">
+          <View className="w-64 border-r border-gray-200 dark:border-gray-700">
+            <View className="px-3 py-2 border-b border-gray-200 dark:border-gray-700">
+              <Text className="text-sm font-semibold text-gray-600 dark:text-gray-300 uppercase">
+                Sessions
               </Text>
             </View>
-          )}
+            <SessionList
+              sessions={sessionList}
+              selectedSessionId={selectedSessionId}
+              onSelectSession={setSelectedSessionId}
+            />
+          </View>
+
+          <View className="flex-1">
+            {renderSessionDetails()}
+          </View>
         </View>
 
-        <View className="w-64 border-l border-gray-200 dark:border-gray-700 flex-col">
-          <View className="px-3 py-2 border-b border-gray-200 dark:border-gray-700">
+        <View className="border-t border-gray-200 dark:border-gray-700">
+          <Pressable
+            onPress={() => setLogsExpanded(!logsExpanded)}
+            className="flex-row items-center justify-between px-4 py-2 bg-gray-50 dark:bg-gray-800"
+          >
             <Text className="text-sm font-semibold text-gray-600 dark:text-gray-300 uppercase">
-              Logs ({logs.length})
+              Server Logs ({logs.length})
             </Text>
-          </View>
-          <LogViewer logs={logs} />
+            <Text className="text-gray-400">{logsExpanded ? '▼' : '▶'}</Text>
+          </Pressable>
+          {logsExpanded && (
+            <View className="h-48">
+              <LogViewer logs={logs} />
+            </View>
+          )}
         </View>
       </View>
     </SafeAreaView>

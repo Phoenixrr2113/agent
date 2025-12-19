@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { View, Animated, Text } from 'react-native';
+import { MarkdownContent } from './markdown-content';
 
 export interface StreamingTextProps {
   text: string;
@@ -41,17 +42,17 @@ export function StreamingText({
 
   return (
     <View className={`flex-row flex-wrap ${className}`.trim()}>
-      <Text className="text-base leading-6 text-gray-900 dark:text-white">
-        {text}
-        {isStreaming && showCursor && (
-          <Animated.Text
-            style={{ opacity: cursorOpacity }}
-            className="text-base text-blue-600"
-          >
-            ▊
-          </Animated.Text>
-        )}
-      </Text>
+      <View className="flex-1">
+        <MarkdownContent content={text} />
+      </View>
+      {isStreaming && showCursor && (
+        <Animated.Text
+          style={{ opacity: cursorOpacity }}
+          className="text-base text-blue-600"
+        >
+          ▊
+        </Animated.Text>
+      )}
     </View>
   );
 }

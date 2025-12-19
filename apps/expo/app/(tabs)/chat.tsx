@@ -20,6 +20,39 @@ import {
 } from '@agent/ui';
 import { useSettings } from '@/context/settings';
 
+interface DisplayItem {
+  type: 'reasoning' | 'content' | 'tool';
+  key: string;
+  data: unknown;
+}
+
+function buildDisplayItems(message: StreamingMessage): DisplayItem[] {
+  const items: DisplayItem[] = [];
+  
+  if (message.role === 'user') {
+    items.push({ type: 'content', key: 'content', data: message.content });
+    return items;
+  }
+
+  if (message.reasoning?.content) {
+    items.push({ 
+      type: 'reasoning', 
+      key: 'reasoning', 
+      data: message.reasoning 
+    });
+  }
+
+  for (const tc of message.toolCalls) {
+    items.push({ type: 'tool', key: tc.toolCallId, data: tc });
+  }
+
+  if (message.content) {
+    items.push({ type: 'content', key: 'content', data: message.content });
+  }
+
+  return items;
+}
+
 export default function ChatScreen(): React.ReactElement {
   const { settings } = useSettings();
   const clientRef = useRef<AgentClient | null>(null);
@@ -71,6 +104,7 @@ export default function ChatScreen(): React.ReactElement {
   const renderMessage = ({ item }: { item: StreamingMessage }): React.ReactElement => {
     const isUser = item.role === 'user';
     const isAssistantStreaming = item.status === 'streaming';
+    const displayItems = buildDisplayItems(item);
 
     return (
       <View className={`my-1 max-w-[85%] ${isUser ? 'self-end' : 'self-start'}`}>
@@ -81,27 +115,43 @@ export default function ChatScreen(): React.ReactElement {
               : 'bg-gray-100 dark:bg-gray-800 rounded-bl-sm'
           }`}
         >
-          {item.reasoning && (
-            <ReasoningCollapsible
-              content={item.reasoning.content}
-              durationMs={item.reasoning.durationMs}
-            />
-          )}
-
-          {isUser ? (
-            <Text className="text-base leading-6 text-white">
-              {item.content}
-            </Text>
-          ) : (
-            <StreamingText
-              text={item.content}
-              isStreaming={isAssistantStreaming}
-            />
-          )}
-
-          {item.toolCalls.map((tc) => (
-            <ToolCallCard key={tc.toolCallId} toolCall={tc} />
-          ))}
+          {displayItems.map((di) => {
+            if (di.type === 'reasoning') {
+              const reasoning = di.data as { content: string; durationMs?: number };
+              const hasContent = reasoning.content && !reasoning.content.includes('[REDACTED]');
+              if (!hasContent) return null;
+              return (
+                <ReasoningCollapsible
+                  key={di.key}
+                  content={reasoning.content}
+                  durationMs={reasoning.durationMs}
+                />
+              );
+            }
+            if (di.type === 'tool') {
+              const tc = di.data as import('@agent/api-client').ToolCallInfo;
+              return <ToolCallCard key={di.key} toolCall={tc} />;
+            }
+            if (di.type === 'content') {
+              if (isUser) {
+                return (
+                  <Text key={di.key} className="text-base leading-6 text-white">
+                    {di.data as string}
+                  </Text>
+                );
+              }
+              const content = di.data as string;
+              if (!content) return null;
+              return (
+                <StreamingText
+                  key={di.key}
+                  text={content}
+                  isStreaming={isAssistantStreaming}
+                />
+              );
+            }
+            return null;
+          })}
         </View>
 
         <Text className={`text-xs text-gray-400 mt-1 ${isUser ? 'text-right mr-1' : 'ml-1'}`}>

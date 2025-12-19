@@ -8,4 +8,6 @@ export { ToolCallCard, type ToolCallCardProps } from './tool-call-card';
 export { ReasoningCollapsible, type ReasoningCollapsibleProps } from './reasoning-collapsible';
 export { StepIndicator, type StepIndicatorProps } from './step-indicator';
 export { SourcesList, type SourcesListProps } from './sources-list';
+export { MarkdownContent, type MarkdownContentProps } from './markdown-content';
 export type { Message, ChatState } from './types';
+
