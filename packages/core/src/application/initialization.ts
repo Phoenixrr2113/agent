@@ -1,49 +1,46 @@
 import { stdin as input, stdout as output } from 'node:process';
 import * as readline from 'node:readline/promises';
 
+import { logger } from '@agent/shared';
 
-import { logger } from '@agent/shared'
-
-import { createCodebaseRAG } from '../core/rag/index.js'
-import { instrumentTools } from '../core/tool-instrumentation.js'
-import { createAgentTools } from '../tools/agent.js'
-import {
-  persistentBackgroundTaskTools,
-  getPersistentTaskManager,
-} from '../tools/background-tasks-persistent.js'
-import { createCodebaseTools } from '../tools/codebase.js'
-import { createDeviceTools } from '../tools/device/index.js'
-import { fetchPageTool } from '../tools/fetch-page.js'
-import { createFilesystemTools } from '../tools/filesystem/index.js'
-import { memoryTools, closeMemory } from '../tools/memory.js'
+import { createCodebaseRAG } from '../core/rag/index.js';
+import { instrumentTools } from '../core/tool-instrumentation.js';
+import { createAgentTools } from '../tools/agent.js';
+import { getPersistentTaskManager } from '../tools/background-tasks/task-manager.js';
+import { createCodebaseTools } from '../tools/codebase.js';
+import { createDeviceTools } from '../tools/device/index.js';
+import { createFsTool } from '../tools/filesystem/index.js';
+import { setAllowedDirectories } from '../tools/filesystem/path-security.js';
+import { createDelegateTool, createTaskTool } from '../tools/delegation/index.js';
+import { createShellTool } from '../tools/shell.js';
+import { createWebTool } from '../tools/web-tool.js';
+import { createMemoryTool, closeMemory } from '../tools/memory-tool.js';
 import {
   type ToolRegistry,
   createToolRegistry,
   createToolSearchTool,
   createActivateToolTool,
   createDeactivateToolTool,
-} from '../tools/registry/index.js'
+} from '../tools/registry/index.js';
 import {
   sequentialThinkingTool,
   resetSequentialThinkingEngine,
-} from '../tools/sequential-thinking.js'
-import { shellTool } from '../tools/shell.js'
-import { createToolActivationManager } from '../tools/tool-wrapper.js'
-import { webSearchTool } from '../tools/web-search.js'
-import { planTool, validationTool, createPlanTool } from '../tools/workflow.js'
+} from '../tools/sequential-thinking.js';
+import { createToolActivationManager } from '../tools/tool-wrapper.js';
+import { planTool, validationTool, createPlanTool } from '../tools/workflow.js';
+import { initializeChainTools } from '../tools/chaining/index.js';
 
-/**
- * Core tools that are always available without requiring activation.
- * These tools are essential for the agent's operation and reasoning.
- */
 export const CORE_TOOL_NAMES = [
+  'fs',
+  'shell',
+  'web',
+  'memory',
+  'delegate',
+  'task',
   'plan',
   'sequential_thinking',
   'ask_user',
   'task_complete',
-  'tool_search',
-  'activate_tool',
-  'deactivate_tool',
 ] as const;
 
 export interface InitializationConfig {
@@ -65,11 +62,12 @@ export interface InitializationResult {
 
 export async function initializeAgent(config: InitializationConfig = {}): Promise<InitializationResult> {
   const {
-    workspaceRoot,
+    workspaceRoot = process.cwd(),
     enableReadline = false,
     registry: providedRegistry,
     enableSemanticSearch = true,
     enableCodebaseIndexing = false,
+    disableAgentSpawning = false,
   } = config;
 
   let rl: readline.Interface | null = null;
@@ -77,75 +75,69 @@ export async function initializeAgent(config: InitializationConfig = {}): Promis
     rl = readline.createInterface({ input, output });
   }
 
-  logger.info(`🤖 Initializing AI Agent`, { workspaceRoot: workspaceRoot || '(none)' });
+  logger.info(`🤖 Initializing AI Agent`, { workspaceRoot });
 
   const registry = providedRegistry ?? createToolRegistry();
   const activationManager = createToolActivationManager();
 
+  setAllowedDirectories([workspaceRoot]);
+
   let codebaseRAG: any = null;
-  if (workspaceRoot && enableCodebaseIndexing) {
+  if (enableCodebaseIndexing) {
     codebaseRAG = createCodebaseRAG(workspaceRoot, {
       enableContextGeneration: false,
     });
-    logger.info('Initializing RAG...', { path: workspaceRoot });
     logger.info('Indexing codebase...', { path: workspaceRoot });
     await codebaseRAG.indexCodebase();
     const ragStats = codebaseRAG.getStats();
     logger.info('RAG indexed', { chunks: ragStats.totalChunks, files: ragStats.files });
-  } else if (workspaceRoot) {
-    logger.info('Codebase indexing disabled');
   } else {
-    logger.info('No workspace provided - codebase tools disabled');
+    logger.info('Codebase indexing disabled');
   }
 
-  const workspaceTools = codebaseRAG && workspaceRoot
-    ? createCodebaseTools(codebaseRAG)
-    : {};
-  const filesystemTools = workspaceRoot
-    ? createFilesystemTools(workspaceRoot)
-    : {};
-  const agentTools = createAgentTools(rl);
+  initializeChainTools({
+    tools: {},
+    onStepComplete: (step) => {
+      logger.debug('Chain step complete', { stepId: step.stepId, tool: step.tool });
+    },
+  });
 
-  const activeTools = {
-    plan: config.disableAgentSpawning ? createPlanTool({ disableDelegation: true }) : planTool,
+  const codebaseTools = codebaseRAG ? createCodebaseTools(codebaseRAG) : {};
+  const agentTools = createAgentTools(rl);
+  const deviceTools = createDeviceTools({
+    serverUrl: process.env['AGENT_SERVER_URL'] ?? 'http://localhost:3000',
+  });
+
+  const consolidatedTools = {
+    fs: createFsTool(workspaceRoot),
+    shell: createShellTool(workspaceRoot),
+    web: createWebTool(),
+    memory: createMemoryTool(),
+    delegate: disableAgentSpawning ? undefined : createDelegateTool(workspaceRoot),
+    task: createTaskTool(),
+  };
+
+  const coreTools = {
+    plan: disableAgentSpawning ? createPlanTool({ disableDelegation: true }) : planTool,
+    validate: validationTool,
     sequential_thinking: sequentialThinkingTool,
     ...agentTools,
   };
 
-  const deviceTools = createDeviceTools({
-    serverUrl: process.env['AGENT_SERVER_URL'] ?? 'http://localhost:3000',
-  })
-
-  const deferredTools = {
-    shell: shellTool,
-    web_search: webSearchTool,
-    fetch_page: fetchPageTool,
-    ...memoryTools,
-    validate: validationTool,
-    ...persistentBackgroundTaskTools,
-    ...workspaceTools,
-    ...filesystemTools,
+  const allTools: Record<string, any> = {
+    ...consolidatedTools,
+    ...coreTools,
+    ...codebaseTools,
     ...deviceTools,
-  }
-
-  registry.registerMany(activeTools, { deferLoading: false });
-  registry.registerMany(deferredTools, { deferLoading: true });
-
-  const toolExamples: Record<string, Array<Record<string, unknown>>> = {
-    read_text_file: [{ path: 'src/index.ts' }, { path: 'package.json', head: 20 }],
-    write_file: [{ path: 'src/new-file.ts', content: 'export const x = 1;' }],
-    edit_file: [{ path: 'src/file.ts', edits: [{ oldText: 'foo', newText: 'bar' }] }],
-    list_directory: [{ path: '.' }, { path: 'src' }],
-    search_files: [{ path: '.', pattern: '**/*.ts' }],
-    search_codebase: [{ query: 'authentication middleware' }],
-    web_search: [{ query: 'how to implement rate limiting' }],
   };
-  for (const [name, examples] of Object.entries(toolExamples)) {
-    const metadata = registry.getMetadata(name);
-    if (metadata) {
-      metadata.examples = examples;
+
+  Object.keys(allTools).forEach(key => {
+    if (allTools[key] === undefined) {
+      delete allTools[key];
     }
-  }
+  });
+
+  registry.registerMany(allTools, { deferLoading: false });
 
   if (enableSemanticSearch) {
     logger.info('Generating tool embeddings for semantic search...');
@@ -157,21 +149,8 @@ export async function initializeAgent(config: InitializationConfig = {}): Promis
   const activateTool = createActivateToolTool(registry, activationManager);
   const deactivateTool = createDeactivateToolTool(registry, activationManager);
 
-  const wrappedDeferredTools: Record<string, any> = {};
-  for (const [name, tool] of Object.entries(deferredTools)) {
-    const metadata = registry.getMetadata(name);
-    if (metadata) {
-      wrappedDeferredTools[name] = activationManager.createDeferredWrapper(
-        name,
-        tool,
-        metadata.description
-      );
-    }
-  }
-
   const tools = {
-    ...activeTools,
-    ...wrappedDeferredTools,
+    ...allTools,
     tool_search: searchTool,
     activate_tool: activateTool,
     deactivate_tool: deactivateTool,
@@ -180,9 +159,8 @@ export async function initializeAgent(config: InitializationConfig = {}): Promis
   const instrumentedTools = instrumentTools(tools);
 
   logger.info('Tool registry initialized', {
-    totalTools: registry.size(),
-    activeTools: Object.keys(activeTools).length,
-    deferredTools: Object.keys(deferredTools).length,
+    totalTools: Object.keys(tools).length,
+    consolidatedTools: Object.keys(consolidatedTools).filter(k => (consolidatedTools as any)[k]).length,
     semanticSearch: enableSemanticSearch,
   });
 

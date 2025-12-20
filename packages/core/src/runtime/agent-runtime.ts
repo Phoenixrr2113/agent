@@ -9,7 +9,7 @@ import { type AgentRole } from '../core/agents/roles.js';
 // import { createMemoryExtractor } from '../core/memory/extractor.js';
 // import { getMemoryProvider } from '../tools/memory.js';
 import { createSimpleMemoryExtractor } from '../core/memory/extractor-simple.js';
-import { getPersistentTaskManager } from '../tools/background-tasks-persistent.js';
+import { getPersistentTaskManager } from '../tools/background-tasks/task-manager.js';
 
 import type { TaskMonitorCallback, PersistentTaskInfo } from '../tools/background-tasks/types.js';
 import type { ModelMessage } from 'ai';
@@ -58,6 +58,25 @@ export interface AgentSession {
 export interface AgentRuntime {
   createSession(): AgentSession;
   shutdown(): Promise<void>;
+}
+
+function getEffectiveText(text: string, steps: any[]): string {
+  if (text && text.trim()) {
+    return text;
+  }
+  
+  for (const step of steps) {
+    for (const toolResult of step.toolResults || []) {
+      if (toolResult.toolName === 'task_complete') {
+        const result = toolResult.result;
+        if (typeof result === 'string') {
+          return result;
+        }
+      }
+    }
+  }
+  
+  return text;
 }
 
 export async function createAgentRuntime(config: AgentConfig = {}): Promise<AgentRuntime> {
@@ -293,7 +312,7 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
       performanceTimer.logSummary();
 
       return {
-        text,
+        text: getEffectiveText(text, steps),
         messages: response.messages,
         completed,
         needsInput,
@@ -522,7 +541,7 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
         performanceTimer.logSummary();
 
         const taskResult: TaskResult = {
-          text,
+          text: getEffectiveText(text, steps),
           messages: response.messages,
           completed,
           needsInput,

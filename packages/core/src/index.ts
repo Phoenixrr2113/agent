@@ -40,9 +40,11 @@ export {
 export {
   getPersistentTaskManager,
   resetPersistentTaskManager,
-  type PersistentTaskInfo,
-  type TaskStatus,
-} from './tools/background-tasks-persistent.js';
+} from './tools/background-tasks/task-manager.js';
+export type {
+  PersistentTaskInfo,
+  TaskStatus,
+} from './tools/background-tasks/types.js';
 
 export { type AgentRole } from './core/agents/factory.js';
 

@@ -35,3 +35,4 @@ export {
 } from './directory-operations.js';
 
 export { createFilesystemTools } from './tools.js';
+export { createFsTool } from './fs-tool.js';
