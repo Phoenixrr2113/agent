@@ -832,10 +832,11 @@ const myTool = createLifecycleTool({
 });
 ```
 
-**Helper Functions**:
+**Helper Functions** (internal, not exported from package):
 ```typescript
-success({ key: 'value' });     // Returns: { success: true, key: 'value' }
-error('Something failed');     // Returns: { success: false, error: 'Something failed' }
+// These return JSON strings for tool responses
+success({ key: 'value' });     // Returns: '{"success":true,"key":"value"}'
+error('Something failed');     // Returns: '{"success":false,"error":"Something failed",...}'
 wrapWithTiming('name', fn);    // Wraps function with timing logs
 ```
 
@@ -914,9 +915,10 @@ interface Chain {
 }
 ```
 
-**Usage**:
+**Internal Usage** (not exported from package entrypoint):
 ```typescript
-import { createChainExecutor } from '@agent/core';
+// Within @agent/core tool implementations
+import { createChainExecutor } from './chaining/executor.js';
 
 const executor = createChainExecutor({ tools: myTools });
 
@@ -937,9 +939,10 @@ Unified tool for delegating work to sub-agents, tool chains, or background tasks
 - `agent`: Spawn an autonomous sub-agent for complex tasks
 - `background`: Start a shell command in the background
 
-**Usage**:
+**Internal Usage** (not exported from package entrypoint):
 ```typescript
-import { createDelegateTool } from '@agent/core';
+// Within @agent/core tool implementations
+import { createDelegateTool } from './delegation/delegate-tool.js';
 
 const delegateTool = createDelegateTool(workspaceRoot);
 
@@ -1009,8 +1012,16 @@ const output = manager.getTaskOutput(taskId, { maxBytes: 10000, fromEnd: true })
 // Cancel task
 manager.cancelTask(taskId);
 
-// List tasks
-const tasks = manager.listTasks({ status: 'running' });
+// List tasks by status
+const tasks = manager.getAllTasks({ status: 'running' });
+
+// Monitor task state changes
+manager.startMonitoring((event, task) => {
+  // event: 'task_completed' | 'task_failed' | 'task_orphaned'
+  console.log(`Task ${task.id}: ${event}`);
+}, 60000); // check interval in ms
+
+manager.stopMonitoring();
 ```
 
 **Tools**:

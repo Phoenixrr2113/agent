@@ -16,8 +16,11 @@ The new tool lifecycle system provides standardized error handling and execution
 
 #### Custom Tool with Lifecycle
 
+**Note**: These utilities are internal to `@agent/core` and not exported from the package entrypoint.
+
 ```typescript
-import { createLifecycleTool, ToolError, ToolErrorType, success, error } from '@agent/core';
+// Internal usage within @agent/core tool implementations
+import { createLifecycleTool, ToolError, ToolErrorType, success, error } from './lifecycle.js';
 import { z } from 'zod';
 
 const myTool = createLifecycleTool({
@@ -40,7 +43,7 @@ const myTool = createLifecycleTool({
     },
     execute: async (input) => {
       const content = await fs.readFile(input.path, input.encoding);
-      return success({ content, path: input.path });
+      return success({ content, path: input.path }); // Returns JSON string
     },
     afterExecute: async (input, output) => {
       // Log successful read
@@ -63,7 +66,8 @@ const myTool = createLifecycleTool({
 #### Wrapping Existing Tools
 
 ```typescript
-import { withLifecycle } from '@agent/core';
+// Internal usage within @agent/core
+import { withLifecycle } from './lifecycle.js';
 
 const enhancedTool = withLifecycle(existingTool, {
   validate: (input) => ({ valid: input.path.startsWith('/allowed/') }),
@@ -80,8 +84,11 @@ Tool chains enable multi-step workflows with dependency resolution.
 
 #### Sequential Chain
 
+**Note**: Tool chaining is internal to `@agent/core`.
+
 ```typescript
-import { createChainExecutor } from '@agent/core';
+// Internal usage within @agent/core
+import { createChainExecutor } from './chaining/executor.js';
 
 const executor = createChainExecutor({ tools: allTools });
 
@@ -201,7 +208,8 @@ const errors = manager.getTaskOutput(taskId, {
 #### Task Lifecycle Callbacks
 
 ```typescript
-manager.onTaskEvent((event, task) => {
+// Start monitoring with callback and check interval (default 60000ms)
+manager.startMonitoring((event, task) => {
   switch (event) {
     case 'task_completed':
       console.log(`Task ${task.id} completed with code ${task.exitCode}`);
@@ -213,7 +221,10 @@ manager.onTaskEvent((event, task) => {
       console.log(`Task ${task.id} became orphaned (process died unexpectedly)`);
       break;
   }
-});
+}, 30000); // Check every 30 seconds
+
+// Stop monitoring when done
+manager.stopMonitoring();
 ```
 
 ### Dashboard Integration
