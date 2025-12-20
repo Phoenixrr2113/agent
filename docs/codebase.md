@@ -75,18 +75,18 @@
 ```
 agent-platform/
 ├── packages/
-│   ├── shared/           # @agent/shared - Shared utilities, types & schemas
+│   ├── shared/           # @agent/shared - Shared utilities, types, schemas & dashboard
 │   ├── core/             # @agent/core - Agent runtime engine
 │   ├── server/           # @agent/server - HTTP API & WebSocket server
 │   ├── device-use/       # @agent/device-use - Cross-platform device control
 │   ├── api-client/       # @agent/api-client - HTTP/WebSocket client SDK
-│   ├── ui/               # @agent/ui - React Native shared UI components
+│   ├── ui/               # @agent/ui - React Native shared UI & debug components
 │   ├── benchmarks/       # @agent/benchmarks - Evaluation adapters
+│   ├── tailwind-config/  # @agent/tailwind-config - Shared Tailwind CSS presets
 │   └── mobile-accessibility/  # @agent/mobile-accessibility - Native mobile module
 ├── apps/
-│   ├── cli/              # @agent/cli - CLI applications
-│   ├── desktop/          # @agent/desktop - Desktop app (Tauri + React)
-│   └── mobile/           # Mobile app - React Native/Expo app
+│   ├── cli/              # @agent/cli - CLI applications (server, chat)
+│   └── expo/             # Expo app - Unified mobile/web application
 ├── docs/                 # Documentation
 ├── scripts/              # Build and utility scripts
 ├── docker/               # Docker configurations
@@ -148,8 +148,12 @@ packages/shared/src/
 │   ├── capabilities.ts         # Device capabilities interface
 │   ├── schemas.ts              # Zod validation schemas
 │   └── result.ts               # Action result types
-└── streaming/
-    └── types.ts                # Streaming event types
+├── streaming/
+│   └── types.ts                # Streaming event types
+└── dashboard/
+    ├── index.ts                # Dashboard exports
+    ├── types.ts                # Dashboard types (sessions, rounds, events)
+    └── log-collector.ts        # Real-time log collection system
 ```
 
 #### Key Exports
@@ -254,6 +258,74 @@ interface ToolCallInfo {
 }
 ```
 
+##### Dashboard Types (`packages/shared/src/dashboard/`)
+
+Real-time agent debugging and monitoring system.
+
+**Key Types**:
+```typescript
+interface AgentSession {
+  sessionId: string;
+  agentId: string;
+  agentType: 'main' | 'spawned';
+  parentAgentId?: string;
+  role?: string;
+  rounds: MessageRound[];
+  createdAt: number;
+  updatedAt: number;
+  status: 'active' | 'completed' | 'error';
+}
+
+interface MessageRound {
+  roundId: string;
+  agentId: string;
+  sessionId: string;
+  roundIndex: number;
+  input: { message: string; timestamp: number };
+  output?: { text: string; timestamp: number; completed: boolean };
+  reasoning: RoundReasoning[];
+  toolExecutions: ToolExecution[];
+  errors: RoundError[];
+  performance?: RoundPerformance;
+  stepsUsed: number;
+  status: 'pending' | 'processing' | 'completed' | 'error';
+}
+
+interface ToolExecution {
+  toolCallId: string;
+  toolName: string;
+  args: Record<string, unknown>;
+  result?: unknown;
+  error?: string;
+  startTime: number;
+  endTime?: number;
+  durationMs?: number;
+  status: 'pending' | 'running' | 'success' | 'error';
+}
+```
+
+**Log Collector**:
+```typescript
+import { createLogCollector, getLogCollector } from '@agent/shared';
+
+const collector = createLogCollector({ maxSessions: 100, maxRoundsPerSession: 100 });
+
+// Subscribe to events
+const unsubscribe = collector.subscribe((event) => {
+  switch (event.type) {
+    case 'session:created': // New session started
+    case 'round:started':   // New conversation round
+    case 'tool:started':    // Tool execution began
+    case 'tool:completed':  // Tool finished
+    case 'round:completed': // Round finished
+    case 'error:occurred':  // Error happened
+  }
+});
+
+// Get current state
+const snapshot = collector.getSnapshot();
+```
+
 ##### `packages/shared/src/utils/logger.ts`
 
 Structured logging system with levels, colors, and metadata.
@@ -326,11 +398,17 @@ packages/core/src/
 │   ├── agents/                 # Agent configuration
 │   │   ├── models.ts           # Model tier management
 │   │   ├── roles.ts            # Role-based prompts
+│   │   ├── embeddings.ts       # Embedding model configuration
 │   │   └── factory.ts          # Agent factory
+│   ├── embeddings/             # Embedding utilities
+│   │   └── index.ts            # Embedding model helpers
 │   ├── memory/                 # Knowledge graph system
 │   │   ├── types.ts            # Core types
 │   │   ├── storage.ts          # Storage interface
 │   │   ├── storage-sqlite.ts   # SQLite implementation
+│   │   ├── storage/            # Storage implementations
+│   │   │   ├── sqlite-storage.ts
+│   │   │   └── memory-storage.ts
 │   │   ├── provider-graphiti.ts # External Graphiti provider
 │   │   ├── factory.ts          # Provider factory
 │   │   ├── index.ts            # MemoryLite implementation
@@ -338,36 +416,63 @@ packages/core/src/
 │   │   └── extractor.ts        # Extraction orchestration
 │   ├── rag/                    # RAG system
 │   │   ├── index.ts            # Main RAG orchestrator
+│   │   ├── codebase-rag.ts     # Codebase RAG implementation
+│   │   ├── search-engine.ts    # Search engine
+│   │   ├── chunk-processor.ts  # Chunk processing
 │   │   ├── chunking.ts         # Code chunking
 │   │   ├── context.ts          # Contextual descriptions
 │   │   ├── cache.ts            # File-based caching
 │   │   ├── bm25.ts             # BM25 text search
+│   │   ├── tokens.ts           # Token counting
 │   │   ├── rerank.ts           # Cohere reranking
+│   │   ├── workspace-scanner.ts # Workspace file scanning
 │   │   └── strategies/         # Chunking strategies
 │   │       ├── base.ts         # Base interface
 │   │       ├── code-strategy.ts    # AST-based chunking
 │   │       ├── document-strategy.ts # Markdown/text chunking
 │   │       └── registry.ts     # Strategy registry
-│   ├── search/
-│   │   └── grep.ts             # Workspace grep
 │   └── tool-instrumentation.ts # Tool performance tracking
 ├── tools/
 │   ├── index.ts                # Tool exports
+│   ├── lifecycle.ts            # Tool lifecycle hooks & error types
 │   ├── shell.ts                # Bash execution
-│   ├── web-search.ts           # Brave/Tavily search
-│   ├── fetch-page.ts           # Web page fetching
-│   ├── memory.ts               # Memory operations
-│   ├── workflow.ts             # Planning and validation
+│   ├── web-tool.ts             # Unified web search & fetch
+│   ├── memory-tool.ts          # Memory operations
+│   ├── sequential-thinking.ts  # Sequential thinking tool
 │   ├── codebase.ts             # Code search tools
 │   ├── agent.ts                # Agent control tools
-│   ├── filesystem.ts           # File operations
+│   ├── factory.ts              # Tool factory
 │   ├── registry.ts             # Tool discovery
 │   ├── tool-wrapper.ts         # Tool activation manager
+│   ├── filesystem/             # File operations (refactored)
+│   │   ├── index.ts            # Filesystem exports
+│   │   ├── path-security.ts    # Path validation & sandboxing
+│   │   ├── file-operations.ts  # File read/write/edit
+│   │   ├── directory-operations.ts # Directory operations
+│   │   ├── fs-tool.ts          # Unified fs tool
+│   │   ├── tools.ts            # Individual tool wrappers
+│   │   └── types.ts            # Filesystem types
+│   ├── chaining/               # Tool chaining system
+│   │   ├── index.ts            # Chaining exports
+│   │   ├── types.ts            # Chain types
+│   │   ├── executor.ts         # Chain executor
+│   │   └── tools.ts            # Chaining tools
+│   ├── delegation/             # Task delegation
+│   │   ├── index.ts            # Delegation exports
+│   │   ├── delegate-tool.ts    # Unified delegation tool
+│   │   └── task-tool.ts        # Task management tool
+│   ├── background-tasks/       # Persistent background tasks
+│   │   ├── index.ts            # Background task exports
+│   │   ├── types.ts            # Task types
+│   │   ├── task-manager.ts     # Persistent task manager
+│   │   ├── task-database.ts    # SQLite task storage
+│   │   └── tools.ts            # Background task tools
 │   └── device/                 # Device control tools
 │       └── index.ts            # Device tools factory
 ├── infrastructure/
 │   └── prompts/
-│       └── templates.ts        # System prompts
+│       ├── templates.ts        # System prompts
+│       └── system-context.ts   # Dynamic system context
 └── types/
     └── wink-bm25-text-search.d.ts # Type definitions
 ```
@@ -677,17 +782,85 @@ Comprehensive file operations with path sandboxing.
 - Path traversal prevention
 - Symlink validation
 
-**`packages/core/src/tools/web-search.ts`** - Web Search Tool
+**`packages/core/src/tools/lifecycle.ts`** - Tool Lifecycle System
 
-Search via Brave and Tavily APIs.
+Standardized tool error handling and lifecycle hooks.
 
-**Engines**:
-- **Brave**: General web search
-- **Tavily**: Research-focused with AI summaries
+**Error Types**:
+```typescript
+enum ToolErrorType {
+  FILE_NOT_FOUND = 'FILE_NOT_FOUND',
+  PATH_NOT_IN_WORKSPACE = 'PATH_NOT_IN_WORKSPACE',
+  PERMISSION_DENIED = 'PERMISSION_DENIED',
+  TIMEOUT = 'TIMEOUT',
+  INVALID_INPUT = 'INVALID_INPUT',
+  COMMAND_BLOCKED = 'COMMAND_BLOCKED',
+  CONTENT_TOO_LARGE = 'CONTENT_TOO_LARGE',
+  OPERATION_FAILED = 'OPERATION_FAILED',
+}
 
-**`packages/core/src/tools/fetch-page.ts`** - Fetch Page Tool
+class ToolError extends Error {
+  constructor(message: string, type: ToolErrorType, details?: Record<string, unknown>);
+}
+```
 
-Fetches and extracts clean content from web pages using Readability + JSDOM.
+**Lifecycle Hooks**:
+```typescript
+interface ToolLifecycle<TInput, TOutput> {
+  beforeExecute?: (input: TInput) => Promise<TInput> | TInput;
+  validate?: (input: TInput) => Promise<ValidationResult> | ValidationResult;
+  afterExecute?: (input: TInput, output: TOutput) => Promise<TOutput> | TOutput;
+  onError?: (error: Error, input: TInput) => Promise<TOutput | 'throw'> | TOutput | 'throw';
+  cleanup?: (input: TInput, didSucceed: boolean) => Promise<void> | void;
+}
+
+// Wrap existing tool with lifecycle hooks
+const toolWithHooks = withLifecycle(baseTool, {
+  validate: (input) => ({ valid: input.path !== '' }),
+  afterExecute: (input, output) => { /* log result */ return output; },
+});
+
+// Create tool with built-in lifecycle
+const myTool = createLifecycleTool({
+  name: 'my_tool',
+  description: 'Does something',
+  inputSchema: z.object({ ... }),
+  lifecycle: {
+    validate: (input) => ({ valid: true }),
+    execute: async (input) => { /* main logic */ },
+  },
+});
+```
+
+**Helper Functions**:
+```typescript
+success({ key: 'value' });     // Returns: { success: true, key: 'value' }
+error('Something failed');     // Returns: { success: false, error: 'Something failed' }
+wrapWithTiming('name', fn);    // Wraps function with timing logs
+```
+
+**`packages/core/src/tools/web-tool.ts`** - Unified Web Tool
+
+Combined web search and page fetching in a single tool.
+
+**Actions**:
+- `search`: Search using Brave or Tavily (or both)
+- `fetch`: Fetch and parse web page content
+
+**Usage**:
+```typescript
+// Search the web
+await webTool.execute({ action: 'search', query: 'React hooks', engine: 'tavily' });
+
+// Fetch a page
+await webTool.execute({ action: 'fetch', url: 'https://example.com', maxLength: 10000 });
+```
+
+**Features**:
+- Tavily includes AI-generated summaries
+- Brave for general web discovery
+- `both` engine queries both and merges results
+- Uses Readability + JSDOM for content extraction
 
 **`packages/core/src/tools/memory.ts`** - Memory Tools
 
@@ -715,6 +888,139 @@ Code search capabilities:
 Agent interaction:
 - `task_complete`: Signal task completion
 - `ask_user`: Request user input
+
+**`packages/core/src/tools/chaining/`** - Tool Chaining System
+
+Execute multiple tool calls in a planned sequence with dependency resolution.
+
+**Types**:
+```typescript
+interface ChainStep {
+  id: string;
+  tool: string;
+  args: Record<string, unknown>;
+  dependsOn?: string[];           // Step IDs whose results this step needs
+  onError?: 'retry' | 'skip' | 'abort';
+  maxRetries?: number;
+}
+
+interface Chain {
+  id: string;
+  goal: string;
+  steps: ChainStep[];
+  status: 'ready' | 'running' | 'complete' | 'error' | 'paused';
+  results: Map<string, unknown>;
+  currentStepIndex: number;
+}
+```
+
+**Usage**:
+```typescript
+import { createChainExecutor } from '@agent/core';
+
+const executor = createChainExecutor({ tools: myTools });
+
+const chain = executor.createChain('Read and modify files', [
+  { id: 'read', tool: 'read_file', args: { path: '/src/index.ts' } },
+  { id: 'modify', tool: 'write_file', args: { path: '/src/index.ts', content: '...' }, dependsOn: ['read'] },
+]);
+
+const result = await executor.executeChain(chain.id);
+```
+
+**`packages/core/src/tools/delegation/`** - Task Delegation System
+
+Unified tool for delegating work to sub-agents, tool chains, or background tasks.
+
+**Actions**:
+- `steps`: Plan and execute a sequence of tool calls (chain)
+- `agent`: Spawn an autonomous sub-agent for complex tasks
+- `background`: Start a shell command in the background
+
+**Usage**:
+```typescript
+import { createDelegateTool } from '@agent/core';
+
+const delegateTool = createDelegateTool(workspaceRoot);
+
+// Execute a tool chain
+await delegateTool.execute({
+  action: 'steps',
+  goal: 'Update configuration',
+  steps: [
+    { id: 'read', tool: 'read_file', args: { path: 'config.json' } },
+    { id: 'write', tool: 'write_file', args: { path: 'config.json', content: '...' } },
+  ],
+});
+
+// Spawn a sub-agent
+await delegateTool.execute({
+  action: 'agent',
+  task: 'Refactor the authentication module',
+  role: 'coder',
+  maxSteps: 50,
+});
+
+// Start a background process
+await delegateTool.execute({
+  action: 'background',
+  command: 'npm run dev',
+  cwd: '/path/to/project',
+});
+```
+
+**`packages/core/src/tools/background-tasks/`** - Persistent Background Tasks
+
+Manage long-running background processes that survive agent restarts.
+
+**Types**:
+```typescript
+type TaskStatus = 'running' | 'completed' | 'failed' | 'cancelled' | 'orphaned';
+
+interface PersistentTaskInfo {
+  id: string;
+  command: string;
+  status: TaskStatus;
+  pid?: number;
+  startTime: number;
+  endTime?: number;
+  exitCode?: number;
+  cwd?: string;
+  logFile?: string;
+  errorLogFile?: string;
+}
+```
+
+**Task Manager**:
+```typescript
+import { getPersistentTaskManager } from '@agent/core';
+
+const manager = getPersistentTaskManager();
+
+// Start a background task
+const taskId = manager.startTask('npm run build', '/project/path');
+
+// Check status
+const task = manager.getTask(taskId);
+
+// Get output
+const output = manager.getTaskOutput(taskId, { maxBytes: 10000, fromEnd: true });
+
+// Cancel task
+manager.cancelTask(taskId);
+
+// List tasks
+const tasks = manager.listTasks({ status: 'running' });
+```
+
+**Tools**:
+- `start_background_task`: Start a new background process
+- `check_task_status`: Check status of a task
+- `get_task_output`: Get stdout/stderr from task
+- `cancel_task`: Cancel a running task
+- `list_tasks`: List all tasks by status
+- `cleanup_old_tasks`: Remove old completed/failed tasks
+- `spawn_agent`: Spawn a sub-agent as a background task
 
 **`packages/core/src/tools/registry.ts`** - Tool Registry
 
@@ -1098,7 +1404,7 @@ client.disconnectWebSocket();
 ### @agent/ui
 
 **Location**: `packages/ui/`
-**Purpose**: Shared React Native UI components for mobile and desktop applications
+**Purpose**: Shared React Native UI components for chat and debugging
 
 #### Structure
 
@@ -1114,18 +1420,31 @@ packages/ui/src/
 │   ├── surface.tsx             # Surface/card component
 │   ├── text-input.tsx          # Text input
 │   ├── safe-area.tsx           # Safe area wrapper
-│   └── chat/                   # Chat-specific components
-│       ├── index.ts            # Chat component exports
-│       ├── chat-container.tsx  # Main chat container
-│       ├── chat-list.tsx       # Message list
-│       ├── chat-bubble.tsx     # Message bubble
-│       ├── chat-input.tsx      # Message input
-│       ├── streaming-text.tsx  # Animated streaming text
-│       ├── step-indicator.tsx  # Current step display
-│       ├── tool-call-card.tsx  # Tool call visualization
-│       ├── reasoning-collapsible.tsx  # Reasoning display
-│       ├── sources-list.tsx    # Citation display
-│       └── types.ts            # Chat types
+│   ├── chat/                   # Chat-specific components
+│   │   ├── index.ts            # Chat component exports
+│   │   ├── chat-container.tsx  # Main chat container
+│   │   ├── chat-list.tsx       # Message list
+│   │   ├── chat-bubble.tsx     # Message bubble
+│   │   ├── chat-input.tsx      # Message input
+│   │   ├── streaming-text.tsx  # Animated streaming text
+│   │   ├── markdown-content.tsx # Markdown rendering
+│   │   ├── step-indicator.tsx  # Current step display
+│   │   ├── tool-call-card.tsx  # Tool call visualization
+│   │   ├── reasoning-collapsible.tsx  # Reasoning display
+│   │   ├── sources-list.tsx    # Citation display
+│   │   ├── use-chat.ts         # Chat state hook
+│   │   └── types.ts            # Chat types
+│   └── debug/                  # Debug dashboard components
+│       ├── index.ts            # Debug component exports
+│       ├── stat-badge.tsx      # Statistics badge
+│       ├── status-badge.tsx    # Status indicator
+│       ├── section.tsx         # Collapsible section
+│       ├── metric-card.tsx     # Performance metric card
+│       ├── tool-card.tsx       # Tool execution card
+│       ├── round-card.tsx      # Message round card
+│       ├── log-viewer.tsx      # Real-time log viewer
+│       ├── session-list.tsx    # Session list sidebar
+│       └── types.ts            # Debug types
 ├── hooks/
 │   ├── index.ts                # Hook exports
 │   ├── use-agent-chat.tsx      # Main chat hook
@@ -1222,6 +1541,58 @@ import { ToolCallCard } from '@agent/ui';
 **ReasoningCollapsible**: Expandable section for extended thinking/reasoning content
 
 **SourcesList**: Display citations and sources
+
+**MarkdownContent**: Renders markdown content with support for:
+- Headings (h1, h2, h3)
+- Code blocks with syntax highlighting
+- Inline code, bold, italic
+- Bullet lists
+- Platform-aware monospace fonts
+
+```typescript
+import { MarkdownContent } from '@agent/ui';
+
+<MarkdownContent content="# Hello\n\nThis is **bold** and `code`" />
+```
+
+#### Debug Components
+
+Components for real-time agent debugging and monitoring.
+
+**StatBadge**: Display statistics with label and value
+```typescript
+<StatBadge label="Sessions" value={5} />
+<StatBadge label="Errors" value={2} variant="error" />
+```
+
+**SessionList**: Sidebar listing all agent sessions
+```typescript
+<SessionList
+  sessions={sessionList}
+  selectedSessionId={selectedId}
+  onSelectSession={(id) => setSelected(id)}
+/>
+```
+
+**RoundCard**: Expandable card showing a message round with tools and reasoning
+```typescript
+<RoundCard
+  round={messageRound}
+  expanded={isExpanded}
+  onToggle={() => toggle()}
+  formatDuration={(ms) => `${ms}ms`}
+  formatTime={(ts) => new Date(ts).toLocaleTimeString()}
+/>
+```
+
+**LogViewer**: Real-time scrolling log viewer
+```typescript
+<LogViewer logs={logEntries} />
+```
+
+**ToolCard**: Display tool execution with status and timing
+
+**MetricCard**: Performance metric visualization
 
 #### Theme System
 
@@ -1328,6 +1699,49 @@ packages/mobile-accessibility/
 
 ---
 
+### @agent/tailwind-config
+
+**Location**: `packages/tailwind-config/`
+**Purpose**: Shared Tailwind CSS configuration presets for web and native applications
+
+#### Structure
+
+```
+packages/tailwind-config/src/
+├── index.ts              # Main exports
+├── base.ts               # Base Tailwind configuration
+├── web-preset.ts         # Web-specific preset
+└── native-preset.ts      # React Native preset (NativeWind)
+```
+
+#### Exports
+
+```typescript
+import { baseConfig, webPreset, nativePreset } from '@agent/tailwind-config';
+
+// In tailwind.config.ts for web apps
+export default {
+  ...baseConfig,
+  presets: [webPreset],
+};
+
+// In tailwind.config.ts for React Native (NativeWind)
+export default {
+  ...baseConfig,
+  presets: [nativePreset],
+};
+```
+
+#### Features
+
+- Consistent design tokens across web and native
+- Shared color palette and spacing
+- Web-specific utilities
+- NativeWind-compatible native preset
+- Dark mode support
+
+---
+
 ## Applications
 
 ### CLI App
@@ -1374,117 +1788,108 @@ WORKSPACE_ROOT=/path/to/project pnpm chat
 
 ---
 
-### Desktop App
+### Expo App
 
-**Location**: `apps/desktop/`
-**Purpose**: Desktop application built with Tauri and React
-
-#### Structure
-
-```
-apps/desktop/
-├── src/
-│   ├── main.tsx          # React entry point
-│   └── app.tsx           # Main App component
-├── src-tauri/            # Tauri (Rust) backend
-├── index.html            # HTML template
-├── vite.config.ts        # Vite configuration
-├── tailwind.config.ts    # Tailwind CSS config
-└── package.json
-```
-
-#### Technologies
-
-- **Tauri 2.0**: Rust-based desktop wrapper (lightweight alternative to Electron)
-- **React 19**: UI framework
-- **Vite 6**: Build tool and dev server
-- **Tailwind CSS**: Utility-first styling
-
-#### Features
-
-- Native desktop experience (macOS, Windows, Linux)
-- Agent client integration via `@agent/api-client`
-- Connection status indicator
-- Auto-scrolling message list
-- Keyboard shortcuts (Enter to send)
-- Light/dark mode support
-- Error handling with visual feedback
-
-#### Development
-
-```bash
-# Start desktop app in development
-pnpm desktop
-
-# Build for production
-pnpm --filter @agent/desktop build
-```
-
-#### Key Components
-
-**App Component** (`app.tsx`):
-- Manages chat messages and connection state
-- Uses `AgentClient` for server communication
-- Health check on startup
-- Auto-cleanup on unmount
-
-```typescript
-import { AgentClient } from '@agent/api-client';
-
-const client = new AgentClient({
-  baseUrl: 'http://localhost:3000',
-  onError: (err) => setError(err.message),
-});
-
-// Check server health
-const healthy = await client.checkHealth();
-
-// Send message
-const response = await client.sendMessage(content);
-```
-
----
-
-### Mobile App
-
-**Location**: `apps/mobile/`
-**Purpose**: React Native mobile application with Expo
+**Location**: `apps/expo/`
+**Purpose**: Unified mobile/web application using Expo
 
 #### Structure
 
 ```
-apps/mobile/
+apps/expo/
 ├── app/                  # App screens (Expo Router)
 │   ├── (tabs)/           # Tab navigation
+│   │   ├── _layout.tsx   # Tab layout configuration
+│   │   ├── chat.tsx      # Chat interface
+│   │   ├── debug.tsx     # Debug dashboard
 │   │   ├── index.tsx     # Home screen
 │   │   └── explore.tsx   # Explore screen
 │   ├── _layout.tsx       # Root layout
 │   └── modal.tsx         # Modal screen
-├── components/           # Reusable components
+├── components/           # App-specific components
 │   ├── ui/               # UI components
-│   ├── themed-text.tsx
-│   ├── themed-view.tsx
-│   └── ...
+│   ├── agent-bridge.tsx  # Agent integration
+│   ├── parallax-scroll-view.tsx
+│   └── haptic-tab.tsx    # Tab with haptic feedback
+├── context/
+│   └── settings.tsx      # Settings context (server URL, etc.)
 ├── hooks/                # Custom hooks
-├── constants/            # Constants and theme
+│   ├── use-color-scheme.ts
+│   └── use-color-scheme.web.ts
 ├── assets/               # Images, fonts, etc.
+├── global.css            # Global styles (NativeWind)
+├── tailwind.config.ts    # Tailwind CSS config
 └── app.json              # Expo configuration
 ```
 
 #### Technologies
 
-- **React Native**: Cross-platform mobile framework
-- **Expo**: Development and build tooling
+- **React Native**: Cross-platform framework
+- **Expo SDK 52+**: Development and build tooling
 - **Expo Router**: File-based navigation
+- **NativeWind**: Tailwind CSS for React Native
 - **TypeScript**: Type safety
+- **@agent/ui**: Shared UI components
+- **@agent/api-client**: Agent server communication
 
-#### Features
+#### Tab Navigation
 
-- Tab-based navigation
-- Themed components (light/dark mode)
-- Native device control integration
-- Accessibility support
-- Haptic feedback
+- **Chat**: Full-featured chat interface with agent
+- **Debug**: Real-time debugging dashboard with WebSocket connection
+
+#### Chat Screen Features
+
+- Streaming message display with `StreamingText`
+- Tool call visualization with `ToolCallCard`
+- Reasoning display with `ReasoningCollapsible`
+- Connection status indicator
+- Step indicator during multi-step responses
+- Keyboard-aware input handling
+
+#### Debug Screen Features
+
+- Real-time WebSocket connection to server dashboard
+- Session list with selection
+- Round-by-round execution view
+- Tool execution timeline
+- Server log streaming
+- Performance metrics
+- Mobile-optimized tabbed layout
+
+#### Development
+
+```bash
+# Start Expo development server
+pnpm expo
+
+# Or from apps/expo directory
+npx expo start
+
+# Run on iOS simulator
+npx expo run:ios
+
+# Run on Android emulator
+npx expo run:android
+
+# Run on web
+npx expo start --web
+```
+
+#### Settings Context
+
+```typescript
+import { useSettings } from '@/context/settings';
+
+function MyComponent() {
+  const { settings, updateSettings } = useSettings();
+
+  // Access server URL
+  console.log(settings.serverUrl); // 'http://localhost:3000'
+
+  // Update settings
+  updateSettings({ serverUrl: 'http://new-server:3000' });
+}
+```
 
 ---
 
@@ -1958,6 +2363,55 @@ createCodebaseRAG.searchCodebase()
 Return relevant code chunks with context
   ↓
 Agent uses chunks to formulate answer
+```
+
+### Dashboard WebSocket Flow
+
+```
+Expo Debug Screen
+  ↓
+Connect: ws://server/dashboard/ws
+  ↓
+Server sends: state:snapshot (current dashboard state)
+  ↓
+During agent execution:
+  ├→ session:created    { session }
+  ├→ round:started      { sessionId, round }
+  ├→ tool:started       { sessionId, roundId, tool }
+  ├→ tool:completed     { sessionId, roundId, tool }
+  ├→ round:updated      { sessionId, roundId, updates }
+  ├→ round:completed    { sessionId, roundId, round }
+  ├→ error:occurred     { sessionId, error }
+  └→ log                { timestamp, level, message, meta }
+  ↓
+Debug UI updates in real-time
+  ├→ Session list refreshes
+  ├→ Round cards update with tool status
+  ├→ Log viewer scrolls with new entries
+  └→ Stats badges update counts
+```
+
+### Tool Chaining Flow
+
+```
+Agent uses delegate tool with action: 'steps'
+  ↓
+Create chain with goal and steps
+  ↓
+Chain executor starts
+  ↓
+For each step:
+  ├→ Check dependencies (dependsOn)
+  ├→ Resolve $stepId references in args
+  ├→ Execute tool
+  ├→ Store result in chain.results
+  └→ Handle errors (retry, skip, abort)
+  ↓
+Return ChainResult
+  ├→ status: 'complete' | 'error' | 'paused'
+  ├→ completedSteps[]
+  ├→ failedStep (if error)
+  └→ totalDurationMs
 ```
 
 ---
