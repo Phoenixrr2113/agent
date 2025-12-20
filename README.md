@@ -17,12 +17,18 @@ This project uses pnpm workspaces and Turborepo for efficient package management
 ```
 agent-platform/
 ├── packages/
-│   ├── shared/         # @agent/shared - Shared utilities & types
-│   ├── core/           # @agent/core - Agent runtime engine
-│   ├── server/         # @agent/server - HTTP API server
-│   └── device-use/     # @agent/device-use - Cross-platform device control
+│   ├── shared/               # @agent/shared - Shared utilities & types
+│   ├── core/                 # @agent/core - Agent runtime engine
+│   ├── server/               # @agent/server - HTTP API server
+│   ├── device-use/           # @agent/device-use - Cross-platform device control
+│   ├── api-client/           # @agent/api-client - HTTP/WebSocket client
+│   ├── ui/                   # @agent/ui - Shared React Native components
+│   ├── tailwind-config/      # @agent/tailwind-config - Shared Tailwind config
+│   ├── mobile-accessibility/ # @agent/mobile-accessibility - Android accessibility
+│   └── benchmarks/           # @agent/benchmarks - Benchmark adapters
 ├── apps/
-│   └── cli/            # @agent/cli - CLI applications
+│   ├── cli/                  # @agent/cli - CLI applications
+│   └── expo/                 # @agent/expo - Mobile/Web app
 ├── pnpm-workspace.yaml
 ├── turbo.json
 └── package.json
@@ -30,13 +36,20 @@ agent-platform/
 
 ### Packages
 
-- **@agent/shared** - Base utilities (logger, performance tracking)
-- **@agent/core** - Core agent runtime with memory, RAG, and tools
-- **@agent/server** - Hono-based HTTP server with REST API and SSE streaming
-- **@agent/device-use** - Cross-platform device control using nut.js (macOS, Linux X11/Wayland, Windows)
-- **@agent/cli** - Command-line interfaces (server launcher & interactive chat)
+- **@agent/shared** - Shared types, utilities (logger, performance), streaming events
+- **@agent/core** - Core agent runtime with memory, RAG, tool orchestration, and LLM integration
+- **@agent/server** - Hono-based HTTP/WebSocket server with REST API, SSE streaming, and real-time dashboard
+- **@agent/device-use** - Cross-platform device control (nut.js for desktop, Playwright for web, mobile drivers)
+- **@agent/api-client** - HTTP and WebSocket client for connecting to the agent server
+- **@agent/ui** - Shared React Native UI components with NativeWind styling
+- **@agent/tailwind-config** - Shared Tailwind CSS configuration for web and native
+- **@agent/mobile-accessibility** - Native Android accessibility service integration
+- **@agent/benchmarks** - Benchmark adapters for HAL, τ-bench, GAIA, and SWE-bench
 
-*Mobile platforms (iOS/Android) will be added in Phase 3 with React Native*
+### Apps
+
+- **@agent/cli** - Command-line tools (server launcher & interactive chat REPL)
+- **@agent/expo** - Cross-platform mobile/web app with chat, device control, and debug dashboard
 
 ## Features
 
@@ -197,12 +210,16 @@ console.log(response.text);
 
 ```bash
 pnpm build          # Build all packages with Turborepo
-pnpm dev           # Run all packages in dev mode
-pnpm test          # Run all tests
-pnpm lint          # Lint all packages
-pnpm clean         # Clean all build artifacts
-pnpm chat          # Start interactive chat CLI
-pnpm server        # Start HTTP server
+pnpm dev            # Run all packages in dev mode
+pnpm test           # Run all tests
+pnpm lint           # Lint all packages
+pnpm clean          # Clean all build artifacts
+pnpm chat           # Start interactive chat CLI
+pnpm server         # Start HTTP server
+pnpm expo           # Start Expo development server
+pnpm expo:web       # Run Expo app in web browser
+pnpm expo:ios       # Run Expo app on iOS simulator
+pnpm expo:android   # Run Expo app on Android emulator
 ```
 
 ### Per-Package Scripts
@@ -393,33 +410,45 @@ Set `GRAPHITI_URL=http://localhost:8000` and the agent auto-detects it.
 ```
 ┌─────────────────────────────────────────────────────────────────────┐
 │                           CLIENTS                                    │
-├─────────────┬─────────────┬─────────────┬─────────────┬─────────────┤
-│  Web App    │ Mobile App  │ Desktop App │    CLI      │  Third-party│
-│  (Next.js)  │(React Native)│  (Tauri)   │             │  (via API)  │
-└──────┬──────┴──────┬──────┴──────┬──────┴──────┬──────┴──────┬──────┘
-       │             │             │             │             │
-       └─────────────┴─────────────┼─────────────┴─────────────┘
-                                   │
-                          HTTP/WebSocket
-                                   │
-                    ┌──────────────▼──────────────┐
-                    │    @agent/server (Hono)     │
-                    │   Session Management API    │
-                    └──────────────┬──────────────┘
-                                   │
-                    ┌──────────────▼──────────────┐
-                    │      @agent/core            │
-                    │    Agent Runtime Engine     │
-                    ├──────────────────────────────┤
-                    │  Memory │ Tools │ Orchestrator│
-                    └──────────────┬──────────────┘
-                                   │
-       ┌───────────────────────────┼───────────────────────────┐
-       │                           │                           │
-┌──────▼──────┐            ┌───────▼───────┐          ┌───────▼───────┐
-│   LLM API   │            │  External APIs │          │  @agent/shared│
-│ (OpenRouter)│            │(Brave, Tavily) │          │   (Utils)     │
-└─────────────┘            └───────────────┘          └───────────────┘
+├────────────────────┬─────────────┬─────────────┬────────────────────┤
+│   Expo App         │ Desktop App │    CLI      │     Third-party    │
+│ (iOS/Android/Web)  │   (Tauri)   │             │     (via API)      │
+└─────────┬──────────┴──────┬──────┴──────┬──────┴─────────┬──────────┘
+          │                 │             │                │
+          │     ┌───────────┴─────────────┴────────────────┘
+          │     │
+          │     │       @agent/api-client
+          │     │       (HTTP/WebSocket)
+          │     │
+          └─────┴───────────────┐
+                                │
+                    ┌───────────▼───────────────┐
+                    │    @agent/server (Hono)   │
+                    │   HTTP + WebSocket API    │
+                    │   Dashboard + Streaming   │
+                    └───────────┬───────────────┘
+                                │
+                    ┌───────────▼───────────────┐
+                    │      @agent/core          │
+                    │   Agent Runtime Engine    │
+                    ├───────────────────────────┤
+                    │ Memory │ RAG │ Tools      │
+                    │ Embeddings │ Orchestrator │
+                    └───────────┬───────────────┘
+                                │
+       ┌────────────────────────┼────────────────────────┐
+       │                        │                        │
+┌──────▼──────┐         ┌───────▼───────┐       ┌───────▼───────┐
+│   LLM APIs  │         │ @agent/device │       │ External APIs │
+│  (Multiple) │         │  (nut.js/     │       │ (Brave/Tavily)│
+│             │         │   Playwright) │       │               │
+└─────────────┘         └───────────────┘       └───────────────┘
+
+Shared Infrastructure:
+┌────────────────┬─────────────────┬──────────────────────┐
+│ @agent/shared  │ @agent/ui       │ @agent/tailwind-cfg  │
+│ (Types/Utils)  │ (Components)    │ (Styling)            │
+└────────────────┴─────────────────┴──────────────────────┘
 ```
 
 ## Development
@@ -463,45 +492,78 @@ Turborepo automatically handles build dependencies - if you change `@agent/share
 
 ```
 packages/
-├── shared/
-│   ├── src/
-│   │   ├── logger.ts
-│   │   ├── performance.ts
-│   │   └── index.ts
-│   ├── dist/
-│   ├── package.json
-│   └── tsconfig.json
+├── shared/                   # Shared utilities and types
+│   └── src/
+│       ├── utils/            # Logger, performance
+│       ├── streaming/        # Stream event types
+│       ├── dashboard/        # Dashboard events
+│       └── device/           # Device action schemas
 │
-├── core/
-│   ├── src/
-│   │   ├── runtime/           # Agent execution engine
-│   │   ├── application/       # Orchestrator & initialization
-│   │   ├── core/
-│   │   │   ├── agents/        # Model configs
-│   │   │   ├── memory/        # Knowledge graph
-│   │   │   ├── rag/           # Semantic search
-│   │   │   └── search/        # Grep utilities
-│   │   ├── tools/             # Tool implementations
-│   │   ├── infrastructure/    # System prompts
-│   │   └── index.ts
-│   ├── dist/
-│   ├── package.json
-│   └── tsconfig.json
+├── core/                     # Agent runtime engine
+│   └── src/
+│       ├── runtime/          # Agent execution engine
+│       ├── application/      # Orchestrator & initialization
+│       ├── core/
+│       │   ├── agents/       # Model configs and roles
+│       │   ├── memory/       # Session and context memory
+│       │   ├── rag/          # Semantic search with chunking strategies
+│       │   ├── embeddings/   # Embedding models
+│       │   └── tool-instrumentation/  # Tool lifecycle hooks
+│       ├── tools/            # Tool implementations
+│       └── infrastructure/   # System prompts
 │
-├── server/
-│   ├── src/
-│   │   └── index.ts           # Hono server
-│   ├── dist/
-│   ├── package.json
-│   └── tsconfig.json
+├── server/                   # HTTP/WebSocket server
+│   └── src/
+│       └── index.ts          # Hono server with dashboard
 │
-apps/cli/
-├── src/
-│   ├── server.ts              # Server launcher
-│   └── chat.ts                # Interactive chat
-├── dist/
-├── package.json
-└── tsconfig.json
+├── api-client/               # Client SDK
+│   └── src/
+│       ├── http.ts           # HTTP client
+│       ├── websocket.ts      # WebSocket client
+│       └── index.ts          # Unified client
+│
+├── device-use/               # Device control
+│   └── src/
+│       ├── drivers/          # Desktop, Android, Web drivers
+│       ├── tools.ts          # Device tools
+│       └── utils/safety.ts   # Safety validation
+│
+├── ui/                       # Shared UI components
+│   └── src/
+│       ├── components/       # Button, Text, Surface, etc.
+│       ├── chat/             # Chat-specific components
+│       └── debug/            # Debug dashboard components
+│
+├── mobile-accessibility/     # Android native module
+│   ├── android/              # Native Kotlin code
+│   └── index.ts              # TypeScript bindings
+│
+├── benchmarks/               # Benchmark adapters
+│   └── src/
+│       ├── hal/              # HAL adapter
+│       ├── tau-bench/        # τ-bench adapter
+│       └── custom/           # Custom benchmark suite
+│
+└── tailwind-config/          # Shared Tailwind config
+    └── src/
+        ├── base.ts           # Base theme
+        ├── web-preset.ts     # Web preset
+        └── native-preset.ts  # Native preset
+
+apps/
+├── cli/                      # CLI tools
+│   └── src/
+│       ├── cli.ts            # Server launcher
+│       └── chat.ts           # Interactive chat REPL
+│
+└── expo/                     # Mobile/Web app
+    └── app/
+        ├── (tabs)/           # Tab navigation
+        │   ├── index.tsx     # Home/Chat
+        │   ├── chat.tsx      # Chat interface
+        │   ├── explore.tsx   # Device control
+        │   └── debug.tsx     # Debug dashboard
+        └── _layout.tsx       # Root layout
 ```
 
 ## Security
@@ -518,10 +580,10 @@ apps/cli/
 See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) for the complete architecture evolution plan, including:
 
 - ✅ **Phase 1**: Monorepo structure (Complete)
-- ✅ **Phase 2**: Device use package (Complete - macOS, Linux, Windows, iOS/Android placeholders)
-- **Phase 3**: React Native mobile app
+- ✅ **Phase 2**: Device use package (Complete - macOS, Linux, Windows, Android)
+- ✅ **Phase 3**: Expo mobile/web app (Complete - iOS, Android, Web with debug dashboard)
 - **Phase 4**: Tauri desktop app
-- **Phase 5**: Next.js web dashboard
+- **Phase 5**: Production deployment infrastructure
 
 ## Contributing
 
