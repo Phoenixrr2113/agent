@@ -10,6 +10,425 @@ This document contains advanced topics, extended configurations, and detailed im
 
 ## Extended Topics
 
+### Tool Lifecycle and Error Handling
+
+The new tool lifecycle system provides standardized error handling and execution hooks.
+
+#### Custom Tool with Lifecycle
+
+**Note**: These utilities are internal to `@agent/core` and not exported from the package entrypoint.
+
+```typescript
+// Internal usage within @agent/core tool implementations
+import { createLifecycleTool, ToolError, ToolErrorType, success, error } from './lifecycle.js';
+import { z } from 'zod';
+
+const myTool = createLifecycleTool({
+  name: 'safe_file_read',
+  description: 'Read a file with validation',
+  inputSchema: z.object({
+    path: z.string(),
+    encoding: z.enum(['utf-8', 'base64']).default('utf-8'),
+  }),
+  lifecycle: {
+    validate: async (input) => {
+      if (input.path.includes('..')) {
+        return { valid: false, error: 'Path traversal not allowed', errorType: ToolErrorType.PATH_NOT_IN_WORKSPACE };
+      }
+      return { valid: true };
+    },
+    beforeExecute: async (input) => {
+      // Normalize path
+      return { ...input, path: input.path.replace(/\\/g, '/') };
+    },
+    execute: async (input) => {
+      const content = await fs.readFile(input.path, input.encoding);
+      return success({ content, path: input.path }); // Returns JSON string
+    },
+    afterExecute: async (input, output) => {
+      // Log successful read
+      logger.info('File read', { path: input.path });
+      return output;
+    },
+    onError: async (err, input) => {
+      if (err.code === 'ENOENT') {
+        return error('File not found', { path: input.path }, ToolErrorType.FILE_NOT_FOUND);
+      }
+      return 'throw'; // Re-throw other errors
+    },
+    cleanup: async (input, didSucceed) => {
+      // Optional cleanup logic
+    },
+  },
+});
+```
+
+#### Wrapping Existing Tools
+
+```typescript
+// Internal usage within @agent/core
+import { withLifecycle } from './lifecycle.js';
+
+const enhancedTool = withLifecycle(existingTool, {
+  validate: (input) => ({ valid: input.path.startsWith('/allowed/') }),
+  afterExecute: (input, output) => {
+    metrics.track('tool_used', { tool: 'existing' });
+    return output;
+  },
+});
+```
+
+### Tool Chaining Patterns
+
+Tool chains enable multi-step workflows with dependency resolution.
+
+#### Sequential Chain
+
+**Note**: Tool chaining is internal to `@agent/core`.
+
+```typescript
+// Internal usage within @agent/core
+import { createChainExecutor } from './chaining/executor.js';
+
+const executor = createChainExecutor({ tools: allTools });
+
+// Read → Process → Write pattern
+const chain = executor.createChain('Transform configuration', [
+  {
+    id: 'read',
+    tool: 'read_file',
+    args: { path: '/config/settings.json' },
+  },
+  {
+    id: 'process',
+    tool: 'transform_json',
+    args: { input: '$read.content', transform: 'addTimestamp' },
+    dependsOn: ['read'],
+  },
+  {
+    id: 'write',
+    tool: 'write_file',
+    args: { path: '/config/settings.json', content: '$process.result' },
+    dependsOn: ['process'],
+  },
+]);
+
+const result = await executor.executeChain(chain.id);
+```
+
+#### Parallel Chain with Merge
+
+```typescript
+// Parallel operations with final merge
+const chain = executor.createChain('Aggregate data', [
+  { id: 'fetch1', tool: 'fetch_api', args: { url: '/api/users' } },
+  { id: 'fetch2', tool: 'fetch_api', args: { url: '/api/orders' } },
+  { id: 'fetch3', tool: 'fetch_api', args: { url: '/api/products' } },
+  {
+    id: 'merge',
+    tool: 'merge_data',
+    args: {
+      users: '$fetch1.data',
+      orders: '$fetch2.data',
+      products: '$fetch3.data',
+    },
+    dependsOn: ['fetch1', 'fetch2', 'fetch3'],
+  },
+]);
+```
+
+#### Error Recovery Chain
+
+```typescript
+const chain = executor.createChain('Resilient operation', [
+  {
+    id: 'primary',
+    tool: 'fetch_data',
+    args: { source: 'primary' },
+    onError: 'skip', // Continue on failure
+  },
+  {
+    id: 'fallback',
+    tool: 'fetch_data',
+    args: { source: 'fallback' },
+    onError: 'retry',
+    maxRetries: 3,
+  },
+  {
+    id: 'process',
+    tool: 'process_data',
+    args: { data: '$primary.result || $fallback.result' },
+    dependsOn: ['primary', 'fallback'],
+  },
+]);
+```
+
+### Background Task Management
+
+Persistent background tasks survive agent restarts and can be monitored.
+
+#### Starting Background Processes
+
+```typescript
+import { getPersistentTaskManager } from '@agent/core';
+
+const manager = getPersistentTaskManager();
+
+// Start a dev server
+const serverTaskId = manager.startTask('npm run dev', '/project/path');
+
+// Start a build process
+const buildTaskId = manager.startTask('npm run build:watch', '/project/path');
+
+// Monitor startup
+const running = manager.getStartupSummary();
+console.log('Running tasks:', running.running);
+console.log('Recently completed:', running.recentlyCompleted);
+```
+
+#### Monitoring Task Output
+
+```typescript
+// Get recent output (last 10KB)
+const output = manager.getTaskOutput(taskId, {
+  maxBytes: 10000,
+  fromEnd: true,
+});
+
+console.log('Output:', output.content);
+console.log('Truncated:', output.truncated);
+
+// Get stderr
+const errors = manager.getTaskOutput(taskId, {
+  stderr: true,
+  maxBytes: 5000,
+});
+```
+
+#### Task Lifecycle Callbacks
+
+```typescript
+// Start monitoring with callback and check interval (default 60000ms)
+manager.startMonitoring((event, task) => {
+  switch (event) {
+    case 'task_completed':
+      console.log(`Task ${task.id} completed with code ${task.exitCode}`);
+      break;
+    case 'task_failed':
+      console.log(`Task ${task.id} failed`);
+      break;
+    case 'task_orphaned':
+      console.log(`Task ${task.id} became orphaned (process died unexpectedly)`);
+      break;
+  }
+}, 30000); // Check every 30 seconds
+
+// Stop monitoring when done
+manager.stopMonitoring();
+```
+
+### Dashboard Integration
+
+The dashboard system provides real-time debugging visibility.
+
+#### Server-Side Setup
+
+```typescript
+import { createLogCollector, getLogCollector } from '@agent/shared';
+import { WebSocketServer } from 'ws';
+
+// Initialize collector
+const collector = createLogCollector({
+  maxSessions: 100,
+  maxRoundsPerSession: 100,
+});
+
+// Create WebSocket endpoint
+const wss = new WebSocketServer({ noServer: true });
+
+server.on('upgrade', (request, socket, head) => {
+  if (request.url === '/dashboard/ws') {
+    wss.handleUpgrade(request, socket, head, (ws) => {
+      // Subscribe client to events
+      const unsubscribe = collector.subscribe((event) => {
+        ws.send(JSON.stringify(event));
+      });
+
+      ws.on('close', unsubscribe);
+    });
+  }
+});
+
+// Process agent events through collector
+session.sendWithEvents(message, collector.createEventHandler(agentId, message));
+```
+
+#### Client-Side Connection (Expo)
+
+```typescript
+import { useEffect, useState } from 'react';
+
+function useDebugDashboard(serverUrl: string) {
+  const [sessions, setSessions] = useState<Map<string, AgentSession>>(new Map());
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+
+  useEffect(() => {
+    const ws = new WebSocket(serverUrl.replace('http', 'ws') + '/dashboard/ws');
+
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+
+      switch (data.type) {
+        case 'state:snapshot':
+          // Initialize from snapshot
+          break;
+        case 'round:started':
+        case 'tool:completed':
+          // Update session state
+          break;
+        case 'log':
+          setLogs((prev) => [...prev, data.data].slice(-500));
+          break;
+      }
+    };
+
+    return () => ws.close();
+  }, [serverUrl]);
+
+  return { sessions, logs };
+}
+```
+
+### Expo App Development
+
+The unified Expo app supports iOS, Android, and web from a single codebase.
+
+#### Project Setup
+
+```bash
+# Navigate to expo app
+cd apps/expo
+
+# Install dependencies
+pnpm install
+
+# Start development server
+npx expo start
+
+# Platform-specific runs
+npx expo start --ios
+npx expo start --android
+npx expo start --web
+```
+
+#### NativeWind (Tailwind CSS) Usage
+
+```tsx
+// Using Tailwind classes in React Native
+import { View, Text } from 'react-native';
+
+function Card() {
+  return (
+    <View className="bg-white dark:bg-gray-800 rounded-lg p-4 shadow-md">
+      <Text className="text-lg font-semibold text-gray-900 dark:text-white">
+        Card Title
+      </Text>
+      <Text className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+        Card description text
+      </Text>
+    </View>
+  );
+}
+```
+
+#### Settings Context
+
+```typescript
+// context/settings.tsx
+import React, { createContext, useContext, useState, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+
+interface Settings {
+  serverUrl: string;
+  theme: 'light' | 'dark' | 'system';
+}
+
+const defaultSettings: Settings = {
+  serverUrl: 'http://localhost:3000',
+  theme: 'system',
+};
+
+const SettingsContext = createContext<{
+  settings: Settings;
+  updateSettings: (updates: Partial<Settings>) => void;
+}>({
+  settings: defaultSettings,
+  updateSettings: () => {},
+});
+
+export function SettingsProvider({ children }: { children: React.ReactNode }) {
+  const [settings, setSettings] = useState(defaultSettings);
+
+  useEffect(() => {
+    AsyncStorage.getItem('settings').then((stored) => {
+      if (stored) setSettings(JSON.parse(stored));
+    });
+  }, []);
+
+  const updateSettings = (updates: Partial<Settings>) => {
+    const newSettings = { ...settings, ...updates };
+    setSettings(newSettings);
+    AsyncStorage.setItem('settings', JSON.stringify(newSettings));
+  };
+
+  return (
+    <SettingsContext.Provider value={{ settings, updateSettings }}>
+      {children}
+    </SettingsContext.Provider>
+  );
+}
+
+export const useSettings = () => useContext(SettingsContext);
+```
+
+#### Debug Screen with WebSocket
+
+```tsx
+import { useState, useEffect, useRef } from 'react';
+import { View, ScrollView } from 'react-native';
+import { SessionList, RoundCard, LogViewer } from '@agent/ui';
+
+export default function DebugScreen() {
+  const [sessions, setSessions] = useState(new Map());
+  const [logs, setLogs] = useState([]);
+  const wsRef = useRef<WebSocket | null>(null);
+
+  useEffect(() => {
+    const ws = new WebSocket('ws://localhost:3000/dashboard/ws');
+    wsRef.current = ws;
+
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      // Handle events...
+    };
+
+    return () => ws.close();
+  }, []);
+
+  return (
+    <View className="flex-1 flex-row">
+      <SessionList sessions={[...sessions.values()]} />
+      <ScrollView className="flex-1">
+        {/* Round cards */}
+      </ScrollView>
+      <LogViewer logs={logs} />
+    </View>
+  );
+}
+```
+
+---
+
 ### Local Model Deployment with Ollama
 
 The platform supports running entirely locally using Ollama, eliminating cloud dependencies and API costs.
@@ -561,72 +980,65 @@ app.get('/sessions/:sessionId/chat/stream', (c) => {
 });
 ```
 
-### Desktop App Advanced Usage
+### Unified Web Tool Usage
 
-#### Custom Tauri Commands
+The web tool consolidates search and fetch into a single interface.
 
-Extend the desktop app with native capabilities:
-
-```rust
-// src-tauri/src/main.rs
-#[tauri::command]
-fn get_system_info() -> SystemInfo {
-    SystemInfo {
-        os: std::env::consts::OS.to_string(),
-        arch: std::env::consts::ARCH.to_string(),
-    }
-}
-
-fn main() {
-    tauri::Builder::default()
-        .invoke_handler(tauri::generate_handler![get_system_info])
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
-}
-```
+#### Web Search with Multiple Engines
 
 ```typescript
-// src/app.tsx
-import { invoke } from '@tauri-apps/api/tauri';
+import { webTool } from '@agent/core';
 
-const systemInfo = await invoke('get_system_info');
-```
+// Search with Tavily (includes AI summary)
+const tavilyResults = await webTool.execute({
+  action: 'search',
+  query: 'React server components best practices',
+  engine: 'tavily',
+  maxResults: 10,
+  deep: true, // Advanced search depth
+});
 
-#### Desktop-Specific Features
+// Search with Brave
+const braveResults = await webTool.execute({
+  action: 'search',
+  query: 'TypeScript 5.0 features',
+  engine: 'brave',
+  maxResults: 5,
+});
 
-**Native Notifications**:
-```typescript
-import { sendNotification } from '@tauri-apps/api/notification';
-
-sendNotification({
-  title: 'Agent Response',
-  body: 'Task completed successfully',
+// Search both engines
+const combinedResults = await webTool.execute({
+  action: 'search',
+  query: 'AI agent architectures',
+  engine: 'both',
 });
 ```
 
-**File System Access**:
+#### Fetching and Parsing Web Pages
+
 ```typescript
-import { open, save } from '@tauri-apps/api/dialog';
-import { readTextFile, writeTextFile } from '@tauri-apps/api/fs';
+// Fetch and extract main content
+const page = await webTool.execute({
+  action: 'fetch',
+  url: 'https://docs.anthropic.com/claude/docs',
+  maxLength: 15000,
+});
 
-// Open file picker
-const filePath = await open({ filters: [{ name: 'Text', extensions: ['txt'] }] });
-
-// Read file
-const content = await readTextFile(filePath as string);
-
-// Save file
-const savePath = await save();
-await writeTextFile(savePath as string, content);
+// Result includes:
+// - title: Page title
+// - content: Cleaned main content (via Readability)
+// - excerpt: Short summary
+// - siteName: Website name
+// - truncated: Whether content was truncated
 ```
 
-#### Streaming with Desktop UI
+### Streaming Chat Implementation
 
-Enhance the desktop app with real-time streaming:
+Using the API client with streaming in any React app:
 
 ```typescript
 import { AgentClient } from '@agent/api-client';
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 
 function useStreamingChat() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -647,6 +1059,12 @@ function useStreamingChat() {
     await client.streamMessageWithCallbacks(content, {
       onTextDelta: ({ delta }) => {
         setCurrentText(prev => prev + delta);
+      },
+      onToolCall: ({ toolName, args }) => {
+        console.log('Tool called:', toolName, args);
+      },
+      onToolResult: ({ toolName, result, durationMs }) => {
+        console.log('Tool result:', toolName, durationMs + 'ms');
       },
       onComplete: ({ text }) => {
         setMessages(prev => [...prev, { role: 'assistant', content: text }]);
