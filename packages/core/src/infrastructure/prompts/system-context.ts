@@ -11,6 +11,7 @@ export interface SystemContext {
   username: string;
   workspaceRoot?: string;
   workspaceMap?: string;
+  userProfileBlock?: string;
 }
 
 function generateWorkspaceMap(workspaceRoot: string): string {
@@ -77,6 +78,10 @@ export function formatSystemContextBlock(context: SystemContext): string {
     lines.push('```');
     lines.push(context.workspaceMap);
     lines.push('```');
+  }
+
+  if (context.userProfileBlock) {
+    lines.push(context.userProfileBlock);
   }
 
   return lines.join('\n');

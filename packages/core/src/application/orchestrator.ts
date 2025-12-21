@@ -3,7 +3,7 @@ import { stepCountIs, type StepResult, type PrepareStepFunction, generateText } 
 import type { ModelMessage } from 'ai';
 
 import { CORE_TOOL_NAMES } from './initialization.js';
-import { createAgentWithRole, type AgentRole, models } from '../core/agents/factory.js';
+import { createAgentWithRole, type AgentRole, models, type SystemContext } from '../core/agents/factory.js';
 
 const MAX_CONTEXT_MESSAGES = 60;
 const SUMMARIZE_THRESHOLD = 40;
@@ -175,9 +175,9 @@ export function createStepFinishHandler(onEvent?: StreamEventCallback) {
 
 export function createAgent(
   tools: Record<string, any>,
-  options: { maxSteps?: number; activationManager?: any; role?: AgentRole; workspaceRoot?: string; isSpawnedAgent?: boolean } = {}
+  options: { maxSteps?: number; activationManager?: any; role?: AgentRole; workspaceRoot?: string; isSpawnedAgent?: boolean; systemContext?: SystemContext } = {}
 ) {
-  const { maxSteps = 50, activationManager, role = 'generic', workspaceRoot, isSpawnedAgent } = options;
+  const { maxSteps = 50, activationManager, role = 'generic', workspaceRoot, isSpawnedAgent, systemContext } = options;
 
   const stopWhen = ({ steps }: { steps: Array<StepResult<any>> }) => {
     const taskCompleted = steps.some((step) =>
@@ -199,6 +199,7 @@ export function createAgent(
     onStepFinish: createStepFinishHandler(),
     workspaceRoot,
     isSpawnedAgent,
+    systemContext,
   });
 }
 
@@ -211,9 +212,10 @@ export function createAgentWithStreaming(
     onEvent?: StreamEventCallback;
     workspaceRoot?: string;
     isSpawnedAgent?: boolean;
+    systemContext?: SystemContext;
   } = {}
 ) {
-  const { maxSteps = 50, activationManager, role = 'generic', onEvent, workspaceRoot, isSpawnedAgent } = options;
+  const { maxSteps = 50, activationManager, role = 'generic', onEvent, workspaceRoot, isSpawnedAgent, systemContext } = options;
 
   const stopWhen = ({ steps }: { steps: Array<StepResult<any>> }) => {
     const taskCompleted = steps.some((step) =>
@@ -235,5 +237,6 @@ export function createAgentWithStreaming(
     onStepFinish: createStepFinishHandler(onEvent),
     workspaceRoot,
     isSpawnedAgent,
+    systemContext,
   });
 }
