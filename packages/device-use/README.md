@@ -1,38 +1,49 @@
 # @agent/device-use
 
-Cross-platform device control package for the AI Agent Platform using [nut.js](https://nutjs.dev/). Provides Anthropic's Computer Use tools with a unified, high-performance implementation across all desktop platforms.
+Cross-platform device control package for the AI Agent Platform. Provides unified tools for device automation across desktop, web, and mobile platforms.
 
 ## Features
 
 - **Computer Tool**: Screenshot, mouse, keyboard control
 - **Bash Tool**: Shell command execution
 - **Text Editor Tool**: File viewing and editing
-- **Cross-Platform**: macOS, Linux (X11 & Wayland), Windows
-- **High Performance**: Native bindings via nut.js (100x faster than CLI-based approaches)
+- **Multi-Platform**: Desktop (macOS, Linux, Windows), Web (via Playwright), Mobile (Android)
+- **High Performance**: Native bindings for desktop, accessibility services for mobile
 - **Safety Layer**: Rate limiting, coordinate validation, action blocking
-- **Zero Configuration**: Pre-built binaries, no compilation needed
+- **Driver Architecture**: Pluggable drivers for different platforms
 
-## Why nut.js?
+## Drivers
 
-This package uses [nut.js](https://nutjs.dev/) instead of platform-specific CLI tools for several key advantages:
+### Desktop Driver (nut.js)
+Uses [nut.js](https://nutjs.dev/) for desktop automation with these advantages:
+- ✅ **Wayland Support**: Works on modern Linux with Wayland
+- ✅ **100x Faster**: No process spawning overhead
+- ✅ **Unified API**: Single codebase for all desktop platforms
+- ✅ **Pre-built Binaries**: No build tools required
 
-✅ **Wayland Support**: Works on modern Linux with Wayland (xdotool doesn't)
-✅ **100x Faster**: No process spawning overhead
-✅ **Actively Maintained**: Regular updates and bug fixes
-✅ **Unified API**: Single codebase for all platforms
-✅ **Pre-built Binaries**: No build tools or dependencies required
-✅ **Better Reliability**: Fewer failure points than CLI tools
+### Web Driver (Playwright)
+Uses [Playwright](https://playwright.dev/) for browser automation:
+- ✅ **Multi-Browser**: Chrome, Firefox, Safari support
+- ✅ **Headless Mode**: Run without display
+- ✅ **Full Control**: Navigate, click, type, screenshot
+
+### Android Driver
+Uses `@agent/mobile-accessibility` for Android device control:
+- ✅ **Accessibility Service**: Native Android integration
+- ✅ **UI Tree Access**: Get element hierarchy
+- ✅ **Gesture Support**: Click, swipe, long press
 
 ## Platform Support
 
-| Platform | Status | Technology |
-|----------|--------|------------|
-| macOS    | ✅ Fully Supported | nut.js (native bindings) |
-| Linux X11| ✅ Fully Supported | nut.js (native bindings) |
-| Linux Wayland | ✅ Fully Supported | nut.js (native bindings) |
-| Windows  | ✅ Fully Supported | nut.js (native bindings) |
-| iOS      | 📱 Future | Requires React Native (Phase 3) |
-| Android  | 📱 Future | Requires React Native (Phase 3) |
+| Platform | Status | Driver |
+|----------|--------|--------|
+| macOS    | ✅ Supported | Desktop (nut.js) |
+| Linux X11| ✅ Supported | Desktop (nut.js) |
+| Linux Wayland | ✅ Supported | Desktop (nut.js) |
+| Windows  | ✅ Supported | Desktop (nut.js) |
+| Web/Browser | ✅ Supported | Web (Playwright) |
+| Android  | ✅ Supported | Android (Accessibility) |
+| iOS      | 🔮 Planned | Requires native module |
 
 ## Installation
 
@@ -47,6 +58,7 @@ pnpm install
 ```typescript
 import { createDeviceTools } from '@agent/device-use';
 
+// Default: Desktop driver
 const tools = createDeviceTools({
   displayWidth: 1920,
   displayHeight: 1080,
@@ -55,6 +67,21 @@ const tools = createDeviceTools({
 });
 
 const { computer, bash, text_editor } = tools;
+```
+
+### Selecting a Driver
+
+```typescript
+import { DesktopDriver, WebDriver, AndroidDriver } from '@agent/device-use';
+
+// Desktop automation (nut.js)
+const desktopDriver = new DesktopDriver();
+
+// Web automation (Playwright)
+const webDriver = new WebDriver({ headless: true });
+
+// Android automation (requires mobile-accessibility)
+const androidDriver = new AndroidDriver();
 ```
 
 ### Computer Tool
@@ -197,11 +224,11 @@ nut.js provides native bindings for:
 - **Screen capture**: Fast screenshot APIs without file I/O
 - **Wayland support**: Works on modern Linux without X11
 
-### Future: Mobile Support
+### Mobile Support
 
-iOS and Android support will be added in Phase 3 when the React Native mobile app is implemented. Mobile platforms require native code integration:
-- **iOS**: Swift/Objective-C with UIKit APIs
-- **Android**: Kotlin/Java with AccessibilityService APIs
+**Android** is supported via the `@agent/mobile-accessibility` package which provides native Kotlin bindings to Android's AccessibilityService APIs.
+
+**iOS** support is planned and will require a native Swift module with UIKit APIs.
 
 ## Troubleshooting
 
