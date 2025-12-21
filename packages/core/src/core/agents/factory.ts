@@ -7,6 +7,7 @@ import {
   buildDynamicSystemPrompt,
   type SystemContext,
 } from '../../infrastructure/prompts/system-context.js';
+import type { ProfileManager } from '../profile/types.js';
 
 export interface CreateAgentOptions {
   modelType?: keyof typeof models;
@@ -16,6 +17,8 @@ export interface CreateAgentOptions {
   workspaceRoot?: string;
   systemContext?: SystemContext;
   isSpawnedAgent?: boolean;
+  profileManager?: ProfileManager;
+  userId?: string;
 }
 
 export function createAgentWithRole(
@@ -26,20 +29,34 @@ export function createAgentWithRole(
   const modelType = options?.modelType || 'standard';
 
   const includeWorkspaceMap = role === 'coder';
-  const context = options?.systemContext || buildSystemContext(options?.workspaceRoot, includeWorkspaceMap);
+  const baseContext = options?.systemContext || buildSystemContext(options?.workspaceRoot, includeWorkspaceMap);
   
   const basePrompt = options?.isSpawnedAgent 
     ? buildSpawnedAgentPrompt(role) 
     : systemPrompts[role];
-  const dynamicPrompt = buildDynamicSystemPrompt(basePrompt, context);
+  
+  // Build initial prompt (may not have profile yet)
+  const initialPrompt = buildDynamicSystemPrompt(basePrompt, baseContext);
+
+  // If we have a profile manager and userId, use prepareCall to dynamically refresh
+  const model = models[modelType]();
+  const prepareCall = options?.profileManager && options?.userId
+    ? async () => {
+        const freshProfile = await options.profileManager!.formatForSystemPrompt(options.userId!);
+        const updatedContext = { ...baseContext, userProfileBlock: freshProfile };
+        const updatedInstructions = buildDynamicSystemPrompt(basePrompt, updatedContext);
+        return { model, instructions: updatedInstructions };
+      }
+    : undefined;
 
   return new ToolLoopAgent({
-    model: models[modelType](),
-    instructions: dynamicPrompt,
+    model,
+    instructions: initialPrompt,
     tools,
     stopWhen: options?.stopWhen,
     prepareStep: options?.prepareStep,
     onStepFinish: options?.onStepFinish,
+    prepareCall,
   });
 }
 

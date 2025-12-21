@@ -4,6 +4,7 @@ import type { ModelMessage } from 'ai';
 
 import { CORE_TOOL_NAMES } from './initialization.js';
 import { createAgentWithRole, type AgentRole, models, type SystemContext } from '../core/agents/factory.js';
+import type { ProfileManager } from '../core/profile/types.js';
 
 const MAX_CONTEXT_MESSAGES = 60;
 const SUMMARIZE_THRESHOLD = 40;
@@ -175,9 +176,9 @@ export function createStepFinishHandler(onEvent?: StreamEventCallback) {
 
 export function createAgent(
   tools: Record<string, any>,
-  options: { maxSteps?: number; activationManager?: any; role?: AgentRole; workspaceRoot?: string; isSpawnedAgent?: boolean; systemContext?: SystemContext } = {}
+  options: { maxSteps?: number; activationManager?: any; role?: AgentRole; workspaceRoot?: string; isSpawnedAgent?: boolean; systemContext?: SystemContext; profileManager?: ProfileManager; userId?: string } = {}
 ) {
-  const { maxSteps = 50, activationManager, role = 'generic', workspaceRoot, isSpawnedAgent, systemContext } = options;
+  const { maxSteps = 50, activationManager, role = 'generic', workspaceRoot, isSpawnedAgent, systemContext, profileManager, userId } = options;
 
   const stopWhen = ({ steps }: { steps: Array<StepResult<any>> }) => {
     const taskCompleted = steps.some((step) =>
@@ -200,6 +201,8 @@ export function createAgent(
     workspaceRoot,
     isSpawnedAgent,
     systemContext,
+    profileManager,
+    userId,
   });
 }
 

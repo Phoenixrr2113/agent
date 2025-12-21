@@ -24,6 +24,7 @@ export class AgentClient {
   constructor(options: AgentClientOptions) {
     this.http = new AgentHttpClient({
       baseUrl: options.baseUrl,
+      apiKey: options.apiKey,
       timeout: options.timeout,
       onError: options.onError,
     });
@@ -47,6 +48,11 @@ export class AgentClient {
     const { sessionId } = await this.http.createSession();
     this.sessionId = sessionId;
     return sessionId;
+  }
+
+  async createApiKey(name: string): Promise<{ key: string; name: string }> {
+    const result = await this.http.createApiKey(name);
+    return { key: result.key, name: result.name };
   }
 
   async sendMessage(message: string): Promise<ChatResponse> {

@@ -5,6 +5,7 @@ const STORAGE_KEY = '@agent/settings';
 
 interface Settings {
   serverUrl: string;
+  apiKey: string;
   theme: 'light' | 'dark' | 'system';
 }
 
@@ -16,6 +17,7 @@ interface SettingsContextValue {
 
 const defaultSettings: Settings = {
   serverUrl: Platform.OS === 'android' ? 'http://10.0.2.2:3000' : 'http://localhost:3000',
+  apiKey: '',
   theme: 'system',
 };
 

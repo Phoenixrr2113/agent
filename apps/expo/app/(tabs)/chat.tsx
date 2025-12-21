@@ -64,6 +64,7 @@ export default function ChatScreen(): React.ReactElement {
   useEffect(() => {
     const client = new AgentClient({
       baseUrl: settings.serverUrl,
+      apiKey: settings.apiKey || undefined,
       onError: (error) => {
         console.error('Agent client error:', error);
         setServerError(error.message);
@@ -75,13 +76,15 @@ export default function ChatScreen(): React.ReactElement {
       setIsConnected(healthy);
       if (!healthy) {
         setServerError('Cannot connect to agent server. Run: pnpm server');
+      } else if (!settings.apiKey) {
+        setServerError('API key not configured. Go to Settings to add your key.');
       }
     });
 
     return () => {
       client.endSession().catch(() => {});
     };
-  }, [settings.serverUrl]);
+  }, [settings.serverUrl, settings.apiKey]);
 
   const { messages, isStreaming, sendMessage, currentStep } = useAgentChat({
     client: clientRef.current!,

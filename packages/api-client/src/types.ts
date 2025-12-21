@@ -87,6 +87,7 @@ export interface StreamingChatCallbacks {
 
 export interface AgentClientConfig {
   baseUrl: string;
+  apiKey?: string;
   timeout?: number;
   onError?: (error: Error) => void;
 }

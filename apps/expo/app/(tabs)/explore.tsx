@@ -15,7 +15,9 @@ import { useSettings } from '@/context/settings';
 export default function SettingsScreen() {
   const { settings, updateSettings, isLoading } = useSettings();
   const [serverUrl, setServerUrl] = useState(settings.serverUrl);
+  const [apiKey, setApiKey] = useState(settings.apiKey);
   const [isTesting, setIsTesting] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [testResult, setTestResult] = useState<'success' | 'error' | null>(null);
 
   const testConnection = useCallback(async () => {
@@ -23,7 +25,7 @@ export default function SettingsScreen() {
     setTestResult(null);
 
     try {
-      const client = new AgentClient({ baseUrl: serverUrl });
+      const client = new AgentClient({ baseUrl: serverUrl, apiKey: apiKey || undefined });
       const healthy = await client.checkHealth();
 
       if (healthy) {
@@ -42,15 +44,32 @@ export default function SettingsScreen() {
   }, [serverUrl]);
 
   const saveSettings = useCallback(async () => {
-    await updateSettings({ serverUrl });
+    await updateSettings({ serverUrl, apiKey });
     Alert.alert('Saved', 'Settings have been saved.');
-  }, [serverUrl, updateSettings]);
+  }, [serverUrl, apiKey, updateSettings]);
 
   const resetToDefault = useCallback(() => {
     const defaultUrl = Platform.OS === 'android' ? 'http://10.0.2.2:3000' : 'http://localhost:3000';
     setServerUrl(defaultUrl);
-    updateSettings({ serverUrl: defaultUrl });
+    setApiKey('');
+    updateSettings({ serverUrl: defaultUrl, apiKey: '' });
   }, [updateSettings]);
+
+  const generateApiKey = useCallback(async () => {
+    setIsGenerating(true);
+    try {
+      const client = new AgentClient({ baseUrl: serverUrl });
+      const keyName = `expo-${Platform.OS}-${Date.now()}`;
+      const result = await client.createApiKey(keyName);
+      setApiKey(result.key);
+      await updateSettings({ serverUrl, apiKey: result.key });
+      Alert.alert('API Key Generated', `New key created: ${result.name}\n\nIt has been saved automatically.`);
+    } catch (error) {
+      Alert.alert('Error', `Failed to generate key: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsGenerating(false);
+    }
+  }, [serverUrl, updateSettings]);
 
   if (isLoading) {
     return (
@@ -131,6 +150,43 @@ export default function SettingsScreen() {
             <Pressable onPress={resetToDefault} className="mt-3">
               <Text className="text-sm text-primary text-center">Reset to Default</Text>
             </Pressable>
+          </View>
+        </View>
+
+        {/* API Key Configuration */}
+        <View className="mb-6">
+          <Text className="text-sm font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
+            Authentication
+          </Text>
+
+          <View className="bg-gray-50 dark:bg-gray-800 rounded-xl p-4">
+            <Text className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+              API Key
+            </Text>
+            <TextInput
+              className="bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg px-4 py-3 text-base text-gray-900 dark:text-white mb-3"
+              value={apiKey}
+              onChangeText={setApiKey}
+              placeholder="ak_..."
+              placeholderTextColor="#9CA3AF"
+              autoCapitalize="none"
+              autoCorrect={false}
+              secureTextEntry
+            />
+            <View className="flex-row gap-2 mb-2">
+              <Pressable
+                onPress={generateApiKey}
+                disabled={isGenerating}
+                className={`flex-1 py-3 rounded-lg items-center ${isGenerating ? 'bg-gray-300 dark:bg-gray-600' : 'bg-primary'}`}
+              >
+                <Text className="text-white font-semibold">
+                  {isGenerating ? 'Generating...' : 'Generate New Key'}
+                </Text>
+              </Pressable>
+            </View>
+            <Text className="text-xs text-gray-500 dark:text-gray-400">
+              Generate a new key or enter an existing one. Keys are stored securely on device.
+            </Text>
           </View>
         </View>
 

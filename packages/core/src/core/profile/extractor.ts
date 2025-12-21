@@ -225,7 +225,7 @@ Only report actual contradictions. Similar but non-conflicting preferences shoul
           handledNewIndices.add(matchingNewIndex);
           const newPref = newPreferences[matchingNewIndex];
 
-          if (contradiction.action === 'update' || contradiction.action === 'invalidate') {
+          if (newPref && (contradiction.action === 'update' || contradiction.action === 'invalidate')) {
             update.updates.push({
               id: existingPref.id,
               newContent: newPref.content,
@@ -237,7 +237,10 @@ Only report actual contradictions. Similar but non-conflicting preferences shoul
 
       for (let i = 0; i < newPreferences.length; i++) {
         if (!handledNewIndices.has(i)) {
-          update.additions.push(newPreferences[i]);
+          const pref = newPreferences[i];
+          if (pref) {
+            update.additions.push(pref);
+          }
         }
       }
 

@@ -10,13 +10,25 @@ import type {
 
 export class AgentHttpClient {
   private baseUrl: string;
+  private apiKey?: string;
   private timeout: number;
   private onError?: (error: Error) => void;
 
   constructor(config: AgentClientConfig) {
     this.baseUrl = config.baseUrl.replace(/\/$/, '');
+    this.apiKey = config.apiKey;
     this.timeout = config.timeout ?? 120000;
     this.onError = config.onError;
+  }
+
+  private getHeaders(): Record<string, string> {
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    };
+    if (this.apiKey) {
+      headers['Authorization'] = `Bearer ${this.apiKey}`;
+    }
+    return headers;
   }
 
   private async request<T>(
@@ -30,9 +42,7 @@ export class AgentHttpClient {
     try {
       const response = await fetch(`${this.baseUrl}${path}`, {
         method,
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: this.getHeaders(),
         body: body ? JSON.stringify(body) : undefined,
         signal: controller.signal,
       });
@@ -58,6 +68,10 @@ export class AgentHttpClient {
 
   async createSession(): Promise<SessionResponse> {
     return this.request<SessionResponse>('POST', '/sessions');
+  }
+
+  async createApiKey(name: string): Promise<{ key: string; name: string; message: string }> {
+    return this.request<{ key: string; name: string; message: string }>('POST', '/api-keys', { name });
   }
 
   async deleteSession(sessionId: string): Promise<{ success: boolean }> {
@@ -92,11 +106,14 @@ export class AgentHttpClient {
   ): AsyncGenerator<{ event: string; data: unknown }, void, unknown> {
     const url = `${this.baseUrl}/sessions/${sessionId}/chat/stream?message=${encodeURIComponent(message)}`;
 
-    const response = await fetch(url, {
-      headers: {
-        Accept: 'text/event-stream',
-      },
-    });
+    const headers: Record<string, string> = {
+      Accept: 'text/event-stream',
+    };
+    if (this.apiKey) {
+      headers['Authorization'] = `Bearer ${this.apiKey}`;
+    }
+
+    const response = await fetch(url, { headers });
 
     if (!response.ok) {
       throw new Error(`HTTP ${response.status}`);

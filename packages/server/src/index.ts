@@ -11,6 +11,7 @@ import { cors } from 'hono/cors'
 import { streamSSE } from 'hono/streaming'
 import { WebSocketServer, type WebSocket } from 'ws'
 
+import { createApiKeyStorage, createAuthMiddleware, type ApiKeyStorage } from './auth/index.js'
 import { DeviceRegistry, createLocalDesktopDevice } from './devices/index.js'
 
 // Load environment variables from root .env
@@ -58,23 +59,46 @@ export interface ServerConfig {
 
 const sessions = new Map<string, AgentSession>()
 const deviceRegistry = new DeviceRegistry()
+const userRuntimes = new Map<string, AgentRuntime>()
+let apiKeyStorage: ApiKeyStorage
 
 interface CreateServerResult {
-  app: Hono;
+  app: Hono<any>;
   runtime: AgentRuntime;
   port: number;
+  apiKeyStorage: ApiKeyStorage;
 }
 
 // eslint-disable-next-line max-lines-per-function
 export async function createServer(config: ServerConfig = {}): Promise<CreateServerResult> {
   const envPort = process.env['PORT'] ? Number(process.env['PORT']) : 3000;
   const port = config.port ?? envPort;
+  const workspaceRoot = config.workspaceRoot ?? process.cwd();
   
+  // Initialize API key storage
+  const authDbPath = join(workspaceRoot, '.agent', 'auth.db');
+  apiKeyStorage = createApiKeyStorage(authDbPath);
+
+  // Create default runtime for unauthenticated routes (health, dashboard)
   const runtime = await createAgentRuntime({
-    workspaceRoot: config.workspaceRoot ?? process.cwd(),
+    workspaceRoot,
   });
 
-  const app = new Hono();
+  // Helper to get or create per-user runtime
+  async function getRuntimeForUser(userId: string): Promise<AgentRuntime> {
+    if (!userRuntimes.has(userId)) {
+      logger.info('Creating runtime for user', { userId: userId.slice(0, 8) + '...' });
+      const userRuntime = await createAgentRuntime({
+        workspaceRoot,
+        userId,
+      });
+      userRuntimes.set(userId, userRuntime);
+    }
+    return userRuntimes.get(userId)!;
+  }
+
+  const app = new Hono<{ Variables: { userId: string } }>();
+  const authMiddleware = createAuthMiddleware(apiKeyStorage);
 
   app.use('*', cors({
     origin: config.corsOrigin ?? '*',
@@ -84,11 +108,39 @@ export async function createServer(config: ServerConfig = {}): Promise<CreateSer
 
   app.get('/health', (c: Context) => c.json({ status: 'ok' }));
 
-  app.post('/sessions', (c: Context) => {
+  // API key management (unauthenticated for initial key creation)
+  app.post('/api-keys', async (c: Context) => {
+    const body = await c.req.json<{ name: string }>();
+    if (!body.name) {
+      return c.json({ error: 'name is required' }, 400);
+    }
+    const { key, keyHash } = await apiKeyStorage.create(body.name);
+    logger.info('API key created', { name: body.name, keyHash: keyHash.slice(0, 8) + '...' });
+    return c.json({ key, name: body.name, message: 'Save this key - it cannot be retrieved again' });
+  });
+
+  app.get('/api-keys', authMiddleware, async (c) => {
+    const keys = await apiKeyStorage.list();
+    return c.json({ keys: keys.map(k => ({ ...k, keyHash: k.keyHash.slice(0, 8) + '...' })) });
+  });
+
+  app.delete('/api-keys/:keyHash', authMiddleware, async (c) => {
+    const keyHash = c.req.param('keyHash');
+    const revoked = await apiKeyStorage.revoke(keyHash);
+    if (!revoked) {
+      return c.json({ error: 'Key not found' }, 404);
+    }
+    return c.json({ success: true });
+  });
+
+  // Protected session routes
+  app.post('/sessions', authMiddleware, async (c) => {
+    const userId = c.get('userId');
+    const userRuntime = await getRuntimeForUser(userId);
     const sessionId = crypto.randomUUID();
-    const session = runtime.createSession();
+    const session = userRuntime.createSession();
     sessions.set(sessionId, session);
-    logger.info('Session created', { sessionId });
+    logger.info('Session created', { sessionId, userId: userId.slice(0, 8) + '...' });
     return c.json({ sessionId });
   });
 
@@ -192,7 +244,10 @@ export async function createServer(config: ServerConfig = {}): Promise<CreateSer
     return c.json({ success: true });
   });
 
-  app.post('/chat', async (c: Context) => {
+  // Protected chat routes
+  app.post('/chat', authMiddleware, async (c) => {
+    const userId = c.get('userId');
+    const userRuntime = await getRuntimeForUser(userId);
     const requestStartTime = performance.now();
     const body = await c.req.json<{ message: string; sessionId?: string }>();
     if (!body.message) {
@@ -204,7 +259,7 @@ export async function createServer(config: ServerConfig = {}): Promise<CreateSer
 
     if (!session) {
       sessionId = crypto.randomUUID();
-      session = runtime.createSession();
+      session = userRuntime.createSession();
       sessions.set(sessionId, session);
     }
 
@@ -224,6 +279,7 @@ export async function createServer(config: ServerConfig = {}): Promise<CreateSer
     logger.info('HTTP request completed', {
       endpoint: '/chat',
       sessionId,
+      userId: userId.slice(0, 8) + '...',
       durationMs: requestDuration.toFixed(2),
       durationSec: (requestDuration / 1000).toFixed(3),
     });
@@ -284,7 +340,7 @@ export async function createServer(config: ServerConfig = {}): Promise<CreateSer
     return c.json({ session });
   })
 
-  return { app, runtime, port };
+  return { app, runtime, port, apiKeyStorage };
 }
 
 let mobileClient: WebSocket | null = null;

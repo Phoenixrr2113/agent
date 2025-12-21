@@ -99,8 +99,9 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
   const memoryExtractor = createUnifiedMemoryExtractor(dbPath, config.userId || 'default');
 
   let userProfileBlock = '';
-  if (config.userId) {
-    const profileManager = memoryExtractor.getProfileManager();
+  const profileManager = config.userId ? memoryExtractor.getProfileManager() : undefined;
+  
+  if (config.userId && profileManager) {
     userProfileBlock = await profileManager.formatForSystemPrompt(config.userId);
 
     const toolWrapper = createToolReminderWrapper(profileManager, config.userId);
@@ -217,6 +218,8 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
     workspaceRoot: config.workspaceRoot,
     isSpawnedAgent: config.isSpawnedAgent,
     systemContext,
+    profileManager,
+    userId: config.userId,
   });
 
   let shutdownInProgress = false;
