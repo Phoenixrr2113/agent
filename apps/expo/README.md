@@ -1,50 +1,120 @@
-# Welcome to your Expo app 👋
+# @agent/expo
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Cross-platform mobile and web application for the AI Agent Platform built with [Expo](https://expo.dev) and React Native.
 
-## Get started
+## Features
 
-1. Install dependencies
+- **Chat Interface**: Interactive chat with the AI agent using streaming responses
+- **Device Control**: Test Android device automation via accessibility services
+- **Debug Dashboard**: Real-time monitoring of agent sessions, tool calls, and logs
+- **Cross-Platform**: Runs on iOS, Android, and Web from a single codebase
 
-   ```bash
-   npm install
-   ```
+## Screens
 
-2. Start the app
+### Home / Chat
+Main chat interface for interacting with the agent. Features:
+- Real-time streaming responses
+- Markdown rendering
+- Reasoning step visualization
+- Tool execution tracking
 
-   ```bash
-   npx expo start
-   ```
+### Device Control
+Test device automation capabilities:
+- Check accessibility service status
+- Execute device actions (click, swipe, type)
+- View screenshots and UI tree
+- Debug overlay controls
 
-In the output, you'll find options to open the app in a
+### Debug Dashboard
+Monitor agent operations in real-time:
+- Session list with statistics
+- Message round details
+- Tool execution logs
+- Server logs viewer
+- Responsive layout (tabs on mobile, split-view on desktop)
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+## Getting Started
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+### Prerequisites
 
-## Get a fresh project
+- Node.js 20+
+- pnpm 8+
+- [Expo CLI](https://docs.expo.dev/get-started/installation/)
+- For iOS: Xcode with iOS Simulator
+- For Android: Android Studio with Emulator
 
-When you're ready, run:
+### Installation
+
+From the monorepo root:
 
 ```bash
-npm run reset-project
+pnpm install
+pnpm build
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+### Running the App
 
-## Learn more
+```bash
+# Start Expo development server
+pnpm expo
 
-To learn more about developing your project with Expo, look at the following resources:
+# Run on web
+pnpm expo:web
 
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
+# Run on iOS simulator
+pnpm expo:ios
 
-## Join the community
+# Run on Android emulator
+pnpm expo:android
+```
 
-Join our community of developers creating universal apps.
+### Configuration
 
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+The app connects to the agent server. Configure the server URL in the app settings or set the default in your environment.
+
+Default server URL: `http://localhost:3000`
+
+## Development
+
+### Project Structure
+
+```
+apps/expo/
+├── app/                    # Expo Router pages
+│   ├── (tabs)/             # Tab navigation
+│   │   ├── index.tsx       # Home/Chat screen
+│   │   ├── chat.tsx        # Chat implementation
+│   │   ├── explore.tsx     # Device control screen
+│   │   └── debug.tsx       # Debug dashboard
+│   └── _layout.tsx         # Root layout
+├── components/             # App-specific components
+├── contexts/               # React contexts (settings, etc.)
+├── hooks/                  # Custom hooks
+├── constants/              # App constants
+└── tailwind.config.js      # Tailwind configuration
+```
+
+### Dependencies
+
+This app uses:
+- **@agent/api-client** - HTTP/WebSocket client for server communication
+- **@agent/ui** - Shared UI components
+- **@agent/mobile-accessibility** - Android native module for device control
+- **@agent/tailwind-config** - Shared Tailwind configuration
+
+### Styling
+
+The app uses [NativeWind](https://www.nativewind.dev/) (Tailwind CSS for React Native) for styling, with the shared `@agent/tailwind-config` for consistent theming across platforms.
+
+## Android Device Control
+
+To use device control features on Android:
+
+1. Build and install the app on an Android device/emulator
+2. Go to Settings > Accessibility
+3. Enable the "Agent Accessibility Service"
+4. Return to the app and use the Device Control screen
+
+## License
+
+MIT
