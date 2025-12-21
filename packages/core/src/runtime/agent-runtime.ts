@@ -1,14 +1,14 @@
 import { logger, createPerformanceTimer, type PerformanceTimer, type StreamEventCallback } from '@agent/shared';
+import { join } from 'node:path';
 
 import { smoothStream } from 'ai';
 
 import { initializeAgent } from '../application/initialization.js';
 import { createAgent, createAgentWithStreaming } from '../application/orchestrator.js';
 import { type AgentRole } from '../core/agents/roles.js';
-// Old complex memory extractor - commented out in favor of simplified Graphiti-only version
-// import { createMemoryExtractor } from '../core/memory/extractor.js';
-// import { getMemoryProvider } from '../tools/memory.js';
-import { createSimpleMemoryExtractor } from '../core/memory/extractor-simple.js';
+import { buildSystemContext } from '../core/agents/factory.js';
+import { createUnifiedMemoryExtractor } from '../core/memory/extractor-unified.js';
+import { createToolReminderWrapper } from '../core/profile/index.js';
 import { getPersistentTaskManager } from '../tools/background-tasks/task-manager.js';
 
 import type { TaskMonitorCallback, PersistentTaskInfo } from '../tools/background-tasks/types.js';
@@ -22,6 +22,8 @@ export interface AgentConfig {
   disableAskUser?: boolean;
   role?: AgentRole;
   isSpawnedAgent?: boolean;
+  userId?: string;
+  profileDbPath?: string;
 }
 
 export interface TaskInput {
@@ -90,10 +92,25 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
     enableCodebaseIndexing: shouldIndexCodebase,
     disableAgentSpawning: config.disableAgentSpawning,
   });
-  const { tools, codebaseRAG, activationManager } = initResult;
+  let { tools } = initResult;
+  const { codebaseRAG, activationManager } = initResult;
 
-  // Simplified Graphiti-only memory extractor
-  const memoryExtractor = createSimpleMemoryExtractor();
+  const dbPath = config.profileDbPath || join(config.workspaceRoot || process.cwd(), '.agent', 'profile.db');
+  const memoryExtractor = createUnifiedMemoryExtractor(dbPath, config.userId || 'default');
+
+  let userProfileBlock = '';
+  if (config.userId) {
+    const profileManager = memoryExtractor.getProfileManager();
+    userProfileBlock = await profileManager.formatForSystemPrompt(config.userId);
+
+    const toolWrapper = createToolReminderWrapper(profileManager, config.userId);
+    tools = toolWrapper.wrapTools(tools);
+
+    logger.info('👤 User profile loaded', {
+      userId: config.userId,
+      hasProfile: userProfileBlock.length > 0,
+    });
+  }
 
   const taskManager = getPersistentTaskManager(config.workspaceRoot);
 
@@ -187,12 +204,19 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
     logger.info('🚫 ask_user disabled for sub-agent');
   }
 
+  const includeWorkspaceMap = config.role === 'coder';
+  const systemContext = buildSystemContext(config.workspaceRoot, includeWorkspaceMap);
+  if (userProfileBlock) {
+    systemContext.userProfileBlock = userProfileBlock;
+  }
+
   const agent = createAgent(tools, {
     activationManager,
     maxSteps: config.maxSteps || 50,
     role: config.role || 'generic',
     workspaceRoot: config.workspaceRoot,
     isSpawnedAgent: config.isSpawnedAgent,
+    systemContext,
   });
 
   let shutdownInProgress = false;
@@ -206,6 +230,7 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
       taskManager.stopMonitoring();
       taskManager.shutdown();
       await memoryExtractor.waitForPending();
+      await memoryExtractor.getProfileStorage().close();
       logger.info('✅ Shutdown complete');
       process.exit(0);
     } catch (error) {
@@ -271,7 +296,7 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
       conversationHistory.push(...response.messages);
 
       Promise.resolve()
-        .then(() => memoryExtractor.extractFromConversation(conversationHistory))
+        .then(() => memoryExtractor.extractFromConversation(conversationHistory, config.userId))
         .catch(error => {
           logger.error('Background memory extraction failed', { error: String(error) });
         });
@@ -410,6 +435,7 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
           onEvent,
           workspaceRoot: config.workspaceRoot,
           isSpawnedAgent: config.isSpawnedAgent,
+          systemContext,
         });
 
         const result = await streamingAgent.stream({
@@ -500,7 +526,7 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
         conversationHistory.push(...response.messages);
 
         Promise.resolve()
-          .then(() => memoryExtractor.extractFromConversation(conversationHistory))
+          .then(() => memoryExtractor.extractFromConversation(conversationHistory, config.userId))
           .catch(error => {
             logger.error('Background memory extraction failed', { error: String(error) });
           });
@@ -586,6 +612,7 @@ export async function createAgentRuntime(config: AgentConfig = {}): Promise<Agen
       taskManager.stopMonitoring();
       taskManager.shutdown();
       await memoryExtractor.waitForPending();
+      await memoryExtractor.getProfileStorage().close();
     },
   };
 }
