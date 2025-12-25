@@ -7,6 +7,7 @@ import type {
   HealthResponse,
   StreamingChatCallbacks,
 } from './types';
+import { ApiClientError } from './errors';
 
 export class AgentHttpClient {
   private baseUrl: string;
@@ -16,9 +17,13 @@ export class AgentHttpClient {
 
   constructor(config: AgentClientConfig) {
     this.baseUrl = config.baseUrl.replace(/\/$/, '');
-    this.apiKey = config.apiKey;
     this.timeout = config.timeout ?? 120000;
-    this.onError = config.onError;
+    if (config.apiKey !== undefined) {
+      this.apiKey = config.apiKey;
+    }
+    if (config.onError !== undefined) {
+      this.onError = config.onError;
+    }
   }
 
   private getHeaders(): Record<string, string> {
@@ -40,16 +45,19 @@ export class AgentHttpClient {
     const timeoutId = setTimeout(() => controller.abort(), this.timeout);
 
     try {
-      const response = await fetch(`${this.baseUrl}${path}`, {
+      const init: RequestInit = {
         method,
         headers: this.getHeaders(),
-        body: body ? JSON.stringify(body) : undefined,
         signal: controller.signal,
-      });
+      };
+      if (body !== undefined) {
+        init.body = JSON.stringify(body);
+      }
+      const response = await fetch(`${this.baseUrl}${path}`, init);
 
       if (!response.ok) {
         const errorText = await response.text().catch(() => 'Unknown error');
-        throw new Error(`HTTP ${response.status}: ${errorText}`);
+        throw ApiClientError.fromResponse(response.status, errorText);
       }
 
       return response.json() as Promise<T>;
@@ -116,16 +124,18 @@ export class AgentHttpClient {
     const response = await fetch(url, { headers });
 
     if (!response.ok) {
-      throw new Error(`HTTP ${response.status}`);
+      const errorText = await response.text().catch(() => 'Unknown error');
+      throw ApiClientError.fromResponse(response.status, errorText);
     }
 
     const reader = response.body?.getReader();
     if (!reader) {
-      throw new Error('No response body');
+      throw new ApiClientError('No response body', 0, 'NO_BODY');
     }
 
     const decoder = new TextDecoder();
     let buffer = '';
+    let currentEvent: string | null = null;
 
     try {
       while (true) {
@@ -138,16 +148,19 @@ export class AgentHttpClient {
 
         for (const line of lines) {
           if (line.startsWith('event:')) {
-            const event = line.slice(6).trim();
-            const nextLine = lines[lines.indexOf(line) + 1];
-            if (nextLine?.startsWith('data:')) {
-              const data = nextLine.slice(5).trim();
-              try {
-                yield { event, data: JSON.parse(data) };
-              } catch {
-                yield { event, data };
-              }
+            currentEvent = line.slice(6).trim();
+          } else if (line.startsWith('data:') && currentEvent !== null) {
+            const dataStr = line.slice(5).trim();
+            let data: unknown;
+            try {
+              data = JSON.parse(dataStr);
+            } catch {
+              data = dataStr;
             }
+            yield { event: currentEvent, data };
+            currentEvent = null;
+          } else if (line === '') {
+            currentEvent = null;
           }
         }
       }

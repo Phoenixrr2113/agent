@@ -1,0 +1,40 @@
+{
+  "name": "@agent/memory",
+  "version": "0.1.0",
+  "description": "Memory, profile, and codebase knowledge for AI agents",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "clean": "rm -rf dist",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@agent/shared": "workspace:*",
+    "@ai-sdk/cohere": "3.0.0-beta.38",
+    "@ai-sdk/openai": "^2.0.76",
+    "@openrouter/ai-sdk-provider": "^1.0.0",
+    "ai": "6.0.0-beta.120",
+    "better-sqlite3": "^12.4.6",
+    "code-chopper": "^0.1.0",
+    "gpt-tokenizer": "^2.8.1",
+    "ollama-ai-provider-v2": "^1.5.0",
+    "wink-bm25-text-search": "^3.1.2",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/node": "^20.0.0",
+    "tsx": "^4.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "^2.0.0"
+  }
+}

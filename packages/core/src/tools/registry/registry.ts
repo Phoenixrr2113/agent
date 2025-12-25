@@ -1,6 +1,6 @@
 import { type Tool, embed } from 'ai';
 
-import { getEmbeddingModel, cosineSimilarity } from "../../core/embeddings/index.js";
+import { getEmbeddingModel, cosineSimilarity } from "@agent/memory";
 
 import type { ToolMetadata, RegisteredTool, ToolRegistrationOptions } from './types.js';
 

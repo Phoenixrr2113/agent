@@ -5,10 +5,9 @@ import { smoothStream } from 'ai';
 
 import { initializeAgent } from '../application/initialization.js';
 import { createAgent, createAgentWithStreaming } from '../application/orchestrator.js';
-import { type AgentRole } from '../core/agents/roles.js';
-import { buildSystemContext } from '../core/agents/factory.js';
-import { createUnifiedMemoryExtractor } from '../core/memory/extractor-unified.js';
-import { createToolReminderWrapper } from '../core/profile/index.js';
+import { type AgentRole } from '../agents/roles.js';
+import { buildSystemContext } from '../agents/factory.js';
+import { createUnifiedMemoryExtractor, createToolReminderWrapper } from '@agent/memory';
 import { getPersistentTaskManager } from '../tools/background-tasks/task-manager.js';
 
 import type { TaskMonitorCallback, PersistentTaskInfo } from '../tools/background-tasks/types.js';

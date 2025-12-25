@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
-import { withLifecycle, ToolError, ToolErrorType, wrapWithTiming, success, error } from './lifecycle.js';
+import { withLifecycle, ToolError, ToolErrorType, wrapWithTiming } from './middleware/index.js';
+import { success, error } from './utils/tool-result.js';
 import { tool } from 'ai';
 import { z } from 'zod';
 

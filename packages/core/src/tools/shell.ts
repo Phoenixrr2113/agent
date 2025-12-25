@@ -4,7 +4,7 @@ import { z } from 'zod';
 import { logger } from '@agent/shared';
 import { executeCommand, isDangerousCommand } from './utils/shell.js';
 import { success, error } from './utils/tool-result.js';
-import { ToolError, ToolErrorType } from './lifecycle.js';
+import { ToolError, ToolErrorType } from './middleware/index.js';
 
 const allowedCommands = new Set<string>();
 

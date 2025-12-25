@@ -35,7 +35,7 @@ export {
   type ToolMetadata,
   type RegisteredTool,
   type ToolRegistrationOptions,
-} from './tools/registry.js';
+} from './tools/registry/index.js';
 
 export {
   getPersistentTaskManager,
@@ -46,6 +46,6 @@ export type {
   TaskStatus,
 } from './tools/background-tasks/types.js';
 
-export { type AgentRole } from './core/agents/factory.js';
+export { type AgentRole } from './agents/factory.js';
 
 export type { ModelMessage } from 'ai';

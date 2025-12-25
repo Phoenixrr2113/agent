@@ -175,3 +175,27 @@ export const ActionResultSchema = z.discriminatedUnion('success', [
   ActionSuccessSchema,
   ActionErrorSchema,
 ])
+
+export type DevicePlatform = z.infer<typeof DevicePlatformSchema>
+export type DeviceActionType = z.infer<typeof DeviceActionTypeSchema>
+export type TapPayload = z.infer<typeof TapPayloadSchema>
+export type TypePayload = z.infer<typeof TypePayloadSchema>
+export type KeyPayload = z.infer<typeof KeyPayloadSchema>
+export type SwipePayload = z.infer<typeof SwipePayloadSchema>
+export type ScrollPayload = z.infer<typeof ScrollPayloadSchema>
+export type DragPayload = z.infer<typeof DragPayloadSchema>
+export type ScreenshotPayload = z.infer<typeof ScreenshotPayloadSchema>
+export type UITreePayload = z.infer<typeof UITreePayloadSchema>
+export type DeviceActionPayload = z.infer<typeof DeviceActionPayloadSchema>
+export type DeviceAction = z.infer<typeof DeviceActionSchema>
+export type ScreenSize = z.infer<typeof ScreenSizeSchema>
+export type DeviceCapabilities = z.infer<typeof DeviceCapabilitiesSchema>
+export type ActionErrorCode = z.infer<typeof ActionErrorCodeSchema>
+export type UIElementType = z.infer<typeof UIElementTypeSchema>
+export type Bounds = z.infer<typeof BoundsSchema>
+export type UIElement = z.infer<typeof UIElementSchema>
+export type UITreeData = z.infer<typeof UITreeDataSchema>
+export type ScreenshotData = z.infer<typeof ScreenshotDataSchema>
+export type ActionSuccess = z.infer<typeof ActionSuccessSchema>
+export type ActionError = z.infer<typeof ActionErrorSchema>
+export type ActionResult = z.infer<typeof ActionResultSchema>

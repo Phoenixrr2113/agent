@@ -3,7 +3,7 @@ import { z } from 'zod';
 
 import { logger } from '@agent/shared';
 import { success, error } from '../utils/tool-result.js';
-import { ToolError, ToolErrorType } from '../lifecycle.js';
+import { ToolError, ToolErrorType } from '../middleware/index.js';
 import { getChainExecutor } from '../chaining/tools.js';
 import { getPersistentTaskManager } from '../background-tasks/task-manager.js';
 import type { ChainStep } from '../chaining/types.js';

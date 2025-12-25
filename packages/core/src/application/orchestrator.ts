@@ -3,8 +3,8 @@ import { stepCountIs, type StepResult, type PrepareStepFunction, generateText } 
 import type { ModelMessage } from 'ai';
 
 import { CORE_TOOL_NAMES } from './initialization.js';
-import { createAgentWithRole, type AgentRole, models, type SystemContext } from '../core/agents/factory.js';
-import type { ProfileManager } from '../core/profile/types.js';
+import { createAgentWithRole, type AgentRole, models, type SystemContext } from '../agents/factory.js';
+import type { ProfileManager } from '@agent/memory';
 
 const MAX_CONTEXT_MESSAGES = 60;
 const SUMMARIZE_THRESHOLD = 40;

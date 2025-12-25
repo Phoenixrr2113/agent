@@ -1,7 +1,6 @@
 
 import { logger } from '@agent/shared';
-
-import { type CodebaseRAG } from '../core/rag/types.js';
+import { type CodebaseRAG } from '@agent/memory';
 
 import type * as readline from 'node:readline/promises';
 

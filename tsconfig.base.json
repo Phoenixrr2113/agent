@@ -1,28 +1,3 @@
-// {
-//   "compilerOptions": {
-//     "target": "ES2022",
-//     "module": "ES2022",
-//     "moduleResolution": "bundler",
-//     "strict": true,
-//     "esModuleInterop": true,
-//     "skipLibCheck": true,
-//     "forceConsistentCasingInFileNames": true,
-//     "resolveJsonModule": true,
-//     "isolatedModules": true,
-//     "incremental": true,
-//     "baseUrl": ".",
-//     "paths": {
-//       "@agent/shared": ["./packages/shared/src"],
-//       "@agent/shared/*": ["./packages/shared/src/*"],
-//       "@agent/core": ["./packages/core/src"],
-//       "@agent/core/*": ["./packages/core/src/*"],
-//       "@agent/server": ["./packages/server/src"],
-//       "@agent/server/*": ["./packages/server/src/*"],
-//       "@agent/device-use": ["./packages/device-use/src"],
-//       "@agent/device-use/*": ["./packages/device-use/src/*"]
-//     }
-//   }
-// }
 
 {
   "$schema": "https://json.schemastore.org/tsconfig",

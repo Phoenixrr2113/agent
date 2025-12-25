@@ -9,7 +9,7 @@ import { getPersistentTaskManager } from './task-manager.js';
 import { success, error } from '../utils/tool-result.js';
 
 import type { TaskStatus } from './types.js';
-import { AGENT_ROLES } from '../../core/agents/roles.js';
+import { AGENT_ROLES } from '../../agents/roles.js';
 
 const MAX_CONCURRENT_AGENT_TASKS = 5;
 const AGENT_TASK_PREFIX = 'agent-task-';

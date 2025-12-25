@@ -10,6 +10,8 @@
     "skipLibCheck": true,
     "baseUrl": ".",
     "paths": {
+      "@agent/memory": ["../memory/dist"],
+      "@agent/memory/*": ["../memory/dist/*"],
       "@agent/shared": ["../shared/dist"],
       "@agent/shared/*": ["../shared/dist/*"]
     }

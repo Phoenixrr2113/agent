@@ -1,4 +1,5 @@
 import type { ConnectionState, WebSocketMessage } from './types';
+import { WebSocketError } from './errors';
 
 export interface WebSocketClientConfig {
   url: string;
@@ -66,15 +67,15 @@ export class AgentWebSocketClient {
 
       this.ws.onerror = () => {
         this.setState('error');
-        this.config.onError(new Error('WebSocket error'));
+        this.config.onError(WebSocketError.connectionFailed());
       };
 
       this.ws.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data as string) as WebSocketMessage;
           this.config.onMessage(message);
-        } catch {
-          this.config.onError(new Error('Failed to parse WebSocket message'));
+        } catch (e) {
+          this.config.onError(WebSocketError.messageParseFailed(e));
         }
       };
     } catch (error) {
@@ -90,7 +91,7 @@ export class AgentWebSocketClient {
     }
 
     if (this.reconnectAttempts >= this.config.maxReconnectAttempts) {
-      this.config.onError(new Error('Max reconnect attempts reached'));
+      this.config.onError(WebSocketError.maxReconnectAttemptsReached(this.config.maxReconnectAttempts));
       return;
     }
 

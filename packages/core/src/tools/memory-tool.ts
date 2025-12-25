@@ -2,9 +2,8 @@ import { tool } from 'ai';
 import { z } from 'zod';
 
 import { success, error } from './utils/tool-result.js';
-import { ToolError, ToolErrorType } from './lifecycle.js';
-import { createAutoMemoryProvider } from '../core/memory/factory.js';
-import type { MemoryProvider } from '../core/memory/types.js';
+import { ToolError, ToolErrorType } from './middleware/index.js';
+import { createAutoMemoryProvider, type MemoryProvider } from '@agent/memory';
 
 let memoryProviderPromise: Promise<MemoryProvider> | null = null;
 let isClosing = false;

@@ -7,7 +7,7 @@ import {
   createToolRegistry,
   createToolSearchTool,
   createActivateToolTool,
-} from './registry.js';
+} from './registry/index.js';
 
 function createMockTool(description: string) {
   return tool({

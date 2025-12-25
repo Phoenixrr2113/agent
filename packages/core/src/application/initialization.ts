@@ -2,9 +2,8 @@ import { stdin as input, stdout as output } from 'node:process';
 import * as readline from 'node:readline/promises';
 
 import { logger } from '@agent/shared';
-
-import { createCodebaseRAG } from '../core/rag/index.js';
-import { instrumentTools } from '../core/tool-instrumentation.js';
+import { createCodebaseRAG } from '@agent/memory';
+import { instrumentTools } from '../tools/middleware/index.js';
 import { createAgentTools } from '../tools/agent.js';
 import { getPersistentTaskManager } from '../tools/background-tasks/task-manager.js';
 import { createCodebaseTools } from '../tools/codebase.js';
@@ -26,8 +25,8 @@ import {
   sequentialThinkingTool,
   resetSequentialThinkingEngine,
 } from '../tools/sequential-thinking.js';
-import { createToolActivationManager } from '../tools/tool-wrapper.js';
-import { planTool, validationTool, createPlanTool } from '../tools/workflow.js';
+import { createToolActivationManager } from '../tools/middleware/index.js';
+import { planTool, validationTool, createPlanTool } from '../tools/plan.js';
 import { initializeChainTools } from '../tools/chaining/index.js';
 
 export const CORE_TOOL_NAMES = [

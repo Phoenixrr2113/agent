@@ -11,7 +11,8 @@
     "build": "tsc",
     "clean": "rm -rf dist",
     "start": "node dist/cli.js",
-    "chat": "tsx src/chat.ts"
+    "chat": "tsx src/chat.ts",
+    "dev": "tsx src/chat.ts"
   },
   "dependencies": {
     "@agent/core": "workspace:*",

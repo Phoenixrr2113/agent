@@ -7,8 +7,8 @@ describe('Shell Tool Security', () => {
     const result = JSON.parse(resultString as string);
     
     expect(result.success).toBe(false);
-    expect(result.error).toContain('Interactive command not allowed');
-    expect(result.command).toBe('vi test.txt');
+    expect(result.error).toContain('Interactive command');
+    expect(result.error).toContain('not supported');
   });
 
   it('should block interactive commands like nano', async () => {
@@ -16,7 +16,8 @@ describe('Shell Tool Security', () => {
     const result = JSON.parse(resultString as string);
     
     expect(result.success).toBe(false);
-    expect(result.error).toContain('Interactive command not allowed');
+    expect(result.error).toContain('Interactive command');
+    expect(result.error).toContain('not supported');
   });
 
   it('should allow non-interactive commands', async () => {

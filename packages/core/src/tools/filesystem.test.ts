@@ -4,7 +4,7 @@ import * as path from 'node:path';
 
 import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 
-import { createFilesystemTools, setAllowedDirectories, getAllowedDirectories } from './filesystem.js';
+import { createFilesystemTools, setAllowedDirectories, getAllowedDirectories } from './filesystem/index.js';
 
 interface ToolResult {
   success?: boolean;

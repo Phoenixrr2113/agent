@@ -34,6 +34,7 @@
     "test": "turbo run test",
     "chat": "pnpm --filter @agent/cli chat",
     "server": "pnpm --filter @agent/server dev",
+    "start": "turbo run dev --filter=@agent/server --filter=@agent/cli --parallel",
     "expo": "pnpm --filter @agent/expo start",
     "expo:web": "pnpm --filter @agent/expo web",
     "expo:ios": "pnpm --filter @agent/expo ios",

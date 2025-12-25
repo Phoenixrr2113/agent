@@ -22,16 +22,23 @@ export class AgentClient {
   private stateListeners: Array<(state: ConnectionState) => void> = [];
 
   constructor(options: AgentClientOptions) {
-    this.http = new AgentHttpClient({
+    const httpConfig: AgentClientConfig = {
       baseUrl: options.baseUrl,
-      apiKey: options.apiKey,
-      timeout: options.timeout,
-      onError: options.onError,
-    });
+    };
+    if (options.apiKey !== undefined) {
+      httpConfig.apiKey = options.apiKey;
+    }
+    if (options.timeout !== undefined) {
+      httpConfig.timeout = options.timeout;
+    }
+    if (options.onError !== undefined) {
+      httpConfig.onError = options.onError;
+    }
+    this.http = new AgentHttpClient(httpConfig);
 
     if (options.enableWebSocket) {
       const wsUrl = options.webSocketUrl ?? options.baseUrl.replace(/^http/, 'ws');
-      this.ws = new AgentWebSocketClient({
+      const wsConfig: import('./websocket-client').WebSocketClientConfig = {
         url: wsUrl,
         onMessage: (message) => {
           this.messageListeners.forEach((listener) => listener(message));
@@ -39,8 +46,11 @@ export class AgentClient {
         onStateChange: (state) => {
           this.stateListeners.forEach((listener) => listener(state));
         },
-        onError: options.onError,
-      });
+      };
+      if (options.onError !== undefined) {
+        wsConfig.onError = options.onError;
+      }
+      this.ws = new AgentWebSocketClient(wsConfig);
     }
   }
 

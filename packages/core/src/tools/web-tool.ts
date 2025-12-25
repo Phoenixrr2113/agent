@@ -2,7 +2,7 @@ import { tool } from 'ai';
 import { z } from 'zod';
 
 import { success, error } from './utils/tool-result.js';
-import { ToolError, ToolErrorType } from './lifecycle.js';
+import { ToolError, ToolErrorType } from './middleware/index.js';
 
 const DEFAULT_TIMEOUT = 30000;
 
