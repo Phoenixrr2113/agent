@@ -120,6 +120,6 @@ new DocumentChunkingStrategy({
 Each strategy should have comprehensive tests:
 
 ```bash
-pnpm test src/core/rag/strategies
+pnpm --filter @agent/memory test src/rag/strategies
 ```
 

@@ -19,6 +19,7 @@ agent-platform/
 ├── packages/
 │   ├── shared/               # @agent/shared - Shared utilities & types
 │   ├── core/                 # @agent/core - Agent runtime engine
+│   ├── memory/               # @agent/memory - Memory, RAG, profiles, embeddings
 │   ├── server/               # @agent/server - HTTP API server
 │   ├── device-use/           # @agent/device-use - Cross-platform device control
 │   ├── api-client/           # @agent/api-client - HTTP/WebSocket client
@@ -37,8 +38,9 @@ agent-platform/
 ### Packages
 
 - **@agent/shared** - Shared types, utilities (logger, performance), streaming events
-- **@agent/core** - Core agent runtime with memory, RAG, tool orchestration, and LLM integration
-- **@agent/server** - Hono-based HTTP/WebSocket server with REST API, SSE streaming, and real-time dashboard
+- **@agent/core** - Core agent runtime with tool orchestration and LLM integration
+- **@agent/memory** - Memory system with RAG, user profiles, entity extraction, and embeddings
+- **@agent/server** - Hono-based HTTP/WebSocket server with REST API, SSE streaming, API key auth, and real-time dashboard
 - **@agent/device-use** - Cross-platform device control (nut.js for desktop, Playwright for web, mobile drivers)
 - **@agent/api-client** - HTTP and WebSocket client for connecting to the agent server
 - **@agent/ui** - Shared React Native UI components with NativeWind styling
@@ -311,7 +313,7 @@ The agent uses a smart tool management system with **deferred loading** - tools 
 - **Documents** (`.md`, `.txt`, `.markdown`) - Semantic chunking by headings/paragraphs
 - **Custom strategies** - Easily add support for new file types (PDFs, etc.)
 
-See [packages/core/src/core/rag/strategies/README.md](packages/core/src/core/rag/strategies/README.md) for details on creating custom chunking strategies.
+See [packages/memory/src/rag/strategies/README.md](packages/memory/src/rag/strategies/README.md) for details on creating custom chunking strategies.
 
 ### Tool Usage Examples
 
@@ -503,23 +505,30 @@ packages/
 │   └── src/
 │       ├── runtime/          # Agent execution engine
 │       ├── application/      # Orchestrator & initialization
-│       ├── core/
-│       │   ├── agents/       # Model configs and roles
-│       │   ├── memory/       # Session and context memory
-│       │   ├── rag/          # Semantic search with chunking strategies
-│       │   ├── embeddings/   # Embedding models
-│       │   └── tool-instrumentation/  # Tool lifecycle hooks
-│       ├── tools/            # Tool implementations
+│       ├── agents/           # Model configs and roles
+│       ├── tools/            # Tool implementations with middleware
+│       │   └── middleware/   # Tool activation, lifecycle, instrumentation
 │       └── infrastructure/   # System prompts
+│
+├── memory/                   # Memory, RAG, profiles, embeddings
+│   └── src/
+│       ├── embeddings/       # Embedding models and similarity
+│       ├── entities/         # Entity extraction and storage
+│       ├── profiles/         # User profile management
+│       ├── rag/              # Semantic search with chunking strategies
+│       │   └── strategies/   # Pluggable chunking (code, document)
+│       └── storage/          # SQLite and memory storage adapters
 │
 ├── server/                   # HTTP/WebSocket server
 │   └── src/
+│       ├── auth/             # API key authentication
+│       ├── devices/          # Device registry
 │       └── index.ts          # Hono server with dashboard
 │
 ├── api-client/               # Client SDK
 │   └── src/
-│       ├── http.ts           # HTTP client
-│       ├── websocket.ts      # WebSocket client
+│       ├── http-client.ts    # HTTP client
+│       ├── websocket-client.ts # WebSocket client
 │       └── index.ts          # Unified client
 │
 ├── device-use/               # Device control
@@ -561,7 +570,7 @@ apps/
         ├── (tabs)/           # Tab navigation
         │   ├── index.tsx     # Home/Chat
         │   ├── chat.tsx      # Chat interface
-        │   ├── explore.tsx   # Device control
+        │   ├── settings.tsx  # Settings screen
         │   └── debug.tsx     # Debug dashboard
         └── _layout.tsx       # Root layout
 ```
