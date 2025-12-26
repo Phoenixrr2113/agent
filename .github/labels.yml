@@ -100,6 +100,10 @@
   color: 'c5def5'
   description: '@agent/core package'
 
+- name: pkg-memory
+  color: 'c5def5'
+  description: '@agent/memory package'
+
 - name: pkg-server
   color: 'c5def5'
   description: '@agent/server package'
@@ -115,6 +119,31 @@
 - name: pkg-shared
   color: 'c5def5'
   description: '@agent/shared package'
+
+- name: pkg-api-client
+  color: 'c5def5'
+  description: '@agent/api-client package'
+
+- name: pkg-ui
+  color: 'c5def5'
+  description: '@agent/ui package'
+
+- name: pkg-mobile-accessibility
+  color: 'c5def5'
+  description: '@agent/mobile-accessibility package'
+
+- name: pkg-benchmarks
+  color: 'c5def5'
+  description: '@agent/benchmarks package'
+
+- name: pkg-tailwind-config
+  color: 'c5def5'
+  description: '@agent/tailwind-config package'
+
+# App labels
+- name: app-expo
+  color: 'bfdadc'
+  description: '@agent/expo app'
 
 # Special labels
 - name: pinned
