@@ -1,0 +1,37 @@
+1<?xml version="1.0" encoding="utf-8"?>
+2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+3    package="agent.accessibility" >
+4
+5    <uses-sdk android:minSdkVersion="24" />
+6
+7    <uses-permission android:name="android.permission.BIND_ACCESSIBILITY_SERVICE" />
+7-->/Users/randywilson/Desktop/agent/packages/mobile-accessibility/android/src/main/AndroidManifest.xml:2:5-85
+7-->/Users/randywilson/Desktop/agent/packages/mobile-accessibility/android/src/main/AndroidManifest.xml:2:22-82
+8
+9    <application>
+9-->/Users/randywilson/Desktop/agent/packages/mobile-accessibility/android/src/main/AndroidManifest.xml:4:5-16:19
+10        <service
+10-->/Users/randywilson/Desktop/agent/packages/mobile-accessibility/android/src/main/AndroidManifest.xml:5:9-15:19
+11            android:name="agent.accessibility.AgentAccessibilityService"
+11-->/Users/randywilson/Desktop/agent/packages/mobile-accessibility/android/src/main/AndroidManifest.xml:6:13-54
+12            android:exported="true"
+12-->/Users/randywilson/Desktop/agent/packages/mobile-accessibility/android/src/main/AndroidManifest.xml:8:13-36
+13            android:permission="android.permission.BIND_ACCESSIBILITY_SERVICE" >
+13-->/Users/randywilson/Desktop/agent/packages/mobile-accessibility/android/src/main/AndroidManifest.xml:7:13-79
+14            <intent-filter>
+14-->/Users/randywilson/Desktop/agent/packages/mobile-accessibility/android/src/main/AndroidManifest.xml:9:13-11:29
+15                <action android:name="android.accessibilityservice.AccessibilityService" />
+15-->/Users/randywilson/Desktop/agent/packages/mobile-accessibility/android/src/main/AndroidManifest.xml:10:17-92
+15-->/Users/randywilson/Desktop/agent/packages/mobile-accessibility/android/src/main/AndroidManifest.xml:10:25-89
+16            </intent-filter>
+17
+18            <meta-data
+18-->/Users/randywilson/Desktop/agent/packages/mobile-accessibility/android/src/main/AndroidManifest.xml:12:13-14:72
+19                android:name="android.accessibilityservice"
+19-->/Users/randywilson/Desktop/agent/packages/mobile-accessibility/android/src/main/AndroidManifest.xml:13:17-60
+20                android:resource="@xml/accessibility_service_config" />
+20-->/Users/randywilson/Desktop/agent/packages/mobile-accessibility/android/src/main/AndroidManifest.xml:14:17-69
+21        </service>
+22    </application>
+23
+24</manifest>

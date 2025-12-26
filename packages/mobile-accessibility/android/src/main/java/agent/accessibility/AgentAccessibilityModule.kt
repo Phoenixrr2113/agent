@@ -73,11 +73,17 @@ class AgentAccessibilityModule : Module() {
       return@AsyncFunction service.pressKey(keyAction)
     }
 
-    AsyncFunction("screenshot") Coroutine { ->
-      val service = AgentAccessibilityService.instance ?: throw Exception("Accessibility Service not enabled")
-      return@Coroutine kotlinx.coroutines.suspendCancellableCoroutine<String?> { continuation ->
-        service.takeScreenshotAsync { base64 ->
-          continuation.resume(base64, null)
+    AsyncFunction("screenshot") { promise: Promise ->
+      val service = AgentAccessibilityService.instance
+      if (service == null) {
+        promise.reject("ERR_ACCESSIBILITY", "Accessibility Service not enabled", null)
+        return@AsyncFunction
+      }
+      service.takeScreenshotAsync { base64 ->
+        if (base64 != null) {
+          promise.resolve(base64)
+        } else {
+          promise.resolve(null)
         }
       }
     }

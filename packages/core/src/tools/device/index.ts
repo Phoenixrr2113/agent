@@ -1,3 +1,7 @@
+import { mkdir, writeFile } from 'node:fs/promises'
+import { join } from 'node:path'
+import { tmpdir } from 'node:os'
+
 import { tool } from 'ai'
 
 import type { DeviceCapabilities } from '@agent/shared'
@@ -6,9 +10,20 @@ import { z } from 'zod'
 
 interface DeviceToolsConfig {
   serverUrl: string
+  screenshotsDir?: string
+}
+
+async function saveScreenshotToFile(base64Data: string, screenshotsDir: string): Promise<string> {
+  await mkdir(screenshotsDir, { recursive: true })
+  const filename = `screenshot_${Date.now()}.png`
+  const filepath = join(screenshotsDir, filename)
+  const buffer = Buffer.from(base64Data, 'base64')
+  await writeFile(filepath, buffer)
+  return filepath
 }
 
 export function createDeviceTools(config: DeviceToolsConfig) {
+  const screenshotsDir = config.screenshotsDir ?? join(tmpdir(), 'agent-screenshots')
   let currentDeviceId: string | null = null
 
   return {
@@ -68,7 +83,8 @@ export function createDeviceTools(config: DeviceToolsConfig) {
           if (result.data && typeof result.data === 'object' && 'type' in result.data) {
             const data = result.data as { type: string; base64?: string }
             if (data.type === 'screenshot' && data.base64) {
-              return { type: 'image', data: data.base64 }
+              const filepath = await saveScreenshotToFile(data.base64, screenshotsDir)
+              return `Screenshot saved to: ${filepath}`
             }
           }
           return result.data ?? 'Action completed successfully'
@@ -134,7 +150,8 @@ export function createDeviceTools(config: DeviceToolsConfig) {
           data?: { type: string; base64: string }
         }
         if (result.success && result.data?.base64) {
-          return { type: 'image', data: result.data.base64 }
+          const filepath = await saveScreenshotToFile(result.data.base64, screenshotsDir)
+          return `Screenshot saved to: ${filepath}`
         }
         return `Error: ${result.error ?? 'Failed to take screenshot'}`
       },

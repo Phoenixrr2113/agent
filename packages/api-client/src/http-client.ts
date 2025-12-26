@@ -130,7 +130,28 @@ export class AgentHttpClient {
 
     const reader = response.body?.getReader();
     if (!reader) {
-      throw new ApiClientError('No response body', 0, 'NO_BODY');
+      const text = await response.text();
+      const lines = text.split('\n');
+      let currentEvent: string | null = null;
+      
+      for (const line of lines) {
+        if (line.startsWith('event:')) {
+          currentEvent = line.slice(6).trim();
+        } else if (line.startsWith('data:') && currentEvent !== null) {
+          const dataStr = line.slice(5).trim();
+          let data: unknown;
+          try {
+            data = JSON.parse(dataStr);
+          } catch {
+            data = dataStr;
+          }
+          yield { event: currentEvent, data };
+          currentEvent = null;
+        } else if (line === '') {
+          currentEvent = null;
+        }
+      }
+      return;
     }
 
     const decoder = new TextDecoder();

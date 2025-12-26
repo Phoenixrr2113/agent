@@ -40,6 +40,13 @@ export const CORE_TOOL_NAMES = [
   'sequential_thinking',
   'ask_user',
   'task_complete',
+  'list_devices',
+  'select_device',
+  'device_action',
+  'tap',
+  'type_text',
+  'device_screenshot',
+  'swipe',
 ] as const;
 
 export interface InitializationConfig {

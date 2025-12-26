@@ -7,6 +7,7 @@ import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { SettingsProvider } from '@/context/settings';
+import { AgentBridge } from '@/components/agent-bridge';
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -23,6 +24,7 @@ export default function RootLayout() {
           <Stack.Screen name="modal" options={{ presentation: 'modal', title: 'Modal' }} />
         </Stack>
         <StatusBar style="auto" />
+        <AgentBridge />
       </ThemeProvider>
     </SettingsProvider>
   );

@@ -64,7 +64,10 @@ export class DeviceRegistry {
   }
 
   listDevices(): DeviceCapabilities[] {
-    return [...this.devices.values()].map((d) => d.capabilities)
+    return [...this.devices.values()].map((d) => ({
+      ...d.capabilities,
+      deviceId: d.id,
+    }))
   }
 
   async executeAction(deviceId: string, action: DeviceAction): Promise<ActionResult> {
@@ -75,7 +78,11 @@ export class DeviceRegistry {
 
     if (isLocalDevice(device)) {
       device.lastSeen = Date.now()
-      return device.executeLocal(action)
+      try {
+        return await device.executeLocal(action)
+      } catch (error) {
+        return { success: false, error: String(error instanceof Error ? error.message : error), code: 'UNKNOWN' as const }
+      }
     }
 
     const actionId = crypto.randomUUID()

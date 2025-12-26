@@ -1,0 +1,3 @@
+agent.accessibility
+string accessibility_service_description
+xml accessibility_service_config

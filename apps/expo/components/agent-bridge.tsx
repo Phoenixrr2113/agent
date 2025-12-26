@@ -11,7 +11,8 @@ import type {
   DragPayload,
 } from '@agent/shared'
 import React, { useEffect, useState, useRef, useCallback } from 'react'
-import { View, Text, StyleSheet, Platform, Dimensions } from 'react-native'
+import { View, Text, StyleSheet, Platform, Dimensions, Pressable } from 'react-native'
+import { useRouter } from 'expo-router'
 
 interface ActionMessage {
   actionId: string
@@ -155,13 +156,20 @@ export function AgentBridge() {
   const [lastAction, setLastAction] = useState<string | null>(null)
   const wsRef = useRef<WebSocket | null>(null)
   const reconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const router = useRouter()
+
+  const handlePress = useCallback(() => {
+    router.navigate('/debug')
+  }, [router])
 
   const connect = useCallback(() => {
+    console.log('[AgentBridge] Attempting to connect to server...')
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       return
     }
 
     const host = Platform.OS === 'android' ? '10.0.2.2' : 'localhost'
+    console.log('[AgentBridge] Connecting to', `ws://${host}:3000`)
     const ws = new WebSocket(`ws://${host}:3000`)
     wsRef.current = ws
 
@@ -235,10 +243,25 @@ export function AgentBridge() {
   }, [connect])
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.text}>Bridge: {status}</Text>
+    <Pressable
+      onPress={handlePress}
+      style={({ pressed }) => [
+        styles.container,
+        { opacity: pressed ? 0.7 : 1 },
+      ]}
+    >
+      <View style={styles.row}>
+        <View
+          style={[
+            styles.dot,
+            { backgroundColor: status === 'Connected' ? '#22c55e' : '#ef4444' },
+          ]}
+        />
+        <Text style={styles.text}>Bridge: {status}</Text>
+      </View>
       {lastAction && <Text style={styles.smallText}>Last: {lastAction}</Text>}
-    </View>
+      <Text style={styles.hint}>Tap for details</Text>
+    </Pressable>
   )
 }
 
@@ -249,6 +272,16 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     marginVertical: 10,
   },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
   text: {
     fontSize: 14,
     fontWeight: 'bold',
@@ -257,5 +290,11 @@ const styles = StyleSheet.create({
     fontSize: 10,
     color: '#666',
     marginTop: 5,
+  },
+  hint: {
+    fontSize: 10,
+    color: '#999',
+    marginTop: 2,
+    fontStyle: 'italic',
   },
 })

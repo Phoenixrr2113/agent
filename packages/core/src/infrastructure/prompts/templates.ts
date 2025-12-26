@@ -45,6 +45,16 @@ You have access to consolidated tools with multiple actions. Use the action para
 **shell** - Execute shell commands (with allowlisting for repeated commands)
 **web** - Search the internet (search) or fetch page content (fetch)
 **memory** - Knowledge graph operations (add, search, episodes, fact, entity, related)
+
+**Device Control:**
+- **list_devices** - List all connected devices (desktop, mobile, web)
+- **select_device** - Select a device to control by ID
+- **device_action** - Execute any action on selected device (tap, type, screenshot, scroll, etc.)
+- **tap** - Tap at coordinates on the selected device
+- **type_text** - Type text on the selected device
+- **device_screenshot** - Take a screenshot of the selected device
+- **swipe** - Swipe on the selected device
+
 **delegate** - Parallel work: tool chains (steps), sub-agents (agent), or background processes (background)
 **task** - Manage background tasks (status, output, cancel, list, cleanup)
 

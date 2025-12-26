@@ -2,6 +2,6 @@
   "platforms": ["android"],
   "android": {
     "package": "agent.accessibility",
-    "modules": ["AgentAccessibilityModule"]
+    "modules": ["agent.accessibility.AgentAccessibilityModule"]
   }
 }

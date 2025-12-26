@@ -37,6 +37,18 @@ export interface UseAgentChatReturn {
   currentStep: number;
 }
 
+
+function generateId(): string {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID();
+  }
+  // Simple UUID v4 generator fallback for environments without crypto.randomUUID (like React Native)
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+    var r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
+
 export function useAgentChat(options: UseAgentChatOptions): UseAgentChatReturn {
   const { client, onError } = options;
 
@@ -66,7 +78,7 @@ export function useAgentChat(options: UseAgentChatOptions): UseAgentChatReturn {
     setCurrentStep(0);
 
     const userMessage: StreamingMessage = {
-      id: crypto.randomUUID(),
+      id: generateId(),
       role: 'user',
       content,
       timestamp: Date.now(),
@@ -76,7 +88,7 @@ export function useAgentChat(options: UseAgentChatOptions): UseAgentChatReturn {
     };
 
     const assistantMessage: StreamingMessage = {
-      id: crypto.randomUUID(),
+      id: generateId(),
       role: 'assistant',
       content: '',
       timestamp: Date.now(),

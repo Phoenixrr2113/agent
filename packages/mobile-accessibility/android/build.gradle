@@ -5,12 +5,16 @@ group = 'agent.accessibility'
 version = '1.0.0'
 
 def expoModulesCorePlugin = new File(project(":expo-modules-core").projectDir.absolutePath, "ExpoModulesCorePlugin.gradle")
-apply from: expoModulesCorePlugin
-apply from: new File(project(":expo-modules-core").projectDir.absolutePath, "package.gradle")
+if (expoModulesCorePlugin.exists()) {
+  apply from: expoModulesCorePlugin
+}
 
 android {
   namespace "agent.accessibility"
+  compileSdk 36
   defaultConfig {
+    minSdk 24
+    targetSdk 36
     versionCode 1
     versionName "1.0.0"
   }
@@ -18,5 +22,5 @@ android {
 
 dependencies {
   implementation project(':expo-modules-core')
-  implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:${getKotlinVersion()}"
+  implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7"
 }
