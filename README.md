@@ -19,6 +19,7 @@ agent-platform/
 ├── packages/
 │   ├── shared/               # @agent/shared - Shared utilities & types
 │   ├── core/                 # @agent/core - Agent runtime engine
+│   ├── memory/               # @agent/memory - Memory, RAG, profiles, embeddings
 │   ├── server/               # @agent/server - HTTP API server
 │   ├── device-use/           # @agent/device-use - Cross-platform device control
 │   ├── api-client/           # @agent/api-client - HTTP/WebSocket client
@@ -37,8 +38,9 @@ agent-platform/
 ### Packages
 
 - **@agent/shared** - Shared types, utilities (logger, performance), streaming events
-- **@agent/core** - Core agent runtime with memory, RAG, tool orchestration, and LLM integration
-- **@agent/server** - Hono-based HTTP/WebSocket server with REST API, SSE streaming, and real-time dashboard
+- **@agent/core** - Core agent runtime with tool orchestration and LLM integration
+- **@agent/memory** - Memory system with RAG, user profiles, entity extraction, and embeddings
+- **@agent/server** - Hono-based HTTP/WebSocket server with REST API, SSE streaming, API key auth, and real-time dashboard
 - **@agent/device-use** - Cross-platform device control (nut.js for desktop, Playwright for web, mobile drivers)
 - **@agent/api-client** - HTTP and WebSocket client for connecting to the agent server
 - **@agent/ui** - Shared React Native UI components with NativeWind styling
@@ -237,73 +239,83 @@ pnpm --filter @agent/core add <package>
 
 ## Tools
 
-The agent uses a smart tool management system with **deferred loading** - tools are loaded on-demand to reduce token usage. Tools are organized into active (always loaded) and deferred (loaded when needed).
+The agent provides a comprehensive set of tools that are all loaded at initialization. Tools use a unified action-based design where related operations are grouped into single tools with action parameters.
 
-**Total: 29 tools** (with workspace), **15 core tools** (without workspace)
-
-### Active Tools (Always Loaded)
+### Core Tools
 
 | Tool | Description |
 |------|-------------|
+| `fs` | Unified filesystem operations (read, write, edit, list, glob, grep, move, delete, info, mkdir) |
 | `shell` | Execute bash commands with full system access |
+| `web` | Web search and page fetching (search via Brave/Tavily, fetch with Readability) |
+| `memory` | Knowledge graph operations (add, search, episodes, fact, entity, related) |
 | `plan` | Create and track multi-step plans with task breakdown |
+| `validate` | Run TypeScript checks and tests |
 | `sequential_thinking` | Complex reasoning with branching and revision support |
+| `delegate` | Delegate subtasks to specialized sub-agents |
+| `task` | Create and manage background tasks |
+
+### Agent Interaction Tools
+
+| Tool | Description |
+|------|-------------|
 | `task_complete` | Signal task completion and end execution |
 | `ask_user` | Request user input or clarification |
 
-### Tool Management (3 tools)
+### Codebase Tools (when `workspaceRoot` provided)
 
-| Tool | Description |
-|------|-------------|
-| `tool_search` | Semantic search across available tools by description |
-| `activate_tool` | Dynamically activate deferred tools when needed |
-| `deactivate_tool` | Deactivate tools to reduce token usage |
-
-### Deferred Tools (Loaded on Demand)
-
-#### Web & Search (2 tools)
-| Tool | Description |
-|------|-------------|
-| `web_search` | Search the internet (Brave/Tavily APIs) |
-| `fetch_page` | Fetch and parse web pages with Readability |
-
-#### Memory & Knowledge Graph (5 tools)
-| Tool | Description |
-|------|-------------|
-| `memory_search` | Semantic search over stored knowledge |
-| `memory_get_episodes` | Get recent conversation episodes |
-| `memory_get_fact` | Retrieve specific fact by ID |
-| `memory_get_entity` | Get entity details by ID |
-| `memory_get_related` | Find related entities via graph connections |
-
-### Workspace Tools (when `workspaceRoot` provided)
-
-#### Codebase Analysis (2 tools)
 | Tool | Description |
 |------|-------------|
 | `search_codebase` | Semantic search over indexed code and documents using RAG |
-| `grep_codebase` | Regex pattern matching in files |
 
-#### Filesystem Operations (12 tools)
+### Device Control Tools
+
 | Tool | Description |
 |------|-------------|
-| `read_text_file` | Read file contents (supports head/tail for large files) |
-| `read_media_file` | Read images/audio as base64 with MIME type detection |
-| `read_multiple_files` | Batch read multiple files simultaneously |
-| `write_file` | Create or overwrite files (atomic write for safety) |
-| `edit_file` | Line-based text replacement with git-style diff output |
-| `create_directory` | Create directories recursively (idempotent) |
-| `list_directory` | List directory contents with file/directory prefixes |
-| `list_directory_with_sizes` | List with file sizes and sorting options |
-| `directory_tree` | Generate recursive directory tree structure |
-| `search_files` | Glob-pattern file search with exclude support |
-| `get_file_info` | Get file metadata (size, timestamps, permissions) |
-| `move_file` | Rename or move files/directories |
+| `list_devices` | List all connected devices (desktop, mobile, web) |
+| `select_device` | Select a device to control |
+| `device_action` | Execute actions (tap, swipe, type, screenshot, get_ui_tree) |
+| `tap` | Tap at coordinates on selected device |
+| `type_text` | Type text on selected device |
+| `device_screenshot` | Take screenshot of selected device |
+| `swipe` | Swipe gesture on selected device |
 
-#### Validation (1 tool)
-| Tool | Description |
-|------|-------------|
-| `validate` | Run TypeScript checks and tests |
+### Unified Tool Design
+
+Tools use an action-based pattern for related operations:
+
+**Filesystem Tool (`fs`)** - Actions: `read`, `write`, `edit`, `list`, `glob`, `grep`, `move`, `delete`, `info`, `mkdir`
+```typescript
+// Read a file
+{ action: 'read', path: '/path/to/file.ts' }
+
+// Edit with find/replace
+{ action: 'edit', path: '/path/to/file.ts', old_string: 'foo', new_string: 'bar' }
+
+// Search files by pattern
+{ action: 'glob', path: '/project', pattern: '**/*.test.ts' }
+```
+
+**Web Tool (`web`)** - Actions: `search`, `fetch`
+```typescript
+// Search the web
+{ action: 'search', query: 'TypeScript best practices', engine: 'tavily' }
+
+// Fetch and parse a page
+{ action: 'fetch', url: 'https://example.com/docs' }
+```
+
+**Memory Tool (`memory`)** - Actions: `add`, `search`, `episodes`, `fact`, `entity`, `related`
+```typescript
+// Store information
+{ action: 'add', content: 'User prefers TypeScript', groupId: 'preferences' }
+
+// Search memory
+{ action: 'search', query: 'user preferences' }
+
+// Get related entities
+{ action: 'related', entityId: 'user-123', depth: 2 }
+```
 
 **RAG (Retrieval-Augmented Generation)**: The workspace indexing uses a pluggable strategy system that automatically selects the appropriate chunking method based on file type:
 
@@ -311,11 +323,11 @@ The agent uses a smart tool management system with **deferred loading** - tools 
 - **Documents** (`.md`, `.txt`, `.markdown`) - Semantic chunking by headings/paragraphs
 - **Custom strategies** - Easily add support for new file types (PDFs, etc.)
 
-See [packages/core/src/core/rag/strategies/README.md](packages/core/src/core/rag/strategies/README.md) for details on creating custom chunking strategies.
+See [packages/memory/src/rag/strategies/README.md](packages/memory/src/rag/strategies/README.md) for details on creating custom chunking strategies.
 
 ### Tool Usage Examples
 
-#### Filesystem Tools
+#### Filesystem Operations
 
 ```typescript
 const runtime = await createAgentRuntime({ workspaceRoot: '/path/to/project' });
@@ -324,7 +336,7 @@ const session = runtime.createSession();
 // Read a file
 await session.send('Read the package.json file');
 
-// Edit a file with diff preview
+// Edit a file with find/replace
 await session.send('Replace "version": "1.0.0" with "version": "2.0.0" in package.json');
 
 // Search for files
@@ -352,22 +364,6 @@ await session.send('Analyze the performance bottlenecks in this codebase and sug
 // 4. Identify specific issues
 // 5. Revise earlier thoughts if needed
 // 6. Provide final recommendations
-```
-
-#### Tool Management
-
-```typescript
-// Search for tools by description
-await session.send('What tools are available for working with files?');
-// Agent uses tool_search to find filesystem tools
-
-// Deferred tools are automatically activated when needed
-await session.send('Search the web for TypeScript best practices');
-// Agent automatically activates web_search tool
-
-// Manually control tool activation
-await session.send('Activate the memory search tool');
-await session.send('Deactivate web search to save tokens');
 ```
 
 ## Memory System
@@ -503,23 +499,30 @@ packages/
 │   └── src/
 │       ├── runtime/          # Agent execution engine
 │       ├── application/      # Orchestrator & initialization
-│       ├── core/
-│       │   ├── agents/       # Model configs and roles
-│       │   ├── memory/       # Session and context memory
-│       │   ├── rag/          # Semantic search with chunking strategies
-│       │   ├── embeddings/   # Embedding models
-│       │   └── tool-instrumentation/  # Tool lifecycle hooks
-│       ├── tools/            # Tool implementations
+│       ├── agents/           # Model configs and roles
+│       ├── tools/            # Tool implementations with middleware
+│       │   └── middleware/   # Tool activation, lifecycle, instrumentation
 │       └── infrastructure/   # System prompts
+│
+├── memory/                   # Memory, RAG, profiles, embeddings
+│   └── src/
+│       ├── embeddings/       # Embedding models and similarity
+│       ├── entities/         # Entity extraction and storage
+│       ├── profiles/         # User profile management
+│       ├── rag/              # Semantic search with chunking strategies
+│       │   └── strategies/   # Pluggable chunking (code, document)
+│       └── storage/          # SQLite and memory storage adapters
 │
 ├── server/                   # HTTP/WebSocket server
 │   └── src/
+│       ├── auth/             # API key authentication
+│       ├── devices/          # Device registry
 │       └── index.ts          # Hono server with dashboard
 │
 ├── api-client/               # Client SDK
 │   └── src/
-│       ├── http.ts           # HTTP client
-│       ├── websocket.ts      # WebSocket client
+│       ├── http-client.ts    # HTTP client
+│       ├── websocket-client.ts # WebSocket client
 │       └── index.ts          # Unified client
 │
 ├── device-use/               # Device control
@@ -561,7 +564,7 @@ apps/
         ├── (tabs)/           # Tab navigation
         │   ├── index.tsx     # Home/Chat
         │   ├── chat.tsx      # Chat interface
-        │   ├── explore.tsx   # Device control
+        │   ├── settings.tsx  # Settings screen
         │   └── debug.tsx     # Debug dashboard
         └── _layout.tsx       # Root layout
 ```

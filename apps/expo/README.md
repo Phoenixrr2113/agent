@@ -84,7 +84,7 @@ apps/expo/
 │   ├── (tabs)/             # Tab navigation
 │   │   ├── index.tsx       # Home/Chat screen
 │   │   ├── chat.tsx        # Chat implementation
-│   │   ├── explore.tsx     # Device control screen
+│   │   ├── settings.tsx    # Settings screen
 │   │   └── debug.tsx       # Debug dashboard
 │   └── _layout.tsx         # Root layout
 ├── components/             # App-specific components
