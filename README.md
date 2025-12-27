@@ -6,9 +6,17 @@
 [![pnpm](https://img.shields.io/badge/pnpm-%3E%3D8-orange)](https://pnpm.io/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
 
-A **server-side AI agent runtime** for Node.js applications built as a modern monorepo. Provides persistent memory, web search, shell execution, and codebase understanding through a modular package architecture.
+A **full-stack AI agent platform** built as a modern monorepo. Includes a Node.js server with multi-user authentication, client SDKs, and example applications for mobile, web, and CLI. Features persistent memory, web search, shell execution, device control, and codebase understanding.
 
-> **⚠️ Server-Side Only**: This platform requires Node.js 20+ and uses native modules (SQLite, child_process). It cannot run in browsers. For frontend apps, run as a backend service and connect via HTTP/WebSocket.
+## What's Included
+
+- **Server** (`@agent/server`) - HTTP/WebSocket API with multi-user auth, SSE streaming, and real-time dashboard
+- **Client SDK** (`@agent/api-client`) - HTTP and WebSocket clients for connecting to the server
+- **UI Components** (`@agent/ui`) - Shared React Native components for building agent interfaces
+- **Example Apps**:
+  - **Expo App** (`@agent/expo`) - Cross-platform mobile/web app (iOS, Android, Web)
+  - **CLI** (`@agent/cli`) - Command-line chat REPL and server launcher
+- **Core Runtime** (`@agent/core`) - Can also be used directly as a library in Node.js applications
 
 ## Monorepo Structure
 
@@ -55,17 +63,17 @@ agent-platform/
 
 ## Features
 
+- **Multi-User Server**: API key authentication with per-user agent runtimes and sessions
+- **Cross-Platform Apps**: Example Expo app runs on iOS, Android, and Web
 - **Persistent Memory**: Knowledge graph with automatic entity extraction (SQLite-based, zero config)
 - **Web Intelligence**: Search (Brave/Tavily) and page parsing (Readability)
 - **Shell Execution**: Full bash access for git, filesystem, and system operations
-- **Device Control**: High-performance cross-platform automation via nut.js (100x faster than CLI tools, Wayland support)
-- **Filesystem Tools**: 12 comprehensive file operations (read, write, edit, search, move, metadata)
-- **Smart Tool Management**: Deferred loading with semantic search and dynamic activation
+- **Device Control**: High-performance cross-platform automation via nut.js and accessibility services
+- **Unified Tools**: Action-based tools for filesystem, web, memory, and device operations
 - **Sequential Thinking**: Multi-step reasoning with branching and revision support
-- **Optional Codebase Tools**: RAG-powered semantic search and grep (when workspace provided)
+- **Codebase RAG**: Semantic search over indexed code (when workspace provided)
 - **Session Management**: Multiple concurrent conversations with isolated history
-- **HTTP Server**: Built-in Hono server with REST API
-- **Programmatic API**: Import as a library or run as HTTP server
+- **Real-time Dashboard**: WebSocket-based dashboard for monitoring agent activity
 - **Turborepo Build System**: Lightning-fast builds with caching (< 1s with cache)
 
 ## Installation
@@ -119,29 +127,48 @@ MODEL_EXTRACTION=google/gemini-2.0-flash-001
 
 ## Quick Start
 
-### Interactive Chat
+### Run the Server
+
+```bash
+# Start the agent server
+pnpm server
+```
+
+Server starts on `http://localhost:3000`. Create an API key to authenticate:
+
+```bash
+curl -X POST http://localhost:3000/api-keys -H "Content-Type: application/json" -d '{"name": "my-key"}'
+```
+
+### Run the Expo App
+
+```bash
+# Start the Expo development server
+pnpm --filter @agent/expo start
+
+# Or run directly on platforms
+pnpm --filter @agent/expo web      # Web browser
+pnpm --filter @agent/expo ios      # iOS simulator
+pnpm --filter @agent/expo android  # Android emulator
+```
+
+### Interactive CLI Chat
 
 ```bash
 pnpm chat
 ```
 
-### HTTP Server
-
-```bash
-pnpm server
-```
-
-Server starts on `http://localhost:3000` (or PORT env variable).
-
-### As a Library
+### Use as a Library
 
 ```typescript
 import { createAgentRuntime } from '@agent/core';
 
-const runtime = await createAgentRuntime();
+const runtime = await createAgentRuntime({
+  workspaceRoot: '/path/to/project',
+});
 const session = runtime.createSession();
 
-const result = await session.send('What is the weather like in Tokyo?');
+const result = await session.send('What files are in this project?');
 console.log(result.text);
 
 await runtime.shutdown();
@@ -175,35 +202,64 @@ const runtime = await createAgentRuntime({
 
 ## HTTP Server API
 
-The `@agent/server` package provides a Hono-based HTTP server.
+The `@agent/server` package provides a Hono-based HTTP/WebSocket server with multi-user authentication.
+
+### Authentication
+
+Protected endpoints require an API key via the `Authorization` header:
+
+```bash
+# Create an API key (no auth required)
+curl -X POST http://localhost:3000/api-keys \
+  -H "Content-Type: application/json" \
+  -d '{"name": "my-app"}'
+# Returns: { "key": "ak_...", "name": "my-app" }
+
+# Use the key for authenticated requests
+curl http://localhost:3000/sessions \
+  -H "Authorization: Bearer ak_..."
+```
 
 ### Endpoints
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/health` | Health check (`{ status: 'ok' }`) |
-| `POST` | `/sessions` | Create session → `{ sessionId }` |
-| `DELETE` | `/sessions/:id` | Delete session |
-| `POST` | `/sessions/:id/chat` | Send message → `{ text, completed, ... }` |
-| `GET` | `/sessions/:id/chat/stream` | SSE streaming (query: `?message=...`) |
-| `GET` | `/sessions/:id/history` | Get message history |
-| `POST` | `/sessions/:id/clear` | Clear session history |
-| `POST` | `/chat` | Convenience: auto-creates session |
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `GET` | `/health` | No | Health check |
+| `POST` | `/api-keys` | No | Create API key |
+| `GET` | `/api-keys` | Yes | List API keys |
+| `DELETE` | `/api-keys/:hash` | Yes | Revoke API key |
+| `POST` | `/sessions` | Yes | Create session |
+| `DELETE` | `/sessions/:id` | No | Delete session |
+| `POST` | `/sessions/:id/chat` | No | Send message |
+| `GET` | `/sessions/:id/chat/stream` | No | SSE streaming |
+| `GET` | `/sessions/:id/history` | No | Get history |
+| `POST` | `/sessions/:id/clear` | No | Clear history |
+| `POST` | `/chat` | Yes | Auto-creates session |
+| `GET` | `/devices` | No | List connected devices |
+| `POST` | `/devices/:id/action` | No | Execute device action |
+| `GET` | `/dashboard/state` | No | Dashboard snapshot |
+| `WS` | `/dashboard/ws` | No | Real-time dashboard |
 
-### Client Example
+### Client SDK Example
 
 ```typescript
-const API = 'http://localhost:3000';
+import { AgentClient } from '@agent/api-client';
 
-const { sessionId } = await fetch(`${API}/sessions`, { method: 'POST' }).then(r => r.json());
+const client = new AgentClient({
+  baseUrl: 'http://localhost:3000',
+  apiKey: 'ak_...',
+});
 
-const response = await fetch(`${API}/sessions/${sessionId}/chat`, {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({ message: 'What is the weather in Tokyo?' }),
-}).then(r => r.json());
-
+// Create session and send message
+const session = await client.createSession();
+const response = await client.chat(session.sessionId, 'Hello!');
 console.log(response.text);
+
+// Or use streaming
+await client.chatStream(session.sessionId, 'Tell me a story', {
+  onTextDelta: (delta) => process.stdout.write(delta),
+  onComplete: (result) => console.log('\nDone!'),
+});
 ```
 
 ## Available Scripts
