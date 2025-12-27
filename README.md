@@ -424,38 +424,180 @@ await session.send('Analyze the performance bottlenecks in this codebase and sug
 
 ## Memory System
 
-The agent includes a persistent knowledge graph that automatically extracts memories from conversations:
+The memory system was built from first principles to understand how frontier AI labs approach agent memory. It implements the full retrieval pipeline: chunking → contextual embeddings → hybrid search → reranking.
 
-- **Automatic extraction** - Memories are extracted from user/agent dialogue when tasks complete
-- **Extracts entities** using LLM (people, projects, concepts)
-- **Tracks relationships** between entities
-- **Stores facts** with temporal validity (validFrom/validTo)
-- **Enables semantic search** using embeddings
-- **Persists to SQLite** (zero configuration required)
+### Hybrid Search Architecture
 
-### Memory Persistence
+The search engine combines multiple retrieval methods for optimal recall:
 
-Memory is stored in SQLite by default at `./memory.db`. The database persists across sessions:
+```
+Query → [BM25 Lexical Search] ──┐
+                                ├─→ [Reciprocal Rank Fusion] → [Cohere Reranking] → Results
+Query → [Semantic Embeddings] ──┘
+```
+
+1. **BM25 Lexical Search** - Classic term-frequency search with configurable field weights:
+   - Content weight: 1.0, Name weight: 2.0, FilePath weight: 0.5
+   - Parameters: k1=1.2, b=0.75 (tuned for code search)
+
+2. **Semantic Embedding Search** - Google's text-embedding-004 with cosine similarity
+
+3. **Reciprocal Rank Fusion (RRF)** - Merges BM25 and embedding results with weighted scoring:
+   ```typescript
+   score = (embeddingWeight / (k + embeddingRank)) + (bm25Weight / (k + bm25Rank))
+   ```
+
+4. **Cohere Reranking** - Final pass using `rerank-v3.5` model for precision
+
+### Contextual Embeddings
+
+Each code chunk is processed through an LLM before embedding to generate rich metadata:
 
 ```typescript
-// Session 1: User discusses their project
-await session.send('Help me set up auth for my Next.js app, I prefer Clerk');
-// Memories automatically extracted: user prefers Clerk, project uses Next.js
-
-// Session 2 (later, even after restart)
-await session.send('What auth library should I use?');
-// Agent recalls preferences from memory
+// Before embedding, each chunk gets an LLM-generated description:
+{
+  filePath: "src/auth/session.ts",
+  content: "export class SessionManager { ... }",
+  context: "Defines SessionManager class that handles user session lifecycle,
+            including creation, validation, and expiration. Uses JWT tokens
+            for authentication and Redis for session storage.",
+  contextualContent: "File: src/auth/session.ts\nScope: module\nName: SessionManager\n
+                      Description: Defines SessionManager class...\n\n[actual code]"
+}
 ```
 
-### Optional: Graphiti Backend
+This "contextual retrieval" technique dramatically improves search relevance by giving embeddings semantic understanding of code purpose, not just syntax.
 
-For production deployments requiring Neo4j-backed graph memory:
+### Knowledge Graph Memory
 
-```bash
-docker compose -f docker/graphiti-compose.yml up -d
+The entity memory system extracts and manages knowledge from conversations:
+
+- **Entity Extraction** - LLM identifies people, projects, concepts, preferences from dialogue
+- **Relation Tracking** - Graph connections between entities (user → prefers → TypeScript)
+- **Fact Temporal Validity** - Facts have `validFrom`/`validTo` timestamps; new facts can supersede old ones
+- **Batch Contradiction Detection** - When adding new facts, the system detects and invalidates contradicting existing facts
+- **Entity Conflict Resolution** - When entities with the same name appear, LLM determines if they should merge
+
+### User Profiles
+
+Separate from the knowledge graph, user profiles track preferences and inject contextual reminders into tool calls:
+
+```typescript
+// Profile extracted from conversation:
+{
+  userId: "user-123",
+  preferences: [
+    { key: "language", value: "TypeScript", confidence: 0.95 },
+    { key: "framework", value: "Next.js", confidence: 0.9 }
+  ],
+  reminders: [
+    { toolName: "fs", action: "write", content: "User prefers 2-space indentation" }
+  ]
+}
 ```
 
-Set `GRAPHITI_URL=http://localhost:8000` and the agent auto-detects it.
+## Tool Lifecycle System
+
+Tools are first-class citizens with full lifecycle hooks, not just simple function wrappers:
+
+### Lifecycle Hooks
+
+```typescript
+interface ToolLifecycle<TInput, TOutput> {
+  beforeExecute?: (input: TInput) => Promise<TInput> | TInput;
+  validate?: (input: TInput) => Promise<ValidationResult> | ValidationResult;
+  afterExecute?: (input: TInput, output: TOutput) => Promise<TOutput> | TOutput;
+  onError?: (error: Error, input: TInput) => Promise<TOutput | 'throw'> | TOutput | 'throw';
+  cleanup?: (input: TInput, didSucceed: boolean) => Promise<void> | void;
+}
+```
+
+- **beforeExecute** - Transform or enrich input before execution
+- **validate** - Reject invalid inputs with structured errors before any work
+- **afterExecute** - Transform output, add metadata, trigger side effects
+- **onError** - Recover from errors or provide fallback responses
+- **cleanup** - Always runs, even on failure (resource cleanup, logging)
+
+### Structured Error Types
+
+```typescript
+enum ToolErrorType {
+  FILE_NOT_FOUND = 'FILE_NOT_FOUND',
+  PATH_NOT_IN_WORKSPACE = 'PATH_NOT_IN_WORKSPACE',
+  PERMISSION_DENIED = 'PERMISSION_DENIED',
+  TIMEOUT = 'TIMEOUT',
+  INVALID_INPUT = 'INVALID_INPUT',
+  COMMAND_BLOCKED = 'COMMAND_BLOCKED',
+  CONTENT_TOO_LARGE = 'CONTENT_TOO_LARGE',
+  OPERATION_FAILED = 'OPERATION_FAILED',
+}
+```
+
+Every tool error includes type, message, and details - enabling agents to understand failures and adapt.
+
+### Instrumentation
+
+All tools are automatically instrumented with timing:
+
+```typescript
+// Every tool call logs:
+[fs] Starting { args: { action: 'read', path: '/src/index.ts' } }
+[fs] Completed { durationMs: 12.34, durationSec: 0.012 }
+```
+
+## Device Control System
+
+Cross-platform device automation with a unified driver interface:
+
+### Unified Driver Interface
+
+```typescript
+interface DeviceDriver {
+  execute(action: DeviceAction): Promise<ActionResult>
+  getCapabilities(): Promise<DeviceCapabilities>
+  getUITree?(): Promise<UIElement>  // Android only
+}
+```
+
+### Platform Drivers
+
+| Platform | Driver | Technology | Features |
+|----------|--------|------------|----------|
+| Desktop | `DesktopDriver` | nut.js | Mouse, keyboard, screenshots. Supports macOS, Linux (Wayland), Windows |
+| Android | `AndroidDriver` | Native Accessibility Service | Tap, swipe, type, UI tree extraction, screenshots |
+| Web | `WebDriver` | Playwright | Browser automation, element interaction |
+
+### Android Accessibility Service
+
+The Android driver uses a native Kotlin accessibility service (`AgentAccessibilityService`) that:
+
+- **Runs as a system service** - Full access to all UI elements
+- **Extracts UI trees** - Complete hierarchy with bounds, text, clickability
+- **Takes screenshots** - Uses Android R+ screenshot API
+- **Performs gestures** - Click, long press, swipe, type via accessibility actions
+
+```kotlin
+// UI tree extraction returns:
+{
+  "id": "com.app:id/button",
+  "type": "button",
+  "bounds": { "x": 100, "y": 200, "width": 150, "height": 50 },
+  "text": "Submit",
+  "clickable": true,
+  "children": [...]
+}
+```
+
+### Server Device Registry
+
+The server maintains a registry of connected devices:
+
+```typescript
+// Devices connect via WebSocket and register capabilities
+POST /devices/:deviceId/action  // Execute action on device
+GET  /devices                   // List connected devices
+WS   /                          // Device connection + action results
+```
 
 ## Architecture
 
