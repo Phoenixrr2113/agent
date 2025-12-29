@@ -13,10 +13,16 @@ import { AgentClient } from '@agent/api-client';
 import {
   useAgentChat,
   StreamingText,
-  ToolCallCard,
+  Tool,
+  ToolHeader,
+  ToolContent,
+  ToolInput,
+  ToolOutput,
+  shouldDefaultOpen,
   ReasoningCollapsible,
   StepIndicator,
   type StreamingMessage,
+  type ToolState,
 } from '@agent/ui';
 import { useSettings } from '@/context/settings';
 
@@ -30,7 +36,7 @@ function buildDisplayItems(message: StreamingMessage): DisplayItem[] {
   const items: DisplayItem[] = [];
   
   if (message.role === 'user') {
-    items.push({ type: 'content', key: 'content', data: message.content });
+    items.push({ type: 'content', key: 'user-content', data: message.content });
     return items;
   }
 
@@ -43,11 +49,11 @@ function buildDisplayItems(message: StreamingMessage): DisplayItem[] {
   }
 
   for (const tc of message.toolCalls) {
-    items.push({ type: 'tool', key: tc.toolCallId, data: tc });
+    items.push({ type: 'tool', key: `tool-${tc.toolCallId}`, data: tc });
   }
 
   if (message.content) {
-    items.push({ type: 'content', key: 'content', data: message.content });
+    items.push({ type: 'content', key: 'assistant-content', data: message.content });
   }
 
   return items;
@@ -133,7 +139,19 @@ export default function ChatScreen(): React.ReactElement {
             }
             if (di.type === 'tool') {
               const tc = di.data as import('@agent/api-client').ToolCallInfo;
-              return <ToolCallCard key={di.key} toolCall={tc} />;
+              const toolState: ToolState = tc.status === 'complete' ? 'completed' : tc.status;
+              return (
+                <Tool key={di.key} defaultOpen={shouldDefaultOpen(toolState)}>
+                  <ToolHeader type={tc.toolName} state={toolState} durationMs={tc.durationMs} />
+                  <ToolContent>
+                    <ToolInput input={tc.args} isStreaming={tc.status === 'pending'} />
+                    <ToolOutput
+                      output={tc.result}
+                      errorText={tc.status === 'error' ? String(tc.result) : undefined}
+                    />
+                  </ToolContent>
+                </Tool>
+              );
             }
             if (di.type === 'content') {
               if (isUser) {

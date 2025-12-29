@@ -56,3 +56,24 @@ export {
   type LogViewerProps,
   type SessionListProps,
 } from './debug';
+
+export {
+  Tool,
+  ToolHeader,
+  ToolContent,
+  ToolInput,
+  ToolOutput,
+  useToolContext,
+  formatToolName,
+  getStatusIcon,
+  formatDuration,
+  formatJson,
+  shouldDefaultOpen,
+  type ToolState,
+  type ToolContextValue,
+  type ToolProps,
+  type ToolHeaderProps,
+  type ToolContentProps,
+  type ToolInputProps,
+  type ToolOutputProps,
+} from './tool';

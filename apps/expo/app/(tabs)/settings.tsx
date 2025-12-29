@@ -12,6 +12,15 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { AgentClient } from '@agent/api-client';
 import { useSettings } from '@/context/settings';
 
+function showAlert(title: string, message: string): void {
+  if (Platform.OS === 'web') {
+    window.alert(`${title}\n\n${message}`);
+  } else {
+    Alert.alert(title, message);
+  }
+}
+
+
 export default function SettingsScreen() {
   const { settings, updateSettings, isLoading } = useSettings();
   const [serverUrl, setServerUrl] = useState(settings.serverUrl);
@@ -30,14 +39,14 @@ export default function SettingsScreen() {
 
       if (healthy) {
         setTestResult('success');
-        Alert.alert('Success', 'Connected to agent server successfully!');
+        showAlert('Success', 'Connected to agent server successfully!');
       } else {
         setTestResult('error');
-        Alert.alert('Error', 'Server is not responding. Check the URL and make sure the server is running.');
+        showAlert('Error', 'Server is not responding. Check the URL and make sure the server is running.');
       }
     } catch (error) {
       setTestResult('error');
-      Alert.alert('Error', `Failed to connect: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      showAlert('Error', `Failed to connect: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsTesting(false);
     }
@@ -45,7 +54,7 @@ export default function SettingsScreen() {
 
   const saveSettings = useCallback(async () => {
     await updateSettings({ serverUrl, apiKey });
-    Alert.alert('Saved', 'Settings have been saved.');
+    showAlert('Saved', 'Settings have been saved.');
   }, [serverUrl, apiKey, updateSettings]);
 
   const resetToDefault = useCallback(() => {
@@ -63,9 +72,9 @@ export default function SettingsScreen() {
       const result = await client.createApiKey(keyName);
       setApiKey(result.key);
       await updateSettings({ serverUrl, apiKey: result.key });
-      Alert.alert('API Key Generated', `New key created: ${result.name}\n\nIt has been saved automatically.`);
+      showAlert('API Key Generated', `New key created: ${result.name}\n\nIt has been saved automatically.`);
     } catch (error) {
-      Alert.alert('Error', `Failed to generate key: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      showAlert('Error', `Failed to generate key: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsGenerating(false);
     }
