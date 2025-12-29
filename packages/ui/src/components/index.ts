@@ -77,3 +77,22 @@ export {
   type ToolInputProps,
   type ToolOutputProps,
 } from './tool';
+
+export {
+  Task,
+  TaskTrigger,
+  TaskContent,
+  TaskItem,
+  TaskItemFile,
+  useTaskContext,
+  getTaskStatusIcon,
+  getTaskStatusColor,
+  formatProgress,
+  type TaskStatus,
+  type TaskContextValue as TaskContextValueType,
+  type TaskProps,
+  type TaskTriggerProps,
+  type TaskContentProps,
+  type TaskItemProps,
+  type TaskItemFileProps,
+} from './task';

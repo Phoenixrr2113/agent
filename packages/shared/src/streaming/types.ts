@@ -128,6 +128,7 @@ export interface ToolCallInfo {
   status: 'pending' | 'running' | 'complete' | 'error';
   result?: unknown;
   durationMs?: number;
+  stepIndex?: number;
 }
 
 export interface SourceInfo {

@@ -136,6 +136,7 @@ export function useAgentChat(options: UseAgentChatOptions): UseAgentChatReturn {
               toolName: data.toolName,
               args: data.args,
               status: 'running' as const,
+              stepIndex: data.stepIndex,
             },
           ],
         }));

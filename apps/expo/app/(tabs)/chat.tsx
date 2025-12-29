@@ -21,13 +21,22 @@ import {
   shouldDefaultOpen,
   ReasoningCollapsible,
   StepIndicator,
+  Task,
+  TaskTrigger,
+  TaskContent as TaskContentComponent,
+  TaskItem,
   type StreamingMessage,
   type ToolState,
 } from '@agent/ui';
 import { useSettings } from '@/context/settings';
 
+interface StepData {
+  stepIndex: number;
+  tools: import('@agent/api-client').ToolCallInfo[];
+}
+
 interface DisplayItem {
-  type: 'reasoning' | 'content' | 'tool';
+  type: 'reasoning' | 'content' | 'tool' | 'step';
   key: string;
   data: unknown;
 }
@@ -48,8 +57,25 @@ function buildDisplayItems(message: StreamingMessage): DisplayItem[] {
     });
   }
 
+  const stepMap = new Map<number, import('@agent/api-client').ToolCallInfo[]>();
   for (const tc of message.toolCalls) {
-    items.push({ type: 'tool', key: `tool-${tc.toolCallId}`, data: tc });
+    const step = tc.stepIndex ?? 0;
+    if (!stepMap.has(step)) {
+      stepMap.set(step, []);
+    }
+    stepMap.get(step)!.push(tc);
+  }
+  
+  for (const [stepIndex, tools] of Array.from(stepMap.entries()).sort((a, b) => a[0] - b[0])) {
+    if (tools.length === 1) {
+      items.push({ type: 'tool', key: `tool-${tools[0]!.toolCallId}`, data: tools[0] });
+    } else {
+      items.push({ 
+        type: 'step', 
+        key: `step-${stepIndex}`, 
+        data: { stepIndex, tools } as StepData 
+      });
+    }
   }
 
   if (message.content) {
@@ -151,6 +177,46 @@ export default function ChatScreen(): React.ReactElement {
                     />
                   </ToolContent>
                 </Tool>
+              );
+            }
+            if (di.type === 'step') {
+              const stepData = di.data as StepData;
+              const completedCount = stepData.tools.filter(t => t.status === 'complete').length;
+              const hasError = stepData.tools.some(t => t.status === 'error');
+              const allComplete = completedCount === stepData.tools.length;
+              const stepStatus = hasError ? 'error' : allComplete ? 'completed' : 'in_progress';
+              return (
+                <Task key={di.key} defaultOpen={!allComplete}>
+                  <TaskTrigger
+                    title={`Step ${stepData.stepIndex + 1}`}
+                    status={stepStatus}
+                    completedCount={completedCount}
+                    totalCount={stepData.tools.length}
+                  />
+                  <TaskContentComponent>
+                    {stepData.tools.map((tc) => {
+                      const toolState: ToolState = tc.status === 'complete' ? 'completed' : tc.status;
+                      const taskItemStatus = tc.status === 'complete' ? 'completed' 
+                        : tc.status === 'error' ? 'error' 
+                        : tc.status === 'running' ? 'in_progress' 
+                        : 'pending';
+                      return (
+                        <TaskItem key={tc.toolCallId} status={taskItemStatus}>
+                          <Tool defaultOpen={shouldDefaultOpen(toolState)}>
+                            <ToolHeader type={tc.toolName} state={toolState} durationMs={tc.durationMs} />
+                            <ToolContent>
+                              <ToolInput input={tc.args} isStreaming={tc.status === 'pending'} />
+                              <ToolOutput
+                                output={tc.result}
+                                errorText={tc.status === 'error' ? String(tc.result) : undefined}
+                              />
+                            </ToolContent>
+                          </Tool>
+                        </TaskItem>
+                      );
+                    })}
+                  </TaskContentComponent>
+                </Task>
               );
             }
             if (di.type === 'content') {
