@@ -53,18 +53,37 @@ export async function searchFilesWithValidation(
   return results;
 }
 
-const MAX_DIRECTORY_DEPTH = 50;
+const MAX_DIRECTORY_DEPTH = 5;
+const MAX_TREE_ENTRIES = 500;
+
+export const DEFAULT_TREE_EXCLUDES = ['node_modules', '.git', 'dist', '.next', '.cache', '__pycache__', '.pnpm', 'vendor'];
+
+export interface TreeBuildOptions {
+  excludePatterns?: string[];
+  maxDepth?: number;
+  useDefaultExcludes?: boolean;
+}
+
+interface TreeBuildContext {
+  entryCount: number;
+  maxEntries: number;
+  truncated: boolean;
+}
 
 export async function buildDirectoryTree(
   dirPath: string,
-  excludePatterns?: string[],
-  maxDepth: number = MAX_DIRECTORY_DEPTH,
-  currentDepth = 0
-): Promise<DirectoryTree> {
+  options: TreeBuildOptions = {},
+  currentDepth = 0,
+  context?: TreeBuildContext
+): Promise<DirectoryTree & { truncated?: boolean }> {
+  const { excludePatterns, maxDepth = MAX_DIRECTORY_DEPTH, useDefaultExcludes = true } = options;
+  const ctx = context ?? { entryCount: 0, maxEntries: MAX_TREE_ENTRIES, truncated: false };
+  
   const stats = await fs.stat(dirPath);
   const name = path.basename(dirPath);
 
   if (!stats.isDirectory()) {
+    ctx.entryCount++;
     return { name, type: 'file' };
   }
 
@@ -72,34 +91,58 @@ export async function buildDirectoryTree(
     return {
       name,
       type: 'directory',
-      children: [],
+      children: [{ name: '... (max depth reached)', type: 'file' }],
     };
   }
 
+  if (ctx.entryCount >= ctx.maxEntries) {
+    ctx.truncated = true;
+    return {
+      name,
+      type: 'directory',
+      children: [{ name: '... (max entries reached)', type: 'file' }],
+    };
+  }
+
+  const baseExcludes = useDefaultExcludes ? DEFAULT_TREE_EXCLUDES : [];
+  const allExcludes = [...baseExcludes, ...(excludePatterns ?? [])];
   const entries = await fs.readdir(dirPath);
   const children: DirectoryTree[] = [];
 
-  for (const entry of entries) {
-    const fullPath = path.join(dirPath, entry);
-    const relativePath = path.relative(dirPath, fullPath);
+  ctx.entryCount++;
 
-    if (excludePatterns?.some(p => minimatch(relativePath, p))) {
+  for (const entry of entries) {
+    if (ctx.entryCount >= ctx.maxEntries) {
+      ctx.truncated = true;
+      children.push({ name: `... and ${entries.length - children.length} more`, type: 'file' });
+      break;
+    }
+
+    if (allExcludes.some(p => entry === p || minimatch(entry, p))) {
       continue;
     }
 
+    const fullPath = path.join(dirPath, entry);
+
     try {
-      const child = await buildDirectoryTree(fullPath, excludePatterns, maxDepth, currentDepth + 1);
+      const child = await buildDirectoryTree(fullPath, options, currentDepth + 1, ctx);
       children.push(child);
     } catch {
       continue;
     }
   }
 
-  return {
+  const result: DirectoryTree & { truncated?: boolean } = {
     name,
     type: 'directory',
     children,
   };
+
+  if (currentDepth === 0 && ctx.truncated) {
+    result.truncated = true;
+  }
+
+  return result;
 }
 
 export function formatSize(bytes: number): string {

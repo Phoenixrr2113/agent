@@ -32,6 +32,7 @@ export interface RAGOptions {
   enableContextGeneration?: boolean;
   enableBM25?: boolean;
   enableReranking?: boolean;
+  enableQueryExpansion?: boolean;
   rerankTopN?: number;
   returnTopN?: number;
   maxTokensPerSearch?: number;

@@ -279,11 +279,15 @@ export function createFilesystemTools(workspaceRoot: string) {
       inputSchema: z.object({
         path: z.string().max(4096).describe('Path to the directory'),
         excludePatterns: z.array(z.string()).optional().describe('Glob patterns to exclude'),
+        includeDefaults: z.boolean().optional().describe('Include default exclusions like node_modules, .git (default: true)'),
       }),
-      execute: async ({ path: dirPath, excludePatterns }) => {
+      execute: async ({ path: dirPath, excludePatterns, includeDefaults }) => {
         try {
           const validPath = await validatePath(dirPath);
-          const tree = await buildDirectoryTree(validPath, excludePatterns);
+          const tree = await buildDirectoryTree(validPath, {
+            excludePatterns,
+            useDefaultExcludes: includeDefaults !== false,
+          });
 
           return success({
             path: dirPath,

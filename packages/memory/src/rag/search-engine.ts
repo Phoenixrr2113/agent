@@ -1,8 +1,8 @@
 import { logger } from '@agent/shared';
 import { embed } from 'ai';
 
-// Using consolidated embeddings module
 import { mergeSearchResults, type BM25Index } from './bm25.js';
+import { expandQuery, combineExpandedResults, type QueryExpansionConfig } from './query-expansion.js';
 import { rerankWithFallback } from './rerank.js';
 import { filterChunksToFitBudget, countTokens } from './tokens.js';
 import { type EmbeddedChunk, type SearchOptions } from './types.js';
@@ -20,6 +20,35 @@ export interface SearchConfig {
   rerankTopN: number;
   enableBM25: boolean;
   enableReranking: boolean;
+  enableQueryExpansion?: boolean;
+  queryExpansionConfig?: QueryExpansionConfig;
+}
+
+async function searchSingleQuery(
+  query: string,
+  state: SearchState,
+  config: SearchConfig
+): Promise<Array<{ id: string; score: number }>> {
+  const { embedding: queryEmbedding } = await embed({
+    model: getEmbeddingModel(),
+    value: query,
+  });
+
+  const embeddingResults = state.embeddedChunks
+    .map((chunk) => ({
+      id: chunk.id,
+      score: cosineSimilarity(queryEmbedding, chunk.embedding),
+    }))
+    .sort((a, b) => b.score - a.score)
+    .slice(0, config.rerankTopN)
+    .map((r, index) => ({ ...r, rank: index + 1 }));
+
+  if (config.enableBM25 && state.bm25Index) {
+    const bm25Results = state.bm25Index.search(query, config.rerankTopN);
+    return mergeSearchResults(embeddingResults, bm25Results).slice(0, config.rerankTopN);
+  }
+
+  return embeddingResults;
 }
 
 export async function executeSearch(
@@ -39,34 +68,37 @@ export async function executeSearch(
     return [];
   }
 
-  const embeddingStartTime = performance.now();
-  const { embedding: queryEmbedding } = await embed({
-    model: getEmbeddingModel(),
-    value: query,
-  });
-  const embeddingDuration = performance.now() - embeddingStartTime;
-  logger.debug('⏱️  [RAG] Query embedding generated', {
-    durationMs: embeddingDuration.toFixed(2),
-  });
+  let allQueries = [query];
 
-  const embeddingResults = state.embeddedChunks
-    .map((chunk) => ({
-      id: chunk.id,
-      score: cosineSimilarity(queryEmbedding, chunk.embedding),
-    }))
-    .sort((a, b) => b.score - a.score)
-    .slice(0, config.rerankTopN)
-    .map((r, index) => ({ ...r, rank: index + 1 }));
-
-  let candidateIds: string[];
-
-  if (config.enableBM25 && state.bm25Index) {
-    const bm25Results = state.bm25Index.search(query, config.rerankTopN);
-    const merged = mergeSearchResults(embeddingResults, bm25Results);
-    candidateIds = merged.slice(0, config.rerankTopN).map((r) => r.id);
-  } else {
-    candidateIds = embeddingResults.map((r) => r.id);
+  if (config.enableQueryExpansion) {
+    const expanded = await expandQuery(query, config.queryExpansionConfig);
+    allQueries = [query, ...expanded.expanded];
+    logger.debug('⏱️  [RAG] Using expanded queries', { 
+      original: query, 
+      expanded: expanded.expanded,
+      keywords: expanded.keywords,
+    });
   }
+
+  const embeddingStartTime = performance.now();
+  
+  const resultsByQuery = new Map<string, Array<{ id: string; score: number }>>();
+  
+  const searchPromises = allQueries.map(async (q) => {
+    const results = await searchSingleQuery(q, state, config);
+    resultsByQuery.set(q, results);
+  });
+  
+  await Promise.all(searchPromises);
+
+  const embeddingDuration = performance.now() - embeddingStartTime;
+  logger.debug('⏱️  [RAG] All query embeddings and searches completed', {
+    durationMs: embeddingDuration.toFixed(2),
+    queryCount: allQueries.length,
+  });
+
+  const mergedResults = combineExpandedResults(resultsByQuery, query);
+  const candidateIds = mergedResults.slice(0, config.rerankTopN).map(r => r.id);
 
   let finalIds: string[];
 
@@ -88,7 +120,6 @@ export async function executeSearch(
     .map((id) => state.chunkMap.get(id))
     .filter((c): c is EmbeddedChunk => c !== undefined);
 
-  // Filter by token budget if specified
   if (maxTokens !== undefined && maxTokens > 0) {
     const originalCount = results.length;
     results = filterChunksToFitBudget(results, maxTokens);
@@ -105,6 +136,7 @@ export async function executeSearch(
   const duration = performance.now() - startTime;
   logger.info('⏱️  [RAG] Search completed', {
     query,
+    queriesUsed: allQueries.length,
     results: results.length,
     durationMs: duration.toFixed(2),
     durationSec: (duration / 1000).toFixed(3),
@@ -112,3 +144,4 @@ export async function executeSearch(
 
   return results;
 }
+

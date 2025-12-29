@@ -6,8 +6,8 @@ const bm25 = require('wink-bm25-text-search');
 export interface BM25Document {
   id: string;
   content: string;
-  name?: string;
-  filePath?: string;
+  name?: string | undefined;
+  filePath?: string | undefined;
 }
 
 export interface BM25SearchResult {

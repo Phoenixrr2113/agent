@@ -25,6 +25,7 @@ export function createCodebaseRAG(
     enableContextGeneration = true,
     enableBM25 = true,
     enableReranking = true,
+    enableQueryExpansion = true,
     rerankTopN = 100,
     returnTopN = 8,
     maxTokensPerSearch = 3000,
@@ -153,7 +154,8 @@ export function createCodebaseRAG(
           maxTokensPerSearch,
           rerankTopN,
           enableBM25,
-          enableReranking
+          enableReranking,
+          enableQueryExpansion,
         }
       );
     },

@@ -42,6 +42,8 @@ export function createFsTool(workspaceRoot: string) {
     destination: z.string().optional().describe('Destination path for move action'),
     tree: z.boolean().optional().describe('Return recursive tree structure for list'),
     sizes: z.boolean().optional().describe('Include file sizes in list'),
+    exclude: z.array(z.string()).optional().describe('Additional patterns to exclude from tree (e.g. ["*.log", "tmp"])'),
+    includeDefaults: z.boolean().optional().describe('Include default exclusions like node_modules, .git (default: true)'),
   });
 
   return tool({
@@ -206,8 +208,16 @@ You should:
             }
 
             if (input.tree) {
-              const tree = await buildDirectoryTree(validPath);
-              return success({ path: targetPath, tree });
+              const tree = await buildDirectoryTree(validPath, {
+                excludePatterns: input.exclude,
+                useDefaultExcludes: input.includeDefaults !== false,
+              });
+              const result: Record<string, unknown> = { path: targetPath, tree };
+              if ('truncated' in tree && tree.truncated) {
+                result['truncated'] = true;
+                result['hint'] = 'Tree was truncated. node_modules, .git, dist excluded by default (use includeDefaults: false to include). Max 500 entries, depth 5.';
+              }
+              return success(result);
             }
 
             const entries = await fs.readdir(validPath);
