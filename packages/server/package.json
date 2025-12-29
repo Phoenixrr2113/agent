@@ -26,7 +26,7 @@
     "@types/ws": "^8.18.1",
     "better-sqlite3": "^12.4.6",
     "dotenv": "^17.2.3",
-    "hono": "^4.10.7",
+    "hono": "^4.11.3",
     "ws": "^8.18.3"
   },
   "devDependencies": {
