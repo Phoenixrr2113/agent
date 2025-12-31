@@ -28,3 +28,4 @@ packages/shared/tsconfig.tsbuildinfo
 packages/core/test-memory-switch.db-shm
 packages/core/test-memory-switch.db-wal
 .eslintcache
+.DS_Store
