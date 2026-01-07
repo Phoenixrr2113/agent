@@ -8,7 +8,7 @@ import { createAgentTools } from '../tools/agent.js';
 import { getPersistentTaskManager } from '../tools/background-tasks/task-manager.js';
 import { createCodebaseTools } from '../tools/codebase.js';
 import { createDeviceTools } from '../tools/device/index.js';
-import { createFsTool } from '../tools/filesystem/index.js';
+import { createFilesystemTools } from '../tools/filesystem/index.js';
 import { setAllowedDirectories } from '../tools/filesystem/path-security.js';
 import { createDelegateTool, createTaskTool } from '../tools/delegation/index.js';
 import { createShellTool } from '../tools/shell/index.js';
@@ -115,7 +115,7 @@ export async function initializeAgent(config: InitializationConfig = {}): Promis
   });
 
   const consolidatedTools = {
-    fs: createFsTool(workspaceRoot),
+    ...createFilesystemTools(workspaceRoot),
     shell: createShellTool(workspaceRoot),
     web: createWebTool(),
     memory: createMemoryTool(),

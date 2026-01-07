@@ -5,13 +5,25 @@ export type { Plan, PlanStep, PlanToolConfig } from './plan/index.js';
 export { createCodebaseTools } from './codebase.js';
 export { createAgentTools } from './agent.js';
 export { 
-  createFsTool,
+  createFilesystemTools,
   setAllowedDirectories, 
   getAllowedDirectories,
   type FileInfo,
   type SearchResult,
   type FileEdit,
 } from './filesystem/index.js';
+
+// Glob tool - ripgrep-powered file search
+export { globTool, createGlobTool, runRgFiles } from './glob/index.js';
+export type { GlobOptions, GlobResult, FileMatch } from './glob/index.js';
+
+// Grep tool - ripgrep-powered content search
+export { grepTool, createGrepTool, runRg } from './grep/index.js';
+export type { GrepOptions, GrepMatch, GrepResult } from './grep/index.js';
+
+// AST-grep tool - AST-aware search and replace
+export { astGrepSearchTool, astGrepReplaceTool, createAstGrepTools, CLI_LANGUAGES } from './ast-grep/index.js';
+export type { CliLanguage, CliMatch, SgResult } from './ast-grep/index.js';
 export { createDeviceTools } from './device/index.js';
 export {
   ToolRegistry,
@@ -78,12 +90,18 @@ import { createAgentTools } from './agent.js';
 import { createCodebaseTools } from './codebase.js';
 import { createDeviceTools } from './device/index.js';
 import { defaultToolFactory } from './factory.js';
-import { createFsTool } from './filesystem/index.js';
+import { createFilesystemTools } from './filesystem/index.js';
+import { createGlobTool } from './glob/index.js';
+import { createGrepTool } from './grep/index.js';
+import { createAstGrepTools } from './ast-grep/index.js';
 
 defaultToolFactory.register('agent', (deps) => createAgentTools(deps.rl ?? null));
 defaultToolFactory.register('filesystem', (deps) =>
-  deps.workspaceRoot ? { fs: createFsTool(deps.workspaceRoot) } : {}
+  deps.workspaceRoot ? createFilesystemTools(deps.workspaceRoot) : {}
 );
+defaultToolFactory.register('glob', () => createGlobTool());
+defaultToolFactory.register('grep', () => createGrepTool());
+defaultToolFactory.register('ast-grep', () => createAstGrepTools());
 defaultToolFactory.register('codebase', (deps) =>
   deps.codebaseRAG ? createCodebaseTools(deps.codebaseRAG) : {}
 );

@@ -5,7 +5,7 @@ import { createAgentTools } from './agent.js';
 import { createCodebaseTools } from './codebase.js';
 import { createDeviceTools } from './device/index.js';
 import { createDelegateTool, createTaskTool } from './delegation/index.js';
-import { createFsTool } from './filesystem/index.js';
+import { createFilesystemTools } from './filesystem/index.js';
 import { setAllowedDirectories } from './filesystem/path-security.js';
 import { createMemoryTool, closeMemory } from './memory/index.js';
 import { instrumentTools, createToolActivationManager } from './middleware/index.js';
@@ -65,7 +65,7 @@ export async function createAllTools(config: ToolProviderConfig = {}): Promise<T
   const registry = createToolRegistry();
 
   const coreTools: Record<string, any> = {
-    fs: createFsTool(workspaceRoot),
+    ...createFilesystemTools(workspaceRoot),
     shell: createShellTool(workspaceRoot),
     web: createWebTool(),
     memory: createMemoryTool(),
