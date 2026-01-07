@@ -11,9 +11,9 @@ import { createDeviceTools } from '../tools/device/index.js';
 import { createFsTool } from '../tools/filesystem/index.js';
 import { setAllowedDirectories } from '../tools/filesystem/path-security.js';
 import { createDelegateTool, createTaskTool } from '../tools/delegation/index.js';
-import { createShellTool } from '../tools/shell.js';
-import { createWebTool } from '../tools/web-tool.js';
-import { createMemoryTool, closeMemory } from '../tools/memory-tool.js';
+import { createShellTool } from '../tools/shell/index.js';
+import { createWebTool } from '../tools/web/index.js';
+import { createMemoryTool, closeMemory } from '../tools/memory/index.js';
 import {
   type ToolRegistry,
   createToolRegistry,
@@ -22,11 +22,11 @@ import {
   createDeactivateToolTool,
 } from '../tools/registry/index.js';
 import {
-  sequentialThinkingTool,
-  resetSequentialThinkingEngine,
-} from '../tools/sequential-thinking.js';
+  deepReasoningTool,
+  resetDeepReasoningEngine,
+} from '../tools/deep-reasoning/index.js';
 import { createToolActivationManager } from '../tools/middleware/index.js';
-import { planTool, validationTool, createPlanTool } from '../tools/plan.js';
+import { planTool, validationTool, createPlanTool } from '../tools/plan/index.js';
 import { initializeChainTools } from '../tools/chaining/index.js';
 
 export const CORE_TOOL_NAMES = [
@@ -37,7 +37,7 @@ export const CORE_TOOL_NAMES = [
   'delegate',
   'task',
   'plan',
-  'sequential_thinking',
+  'deep_reasoning',
   'ask_user',
   'task_complete',
   'list_devices',
@@ -126,7 +126,7 @@ export async function initializeAgent(config: InitializationConfig = {}): Promis
   const coreTools = {
     plan: disableAgentSpawning ? createPlanTool({ disableDelegation: true }) : planTool,
     validate: validationTool,
-    sequential_thinking: sequentialThinkingTool,
+    deep_reasoning: deepReasoningTool,
     ...agentTools,
   };
 
@@ -188,7 +188,7 @@ export async function cleanup(
     rl.close();
   }
   getPersistentTaskManager().shutdown();
-  resetSequentialThinkingEngine();
+  resetDeepReasoningEngine();
   await closeMemory();
   if (codebaseRAG && typeof codebaseRAG.dispose === 'function') {
     codebaseRAG.dispose();

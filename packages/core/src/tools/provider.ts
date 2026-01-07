@@ -7,13 +7,13 @@ import { createDeviceTools } from './device/index.js';
 import { createDelegateTool, createTaskTool } from './delegation/index.js';
 import { createFsTool } from './filesystem/index.js';
 import { setAllowedDirectories } from './filesystem/path-security.js';
-import { createMemoryTool, closeMemory } from './memory-tool.js';
+import { createMemoryTool, closeMemory } from './memory/index.js';
 import { instrumentTools, createToolActivationManager } from './middleware/index.js';
 import { createToolRegistry, createToolSearchTool, createActivateToolTool, createDeactivateToolTool } from './registry/index.js';
-import { sequentialThinkingTool } from './sequential-thinking.js';
-import { createShellTool } from './shell.js';
-import { createWebTool } from './web-tool.js';
-import { planTool, validationTool, createPlanTool } from './plan.js';
+import { deepReasoningTool } from './deep-reasoning/index.js';
+import { createShellTool } from './shell/index.js';
+import { createWebTool } from './web/index.js';
+import { planTool, validationTool, createPlanTool } from './plan/index.js';
 import { initializeChainTools } from './chaining/index.js';
 
 export interface ToolProviderConfig {
@@ -37,7 +37,7 @@ export const CORE_TOOL_NAMES = [
   'task',
   'plan',
   'validate',
-  'sequential_thinking',
+  'deep_reasoning',
 ] as const;
 
 export interface ToolProviderResult {
@@ -73,7 +73,7 @@ export async function createAllTools(config: ToolProviderConfig = {}): Promise<T
     task: createTaskTool(),
     plan: planTool,
     validate: validationTool,
-    sequential_thinking: sequentialThinkingTool,
+    deep_reasoning: deepReasoningTool,
   };
 
   if (rl) {

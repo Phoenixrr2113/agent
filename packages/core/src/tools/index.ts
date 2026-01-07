@@ -1,4 +1,7 @@
-export { planTool, validationTool, createPlanTool } from './plan.js';
+// Plan tool - now from plan/ module
+export { planTool, validationTool, createPlanTool, toolGroups } from './plan/index.js';
+export type { Plan, PlanStep, PlanToolConfig } from './plan/index.js';
+
 export { createCodebaseTools } from './codebase.js';
 export { createAgentTools } from './agent.js';
 export { 
@@ -36,9 +39,33 @@ export {
 } from './middleware/index.js';
 export { success as lifecycleSuccess, error as lifecycleError } from './utils/tool-result.js';
 
-export { createShellTool, shellTool, addToAllowlist, clearAllowlist, getAllowlist } from './shell.js';
-export { createWebTool, webTool } from './web-tool.js';
-export { createMemoryTool, memoryTool, closeMemory, getMemoryProvider } from './memory-tool.js';
+// Shell tool - from shell/ module
+export { createShellTool, shellTool, addToAllowlist, clearAllowlist, getAllowlist } from './shell/index.js';
+export type { ShellInput, ShellResult } from './shell/index.js';
+
+// Deep reasoning - replaces sequential-thinking
+export { 
+  deepReasoningTool,
+  createDeepReasoningTool,
+  configureDeepReasoning,
+  isDeepReasoningEnabled,
+  getDeepReasoningEngine,
+  resetDeepReasoningEngine,
+  DeepReasoningEngine,
+  // Backwards compatibility alias
+  sequentialThinkingTool,
+  type ThoughtData,
+  type DeepReasoningConfig,
+} from './deep-reasoning/index.js';
+
+// Web tool - from web/ module
+export { createWebTool, webTool, fetchWithTimeout, braveSearch, tavilySearch, fetchAndParsePage } from './web/index.js';
+export type { WebInput, BraveSearchResult, TavilySearchResult, FetchResult } from './web/index.js';
+
+// Memory tool - from memory/ module
+export { createMemoryTool, memoryTool, closeMemory, getMemoryProvider } from './memory/index.js';
+export type { MemoryInput, FactSummary, EntitySummary } from './memory/index.js';
+
 export { createDelegateTool, createTaskTool } from './delegation/index.js';
 
 export { getPersistentTaskManager, resetPersistentTaskManager } from './background-tasks/task-manager.js';
@@ -63,3 +90,5 @@ defaultToolFactory.register('codebase', (deps) =>
 defaultToolFactory.register('device', () =>
   createDeviceTools({ serverUrl: process.env['AGENT_SERVER_URL'] ?? 'http://localhost:3000' })
 );
+
+
