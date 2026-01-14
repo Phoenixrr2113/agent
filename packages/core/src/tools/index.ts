@@ -1,30 +1,35 @@
 // Plan tool - now from plan/ module
-export { planTool, validationTool, createPlanTool, toolGroups } from './plan/index.js';
-export type { Plan, PlanStep, PlanToolConfig } from './plan/index.js';
+export { planTool, validationTool, createPlanTool, toolGroups } from './plan';
+export type { Plan, PlanStep, PlanToolConfig } from './plan';
 
 export { createCodebaseTools } from './codebase.js';
 export { createAgentTools } from './agent.js';
-export { 
+export {
   createFilesystemTools,
-  setAllowedDirectories, 
+  setAllowedDirectories,
   getAllowedDirectories,
   type FileInfo,
   type SearchResult,
   type FileEdit,
-} from './filesystem/index.js';
+} from './filesystem';
 
 // Glob tool - ripgrep-powered file search
-export { globTool, createGlobTool, runRgFiles } from './glob/index.js';
-export type { GlobOptions, GlobResult, FileMatch } from './glob/index.js';
+export { globTool, createGlobTool, runRgFiles } from './glob';
+export type { GlobOptions, GlobResult, FileMatch } from './glob';
 
 // Grep tool - ripgrep-powered content search
-export { grepTool, createGrepTool, runRg } from './grep/index.js';
-export type { GrepOptions, GrepMatch, GrepResult } from './grep/index.js';
+export { grepTool, createGrepTool, runRg } from './grep';
+export type { GrepOptions, GrepMatch, GrepResult } from './grep';
 
 // AST-grep tool - AST-aware search and replace
-export { astGrepSearchTool, astGrepReplaceTool, createAstGrepTools, CLI_LANGUAGES } from './ast-grep/index.js';
-export type { CliLanguage, CliMatch, SgResult } from './ast-grep/index.js';
-export { createDeviceTools } from './device/index.js';
+export {
+  astGrepSearchTool,
+  astGrepReplaceTool,
+  createAstGrepTools,
+  CLI_LANGUAGES,
+} from './ast-grep';
+export type { CliLanguage, CliMatch, SgResult } from './ast-grep';
+export { createDeviceTools } from './device';
 export {
   ToolRegistry,
   createToolRegistry,
@@ -34,11 +39,8 @@ export {
   type ToolMetadata,
   type RegisteredTool,
   type ToolRegistrationOptions,
-} from './registry/index.js';
-export {
-  ToolActivationManager,
-  createToolActivationManager,
-} from './middleware/index.js';
+} from './registry';
+export { ToolActivationManager, createToolActivationManager } from './middleware';
 export {
   ToolError,
   ToolErrorType,
@@ -48,15 +50,15 @@ export {
   type ToolLifecycle,
   type ValidationResult,
   type LifecycleToolConfig,
-} from './middleware/index.js';
+} from './middleware';
 export { success as lifecycleSuccess, error as lifecycleError } from './utils/tool-result.js';
 
 // Shell tool - from shell/ module
-export { createShellTool, shellTool, addToAllowlist, clearAllowlist, getAllowlist } from './shell/index.js';
-export type { ShellInput, ShellResult } from './shell/index.js';
+export { createShellTool, shellTool, addToAllowlist, clearAllowlist, getAllowlist } from './shell';
+export type { ShellInput, ShellResult } from './shell';
 
 // Deep reasoning - replaces sequential-thinking
-export { 
+export {
   deepReasoningTool,
   createDeepReasoningTool,
   configureDeepReasoning,
@@ -64,36 +66,44 @@ export {
   getDeepReasoningEngine,
   resetDeepReasoningEngine,
   DeepReasoningEngine,
-  // Backwards compatibility alias
-  sequentialThinkingTool,
   type ThoughtData,
   type DeepReasoningConfig,
-} from './deep-reasoning/index.js';
+} from './deep-reasoning';
 
 // Web tool - from web/ module
-export { createWebTool, webTool, fetchWithTimeout, braveSearch, tavilySearch, fetchAndParsePage } from './web/index.js';
-export type { WebInput, BraveSearchResult, TavilySearchResult, FetchResult } from './web/index.js';
+export {
+  createWebTool,
+  webTool,
+  fetchWithTimeout,
+  braveSearch,
+  tavilySearch,
+  fetchAndParsePage,
+} from './web';
+export type { WebInput, BraveSearchResult, TavilySearchResult, FetchResult } from './web';
 
 // Memory tool - from memory/ module
-export { createMemoryTool, memoryTool, closeMemory, getMemoryProvider } from './memory/index.js';
-export type { MemoryInput, FactSummary, EntitySummary } from './memory/index.js';
+export { createMemoryTool, memoryTool, closeMemory, getMemoryProvider } from './memory';
+export type { MemoryInput, FactSummary, EntitySummary } from './memory';
 
-export { createDelegateTool, createTaskTool } from './delegation/index.js';
+export { createDelegateTool, createTaskTool } from './delegation';
 
-export { getPersistentTaskManager, resetPersistentTaskManager } from './background-tasks/task-manager.js';
+export {
+  getPersistentTaskManager,
+  resetPersistentTaskManager,
+} from './background-tasks/task-manager.js';
 export type { PersistentTaskInfo } from './background-tasks/types.js';
 
 export * from './factory.js';
 export * from './provider.js';
 
 import { createAgentTools } from './agent.js';
+import { createAstGrepTools } from './ast-grep';
 import { createCodebaseTools } from './codebase.js';
-import { createDeviceTools } from './device/index.js';
+import { createDeviceTools } from './device';
 import { defaultToolFactory } from './factory.js';
-import { createFilesystemTools } from './filesystem/index.js';
-import { createGlobTool } from './glob/index.js';
-import { createGrepTool } from './grep/index.js';
-import { createAstGrepTools } from './ast-grep/index.js';
+import { createFilesystemTools } from './filesystem';
+import { createGlobTool } from './glob';
+import { createGrepTool } from './grep';
 
 defaultToolFactory.register('agent', (deps) => createAgentTools(deps.rl ?? null));
 defaultToolFactory.register('filesystem', (deps) =>
@@ -108,5 +118,3 @@ defaultToolFactory.register('codebase', (deps) =>
 defaultToolFactory.register('device', () =>
   createDeviceTools({ serverUrl: process.env['AGENT_SERVER_URL'] ?? 'http://localhost:3000' })
 );
-
-
