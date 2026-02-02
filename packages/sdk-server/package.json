@@ -1,0 +1,32 @@
+{
+  "name": "@agent/sdk-server",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "HTTP/WebSocket server for @agent/sdk",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@agent/sdk": "workspace:*",
+    "@hono/node-server": "^1.13.8",
+    "hono": "^4.7.4"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.3",
+    "vitest": "^1.6.1",
+    "@types/node": "^20.17.19"
+  },
+  "keywords": ["ai", "agent", "server", "hono"],
+  "license": "MIT"
+}

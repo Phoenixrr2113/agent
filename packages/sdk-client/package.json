@@ -1,0 +1,28 @@
+{
+  "name": "@agent/sdk-client",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "HTTP/WebSocket client for @agent/sdk-server",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "test": "vitest",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "typescript": "^5.7.3",
+    "vitest": "^1.6.1",
+    "@types/node": "^20.17.19"
+  },
+  "keywords": ["ai", "agent", "client", "http", "websocket"],
+  "license": "MIT"
+}
