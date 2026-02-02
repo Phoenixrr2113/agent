@@ -1,8 +1,8 @@
 import { tool } from 'ai';
 
-import { DEEP_REASONING_DESCRIPTION, UNRESTRICTED_MODE_DESCRIPTION } from './constants.js';
-import { deepReasoningInputSchema, type ThoughtData } from './types.js';
-import { getDeepReasoningEngine, isDeepReasoningEnabled } from './engine.js';
+import { DEEP_REASONING_DESCRIPTION, UNRESTRICTED_MODE_DESCRIPTION } from './constants';
+import { getDeepReasoningEngine, isDeepReasoningEnabled } from './engine';
+import { deepReasoningInputSchema, type ThoughtData } from './types';
 
 export function createDeepReasoningTool() {
   const description = isDeepReasoningEnabled()
@@ -22,5 +22,4 @@ export function createDeepReasoningTool() {
 
 export const deepReasoningTool = createDeepReasoningTool();
 
-// Alias for backwards compatibility
 export const sequentialThinkingTool = deepReasoningTool;

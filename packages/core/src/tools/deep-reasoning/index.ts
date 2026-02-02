@@ -1,8 +1,8 @@
 // Tool exports
-export { createDeepReasoningTool, deepReasoningTool, sequentialThinkingTool } from './tools.js';
+export { createDeepReasoningTool, deepReasoningTool } from './tools.js';
 
 // Engine exports
-export { 
+export {
   DeepReasoningEngine,
   configureDeepReasoning,
   isDeepReasoningEnabled,
@@ -11,9 +11,9 @@ export {
 } from './engine.js';
 
 // Type exports
-export type { 
-  ThoughtData, 
-  ReasoningResult, 
+export type {
+  ThoughtData,
+  ReasoningResult,
   DeepReasoningConfig,
   DeepReasoningInput,
 } from './types.js';
