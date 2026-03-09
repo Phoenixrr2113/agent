@@ -22,7 +22,7 @@
     "@agent/core": "workspace:*",
     "@agent/device-use": "workspace:*",
     "@agent/shared": "workspace:*",
-    "@hono/node-server": "^1.19.6",
+    "@hono/node-server": "^1.19.11",
     "@types/ws": "^8.18.1",
     "better-sqlite3": "^12.4.6",
     "dotenv": "^17.2.3",
