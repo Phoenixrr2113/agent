@@ -23,7 +23,7 @@
   },
   "dependencies": {
     "@agent/shared": "workspace:*",
-    "@ai-sdk/anthropic": "^1.0.7",
+    "@ai-sdk/anthropic": "^3.0.58",
     "@nut-tree-fork/nut-js": "^4.2.6",
     "ai": "6.0.0-beta.120",
     "zod": "^3.25.76"
