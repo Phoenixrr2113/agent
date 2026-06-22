@@ -20,7 +20,7 @@
   "dependencies": {
     "@agent/shared": "workspace:*",
     "@ai-sdk/cohere": "3.0.0-beta.38",
-    "@ai-sdk/openai": "^2.0.76",
+    "@ai-sdk/openai": "^3.0.73",
     "@openrouter/ai-sdk-provider": "^1.0.0",
     "ai": "6.0.0-beta.120",
     "better-sqlite3": "^12.4.6",
